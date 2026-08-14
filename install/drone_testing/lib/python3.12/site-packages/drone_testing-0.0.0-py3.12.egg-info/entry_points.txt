@@ -1,0 +1,3 @@
+[console_scripts]
+offboard_mission = drone_testing.offboard_mission:main
+pixhawk_node = drone_testing.pixhawk_node:main

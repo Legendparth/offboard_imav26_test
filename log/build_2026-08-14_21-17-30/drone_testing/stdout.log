@@ -1,0 +1,46 @@
+running egg_info
+creating build/drone_testing/drone_testing.egg-info
+writing build/drone_testing/drone_testing.egg-info/PKG-INFO
+writing dependency_links to build/drone_testing/drone_testing.egg-info/dependency_links.txt
+writing entry points to build/drone_testing/drone_testing.egg-info/entry_points.txt
+writing requirements to build/drone_testing/drone_testing.egg-info/requires.txt
+writing top-level names to build/drone_testing/drone_testing.egg-info/top_level.txt
+writing manifest file 'build/drone_testing/drone_testing.egg-info/SOURCES.txt'
+reading manifest file 'build/drone_testing/drone_testing.egg-info/SOURCES.txt'
+writing manifest file 'build/drone_testing/drone_testing.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing
+copying drone_testing/__init__.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing
+copying drone_testing/offboard_mission.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing
+copying drone_testing/drone_imav_obs_course.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing
+copying drone_testing/aruco_detector.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing
+copying drone_testing/pixhawk_node.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing
+copying drone_testing/drone_camera.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing
+running install
+running install_lib
+creating /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing
+copying /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing/__init__.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing
+copying /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing/offboard_mission.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing
+copying /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing/drone_imav_obs_course.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing
+copying /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing/aruco_detector.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing
+copying /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing/pixhawk_node.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing
+copying /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing/drone_camera.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing
+byte-compiling /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing/__init__.py to __init__.cpython-312.pyc
+byte-compiling /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_mission.py to offboard_mission.cpython-312.pyc
+byte-compiling /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing/drone_imav_obs_course.py to drone_imav_obs_course.cpython-312.pyc
+byte-compiling /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing/aruco_detector.py to aruco_detector.cpython-312.pyc
+byte-compiling /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing/pixhawk_node.py to pixhawk_node.cpython-312.pyc
+byte-compiling /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing/drone_camera.py to drone_camera.cpython-312.pyc
+running install_data
+creating /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/share/ament_index/resource_index/packages
+copying resource/drone_testing -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/share/ament_index/resource_index/packages
+copying package.xml -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/share/drone_testing
+creating /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/share/drone_testing/launch
+copying launch/offboard_launch.launch.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/share/drone_testing/launch
+running install_egg_info
+Copying build/drone_testing/drone_testing.egg-info to /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing-0.0.0-py3.12.egg-info
+running install_scripts
+Installing offboard_mission script to /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/drone_testing
+Installing pixhawk_node script to /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/drone_testing
+writing list of installed files to '/home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/install.log'
