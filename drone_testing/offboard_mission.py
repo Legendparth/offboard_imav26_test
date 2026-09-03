@@ -25,6 +25,7 @@ from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPo
 from px4_msgs.msg import (
     OffboardControlMode,
     VehicleCommand,
+    VehicleLocalPosition,
     VehicleRatesSetpoint,
     VehicleStatus,
 )
@@ -56,7 +57,7 @@ class ArmDisarmTest(Node):
 
         sensor_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            durability=DurabilityPolicy.VOLATILE,
             history=HistoryPolicy.KEEP_LAST,
             depth=1,
         )
@@ -71,6 +72,13 @@ class ArmDisarmTest(Node):
         self.vehicle_status_sub = self.create_subscription(
             VehicleStatus, '/fmu/out/vehicle_status_v1',
             self.vehicle_status_callback, qos_profile=sensor_qos)
+
+        # Diagnostics only. Nothing in the state machine gates on this --
+        # the test must run even with no position estimate at all.
+        self.local_position = None
+        self.local_position_sub = self.create_subscription(
+            VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1',
+            self.local_position_callback, qos_profile=sensor_qos)
 
         self.nav_state = VehicleStatus.NAVIGATION_STATE_MANUAL
         self.arming_state = VehicleStatus.ARMING_STATE_DISARMED
@@ -104,6 +112,24 @@ class ArmDisarmTest(Node):
         if self.nav_state != self._last_nav_state:
             self._last_nav_state = self.nav_state
             self.get_logger().info(f"nav_state -> {self.nav_state}")
+
+    def local_position_callback(self, msg):
+        self.local_position = msg
+
+    def log_estimator_health(self):
+        """Print what the EKF thinks it knows. GPS-denied debugging aid."""
+        lp = self.local_position
+        if lp is None:
+            self.get_logger().warning("No VehicleLocalPosition being published at all.",
+                                      throttle_duration_sec=2.0)
+            return
+
+        self.get_logger().info(
+            f"xy_valid={lp.xy_valid} v_xy_valid={lp.v_xy_valid} "
+            f"z_valid={lp.z_valid} v_z_valid={lp.v_z_valid} | "
+            f"dist_bottom={lp.dist_bottom:.2f} m valid={lp.dist_bottom_valid} | "
+            f"vx={lp.vx:+.2f} vy={lp.vy:+.2f} vz={lp.vz:+.2f} m/s",
+            throttle_duration_sec=1.0)
 
     # -------------------------------------------------------------- keyboard
 
@@ -181,6 +207,8 @@ class ArmDisarmTest(Node):
             self._enter_stage(self.DISARMING)
             return
 
+        self.log_estimator_health()
+
         self.setpoint_counter += 1
         if self.setpoint_counter >= self.SETPOINT_WARMUP:
             self.get_logger().info("Setpoint stream established.")
@@ -244,6 +272,7 @@ class ArmDisarmTest(Node):
 
         self.get_logger().info(f"Armed, {remaining:.1f} s remaining...",
                                throttle_duration_sec=1.0)
+        self.log_estimator_health()
 
     def _handle_disarming(self):
         if self.arming_state == VehicleStatus.ARMING_STATE_DISARMED:
