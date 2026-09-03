@@ -1,0 +1,53 @@
+# uXRCE-DDS agent for PX4 -- starts at boot so the Jetson is always talking
+# to the flight controller. Deliberately starts the AGENT ONLY, not the
+# takeoff node: an auto-starting offboard_takeoff would spin motors the
+# instant the Offboard switch is flipped, with no keyboard abort available,
+# on every boot including a mid-field battery swap or a brownout reboot.
+#
+# Run the flight node by hand over SSH instead, which keeps the q/k aborts:
+#   source ~/px4_ros_ws/install/setup.bash
+#   ros2 run drone_testing offboard_takeoff --ros-args \
+#       -p request_offboard_from_ros:=false -p takeoff_altitude:=0.30
+#
+# Install:
+#   sudo cp ~/px4_ros_ws/src/offboard_imav26_test/drone_testing/px4-agent.service \
+#           /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now px4-agent.service
+#
+# Operate:
+#   systemctl status px4-agent.service
+#   journalctl -u px4-agent.service -f
+#   sudo systemctl restart px4-agent.service
+#   sudo systemctl disable --now px4-agent.service
+#
+# Prerequisites:
+#   - the user must be in the dialout group for /dev/ttyTHS1 access:
+#       sudo usermod -aG dialout gymkhana   (then reboot)
+#   - nothing else may hold the port. On some Jetsons a serial console is
+#     bound to it; check and disable:
+#       systemctl status serial-getty@ttyTHS1
+#       sudo systemctl disable --now serial-getty@ttyTHS1
+
+[Unit]
+Description=uXRCE-DDS agent for PX4 (drone_testing)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gymkhana
+Group=dialout
+WorkingDirectory=/home/gymkhana/px4_ros_ws
+Environment="HOME=/home/gymkhana"
+Environment="ROS_DOMAIN_ID=0"
+# bash -lc with inline sourcing is required: systemd does not read .bashrc,
+# so without it ros2 is not even on PATH.
+ExecStart=/bin/bash -lc 'source /opt/ros/humble/setup.bash && source /home/gymkhana/px4_ros_ws/install/setup.bash && exec ros2 launch drone_testing takeoff_test.launch.py agent_only:=true'
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
