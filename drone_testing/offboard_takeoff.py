@@ -380,7 +380,12 @@ class OffboardTakeoff(Node):
             self.get_logger().info("Waiting for you to flip the Offboard switch on the TX...",
                                    throttle_duration_sec=2.0)
 
-        if self._in_stage_for() > self.OFFBOARD_TIMEOUT:
+        # The timeout only applies when WE are the ones requesting the mode --
+        # if it has not taken by now it is not going to. When a human flips the
+        # switch we wait indefinitely instead, so the node can be started at
+        # boot and sit there until someone is actually ready to fly.
+        if (self.REQUEST_OFFBOARD_FROM_ROS
+                and self._in_stage_for() > self.OFFBOARD_TIMEOUT):
             self.get_logger().error("Offboard mode not entered in time. Aborting.")
             self.kill_requested = True
             self._enter_stage(self.KILLING)
