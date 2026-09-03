@@ -1,0 +1,25 @@
+[1.592s] Invoking command in '/home/ark-jetson-orin/imav26_ws/src/drone_testing': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/drone_testing build --build-base /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build install --record /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/install.log --install-scripts $base/lib/drone_testing --single-version-externally-managed install_data
+[2.198s] running egg_info
+[2.242s] writing build/drone_testing/drone_testing.egg-info/PKG-INFO
+[2.243s] writing dependency_links to build/drone_testing/drone_testing.egg-info/dependency_links.txt
+[2.244s] writing entry points to build/drone_testing/drone_testing.egg-info/entry_points.txt
+[2.244s] writing requirements to build/drone_testing/drone_testing.egg-info/requires.txt
+[2.244s] writing top-level names to build/drone_testing/drone_testing.egg-info/top_level.txt
+[2.338s] reading manifest file 'build/drone_testing/drone_testing.egg-info/SOURCES.txt'
+[2.340s] writing manifest file 'build/drone_testing/drone_testing.egg-info/SOURCES.txt'
+[2.341s] running build
+[2.341s] running build_py
+[2.341s] copying drone_testing/offboard_mission.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing
+[2.342s] running install
+[2.352s] running install_lib
+[2.397s] copying /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build/lib/drone_testing/offboard_mission.py -> /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing
+[2.398s] byte-compiling /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_mission.py to offboard_mission.cpython-312.pyc
+[2.401s] running install_data
+[2.402s] running install_egg_info
+[2.449s] removing '/home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing-0.0.0-py3.12.egg-info' (and everything under it)
+[2.449s] Copying build/drone_testing/drone_testing.egg-info to /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages/drone_testing-0.0.0-py3.12.egg-info
+[2.451s] running install_scripts
+[2.545s] Installing offboard_mission script to /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/drone_testing
+[2.545s] Installing pixhawk_node script to /home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/drone_testing
+[2.546s] writing list of installed files to '/home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/install.log'
+[2.611s] Invoked command in '/home/ark-jetson-orin/imav26_ws/src/drone_testing' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/ark-jetson-orin/imav26_ws/src/drone_testing/install/drone_testing/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/drone_testing build --build-base /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/build install --record /home/ark-jetson-orin/imav26_ws/src/drone_testing/build/drone_testing/install.log --install-scripts $base/lib/drone_testing --single-version-externally-managed install_data

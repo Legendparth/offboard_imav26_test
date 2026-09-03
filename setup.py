@@ -29,6 +29,8 @@ setup(
         'console_scripts': [
             'pixhawk_node = drone_testing.pixhawk_node:main',
             'offboard_mission = drone_testing.offboard_mission:main',
+            'zed_localization = drone_testing.zed_localization:main',
+            'cam = drone_testing.cam:main',
         ],
     },
 )
