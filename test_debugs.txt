@@ -1,63 +1,18 @@
-[offboard_takeoff-3] [INFO] [0000000064.274304192] [offboard_takeoff]: nav_state -> 14
-[offboard_takeoff-3] [ERROR] [0000000064.297483168] [offboard_takeoff]: Not arming: rangefinder failed the kinematic consistency check.
-[offboard_takeoff-3] [INFO] [0000000064.298937664] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00)
-[offboard_takeoff-3] [INFO] [0000000065.348397280] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.00)
-[offboard_takeoff-3] [ERROR] [0000000066.346926208] [offboard_takeoff]: Not arming: rangefinder failed the kinematic consistency check.
-[offboard_takeoff-3] [INFO] [0000000066.348607168] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.00)
-[offboard_takeoff-3] [INFO] [0000000067.399226016] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00)
+[offboard_takeoff-3] [INFO] [1788564598.111270295] [offboard_takeoff]: nav_state -> 4
+[offboard_takeoff-3] [ERROR] [1788564598.116499113] [offboard_takeoff]: Not arming: rangefinder is NOT being fused (cs_rng_kin_consistent false) -- the height estimate is unanchored and would free-run. Reboot the flight controller, or fly it up and down faster than 0.5 m/s in Position mode to let the check re-latch.
+[offboard_takeoff-3] [INFO] [1788564598.117470274] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00)
+[offboard_takeoff-3] [INFO] [1788564599.118671055] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00)
+[offboard_takeoff-3] [ERROR] [1788564600.117557643] [offboard_takeoff]: Not arming: rangefinder is NOT being fused (cs_rng_kin_consistent false) -- the height estimate is unanchored and would free-run. Reboot the flight controller, or fly it up and down faster than 0.5 m/s in Position mode to let the check re-latch.
+[offboard_takeoff-3] [INFO] [1788564600.119269320] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.00)
+[offboard_takeoff-3] [INFO] [1788564601.168597057] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.00)
 
-## This is the error message i got when i running the test flight...
+## this message comes up when i try to run the ros2 launch file, why does this happen and how can we avoid this?? what can be the fix for this??
 
-[offboard_takeoff-3] [INFO] [1788550592.043195492] [offboard_takeoff]: Armed on the ground, 1.8 s to takeoff...
-[offboard_takeoff-3] [INFO] [1788550592.044780101] [offboard_takeoff]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.11 m rng_ok=True vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.00)
-[offboard_takeoff-3] [INFO] [1788550593.043365809] [offboard_takeoff]: Armed on the ground, 0.8 s to takeoff...
-[offboard_takeoff-3] [INFO] [1788550593.044911762] [offboard_takeoff]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.11 m rng_ok=True vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.00)
-[offboard_takeoff-3] [WARN] [1788550593.893039361] [offboard_takeoff]: Climbing to 1.00 m (datum z=-0.09).
-[offboard_takeoff-3] [INFO] [1788550594.093174386] [offboard_takeoff]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.10 m rng_ok=True vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.01)
-[offboard_takeoff-3] [INFO] [1788550595.143106316] [offboard_takeoff]: alt=+0.01 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.11 m rng_ok=True vz=-0.02 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.02,+0.02)
-[offboard_takeoff-3] [INFO] [1788550596.143241449] [offboard_takeoff]: alt=+0.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.18 m rng_ok=True vz=-0.05 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,+0.03)
-[lcd_status-2] [WARN] [1788550596.346546411] [lcd_status]: No Arduino serial port found.
-[offboard_takeoff-3] [INFO] [1788550597.143306982] [offboard_takeoff]: alt=+0.19 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.29 m rng_ok=True vz=-0.09 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.02,+0.03)
-[offboard_takeoff-3] [INFO] [1788550598.193182330] [offboard_takeoff]: alt=+0.36 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.42 m rng_ok=True vz=-0.19 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.00,+0.02)
-[offboard_takeoff-3] [INFO] [1788550599.193358268] [offboard_takeoff]: alt=+0.58 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.62 m rng_ok=True vz=-0.26 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,-0.02)
-[offboard_takeoff-3] [INFO] [1788550600.243192246] [offboard_takeoff]: alt=+0.87 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.92 m rng_ok=True vz=-0.29 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.03,-0.02)
-[offboard_takeoff-3] [INFO] [1788550601.243192484] [offboard_takeoff]: alt=+1.18 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.22 m rng_ok=True vz=-0.31 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.03,-0.04)
-[lcd_status-2] [WARN] [1788550601.546655310] [lcd_status]: No Arduino serial port found.
-[offboard_takeoff-3] [INFO] [1788550602.243318267] [offboard_takeoff]: alt=+1.49 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.53 m rng_ok=True vz=-0.32 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.03,-0.05)
-[offboard_takeoff-3] [INFO] [1788550603.243320637] [offboard_takeoff]: alt=+1.82 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.87 m rng_ok=True vz=-0.33 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.02,-0.08)
-[offboard_takeoff-3] [INFO] [1788550604.243324971] [offboard_takeoff]: alt=+2.15 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.19 m rng_ok=True vz=-0.33 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,-0.10)
-[offboard_takeoff-3] [INFO] [1788550605.293339315] [offboard_takeoff]: alt=+2.52 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.56 m rng_ok=True vz=-0.35 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.00,-0.11)
-[offboard_takeoff-3] [INFO] [1788550606.293369627] [offboard_takeoff]: alt=+2.88 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.91 m rng_ok=True vz=-0.35 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.00,-0.12)
+[offboard_takeoff-3] [INFO] [1788564374.067343763] [offboard_takeoff]: Armed on the ground, 1.9 s to takeoff...
+[offboard_takeoff-3] [INFO] [1788564374.069015036] [offboard_takeoff]: alt=+0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.11 m rng_ok=True vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.00)
+[offboard_takeoff-3] [INFO] [1788564374.183000391] [offboard_takeoff]: nav_state -> 18
+[offboard_takeoff-3] [ERROR] [1788564374.217410397] [offboard_takeoff]: Offboard lost; PX4 has control now. Standing down.
+[offboard_takeoff-3] [INFO] [1788564374.266654559] [offboard_takeoff]: Idle. Ctrl-C to exit.
+^C[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
 
-## also after arming why was the distance from the bottom reading so wrong, like why is it showing that it was approx 3m from the ground?? can you fix this or is it some internal error?? 9this was test 2 btw)
-
-[offboard_takeoff-3] [INFO] [1788550639.446876327] [offboard_takeoff]: Armed on the ground, 1.8 s to takeoff...
-[offboard_takeoff-3] [INFO] [1788550639.448436056] [offboard_takeoff]: alt=-0.01 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.10 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.01)
-[offboard_takeoff-3] [INFO] [1788550640.446898345] [offboard_takeoff]: Armed on the ground, 0.8 s to takeoff...
-[offboard_takeoff-3] [INFO] [1788550640.448448259] [offboard_takeoff]: alt=-0.01 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.10 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.00)
-[offboard_takeoff-3] [WARN] [1788550641.296389433] [offboard_takeoff]: Climbing to 1.20 m (datum z=-3.13).
-[offboard_takeoff-3] [INFO] [1788550641.496723238] [offboard_takeoff]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.10 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.00)
-[offboard_takeoff-3] [INFO] [1788550642.497185885] [offboard_takeoff]: alt=+0.02 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.14 m rng_ok=True vz=-0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,+0.02)
-[offboard_takeoff-3] [INFO] [1788550643.497399358] [offboard_takeoff]: alt=+0.13 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.23 m rng_ok=True vz=-0.04 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.02,+0.03)
-[lcd_status-2] [WARN] [1788550644.212674223] [lcd_status]: No Arduino serial port found.
-[offboard_takeoff-3] [INFO] [1788550644.546897750] [offboard_takeoff]: alt=+0.19 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.29 m rng_ok=True vz=-0.06 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,+0.03)
-[offboard_takeoff-3] [INFO] [1788550645.596791282] [offboard_takeoff]: alt=+0.29 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.37 m rng_ok=True vz=-0.09 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.02,+0.03)
-[offboard_takeoff-3] [INFO] [1788550646.596831363] [offboard_takeoff]: alt=+0.33 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.38 m rng_ok=True vz=-0.13 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.13,-0.03)
-[offboard_takeoff-3] [INFO] [1788550647.597103497] [offboard_takeoff]: alt=+0.22 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.26 m rng_ok=True vz=-0.20 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.27,-0.27)
-[offboard_takeoff-3] [INFO] [1788550648.646863468] [offboard_takeoff]: alt=+0.33 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.37 m rng_ok=True vz=-0.21 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.03,+0.02)
-[lcd_status-2] [WARN] [1788550649.412601432] [lcd_status]: No Arduino serial port found.
-[offboard_takeoff-3] [INFO] [1788550649.646986171] [offboard_takeoff]: alt=+0.42 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.48 m rng_ok=True vz=-0.24 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.14,-0.12)
-[offboard_takeoff-3] [INFO] [1788550650.696822241] [offboard_takeoff]: alt=+0.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.70 m rng_ok=True vz=-0.39 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.08,+0.08)
-[offboard_takeoff-3] [INFO] [1788550651.697011986] [offboard_takeoff]: alt=+0.90 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.95 m rng_ok=True vz=-0.20 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.04,+0.21)
-[offboard_takeoff-3] [INFO] [1788550652.697042135] [offboard_takeoff]: alt=+0.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.10 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.11,-0.16)
-[offboard_takeoff-3] [INFO] [1788550653.697057475] [offboard_takeoff]: alt=+0.99 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.15 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.07,+0.01)
-[lcd_status-2] [WARN] [1788550654.612576054] [lcd_status]: No Arduino serial port found.
-[offboard_takeoff-3] [INFO] [1788550654.746939307] [offboard_takeoff]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.11 m rng_ok=True vz=-0.09 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.06,+0.09)
-[offboard_takeoff-3] [INFO] [1788550655.746996718] [offboard_takeoff]: alt=+1.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.14 m rng_ok=True vz=-0.10 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.01,-0.02)
-[offboard_takeoff-3] [INFO] [1788550656.747661582] [offboard_takeoff]: alt=+1.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.14 m rng_ok=True vz=-0.06 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,-0.10)
-[offboard_takeoff-3] [INFO] [1788550657.796844011] [offboard_takeoff]: alt=+1.11 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.16 m rng_ok=True vz=-0.15 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.00,+0.17)
-[offboard_takeoff-3] [WARN] [1788550658.448208994] [offboard_takeoff]: Reached 1.15 m. Holding for 15 s.
-[offboard_takeoff-3] [INFO] [1788550658.496687335] [offboard_takeoff]: Holding, 15.0 s remaining...
-[offboard_takeoff-3] [INFO] [1788550658.798007491] [offboard_takeoff]: alt=+1.14 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.21 m rng_ok=True vz=-0.04 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.00,-0.09)
-
-## this last test worked well, but why was it that, 1 out of 3 of the test flights were working and how can i avoid this in the future?? Please help me out...
+## even after arming, it happened twice that the offboard was lost and it shows this error message, please help me figure this out and fix it.
