@@ -36,6 +36,7 @@ import tty
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+from std_msgs.msg import String
 from px4_msgs.msg import (
     OffboardControlMode,
     TrajectorySetpoint,
@@ -63,11 +64,17 @@ class OffboardTakeoff(Node):
     TAKEOFF_ALTITUDE = 0.80     # m above the arming point
     GROUND_WAIT_SECONDS = 5.0   # armed on the ground before the climb starts
     HOLD_SECONDS = 15.0         # station keeping once the altitude is reached
-    CLIMB_SPEED = 0.35          # m/s, rate the climb setpoint is ramped at
+    CLIMB_SPEED = 0.80          # m/s. Brisk on purpose: a slow climb lingers in
+                                # ground effect with no valid flow, which is the
+                                # least stable place the vehicle can be.
     LAND_SPEED = 0.15           # m/s, rate the descent setpoint is ramped at
     ALTITUDE_TOLERANCE = 0.08   # m, "we are there" band around the target
     SETTLE_SECONDS = 0.5        # time inside the band before the hold starts
     LAND_OVERSHOOT = 0.50       # m the descent setpoint is pushed below ground
+    GROUND_PRESS = 0.15         # m the setpoint is held BELOW ground while armed
+                                # and waiting, so the vehicle stays firmly planted
+                                # instead of skittering at the edge of liftoff.
+    LIFTOFF_AGL = 0.15          # m AGL above which we consider ourselves airborne
 
     # ---- flow / estimator health -----------------------------------------
     # Below this AGL the rangefinder and optical flow are not trustworthy:
@@ -123,6 +130,10 @@ class OffboardTakeoff(Node):
         self.trajectory_setpoint_pub = self.create_publisher(
             TrajectorySetpoint, '/fmu/in/trajectory_setpoint', 10)
 
+        # Compact machine-readable status for the LCD node (and anything else
+        # that wants to watch the state machine without parsing log text).
+        self.status_pub = self.create_publisher(String, 'takeoff_status', 10)
+
         self.vehicle_status_sub = self.create_subscription(
             VehicleStatus, '/fmu/out/vehicle_status_v1',
             self.vehicle_status_callback, qos_profile=sensor_qos)
@@ -148,6 +159,13 @@ class OffboardTakeoff(Node):
         self.local_position = None
         self.landed = True
         self.land_detector_seen = False
+
+        # EKF2 reset bookkeeping. When the estimator re-datums its height or
+        # lateral position it jumps x/y/z instantly and tells us by how much.
+        # Anything we latched in the old frame has to be shifted with it or it
+        # silently becomes a setpoint in the wrong place.
+        self._z_reset_counter = None
+        self._xy_reset_counter = None
 
         # Captured at the moment of arming; every setpoint is relative to it.
         self.home_x = None
@@ -199,15 +217,58 @@ class OffboardTakeoff(Node):
             self.get_logger().info(f"nav_state -> {self.nav_state}")
 
     def local_position_callback(self, msg):
+        self._handle_estimator_resets(msg)
         self.local_position = msg
+
+    def _handle_estimator_resets(self, msg):
+        """Shift everything we latched when EKF2 jumps its own origin.
+
+        This is the bug that made the vehicle believe it had reached takeoff
+        altitude while still sitting on the ground: EKF2 re-datums height when
+        the rangefinder starts being fused, z jumps by up to the target
+        altitude in a single sample, and a home_z captured before the reset is
+        suddenly measuring against a frame that no longer exists.
+        """
+        if self._z_reset_counter is None:
+            self._z_reset_counter = msg.z_reset_counter
+            self._xy_reset_counter = msg.xy_reset_counter
+            return
+
+        if msg.z_reset_counter != self._z_reset_counter:
+            self._z_reset_counter = msg.z_reset_counter
+            if self.home_z is not None:
+                self.home_z += msg.delta_z
+                self.target_z += msg.delta_z
+                self.setpoint_z += msg.delta_z
+                self.get_logger().warning(
+                    f"EKF2 height reset: delta_z={msg.delta_z:+.2f} m, "
+                    "shifted altitude reference to match.")
+
+        if msg.xy_reset_counter != self._xy_reset_counter:
+            self._xy_reset_counter = msg.xy_reset_counter
+            if self.hold_xy and self.hold_x is not None:
+                self.hold_x += msg.delta_xy[0]
+                self.hold_y += msg.delta_xy[1]
+                self.get_logger().warning(
+                    f"EKF2 lateral reset: delta_xy=({msg.delta_xy[0]:+.2f}, "
+                    f"{msg.delta_xy[1]:+.2f}) m, shifted x/y hold to match.")
 
     def land_detected_callback(self, msg):
         self.landed = msg.landed
         self.land_detector_seen = True
 
     def position_is_usable(self):
+        """What we need to fly at all: a height estimate and a rangefinder.
+
+        Deliberately does NOT require xy_valid. On a flow-only airframe the
+        lateral estimate cannot converge until the vehicle is off the ground
+        and the flow sensor can see motion -- demanding xy_valid before arming
+        is a chicken-and-egg that only passes by luck. We fly x/y as a zero
+        velocity setpoint anyway, so the lateral POSITION estimate is not
+        something we depend on for takeoff.
+        """
         lp = self.local_position
-        return lp is not None and lp.xy_valid and lp.z_valid
+        return lp is not None and lp.z_valid and lp.dist_bottom_valid
 
     def flow_is_healthy(self):
         """Is the optical flow actually correcting, or just dead-reckoning?
@@ -235,6 +296,27 @@ class OffboardTakeoff(Node):
             return None
         return self.home_z - self.local_position.z
 
+    def agl(self):
+        """Height above ground straight from the lidar, or None.
+
+        Independent of the EKF's height datum, so it survives an estimator
+        reset that would corrupt relative_altitude(). Used to sanity-check
+        the altitude before we believe we have arrived.
+        """
+        lp = self.local_position
+        if lp is None or not lp.dist_bottom_valid:
+            return None
+        return lp.dist_bottom
+
+    def is_airborne(self):
+        """Conservative: only true when something concrete says we left ground."""
+        if self.land_detector_seen and self.landed:
+            return False
+        agl = self.agl()
+        if agl is not None:
+            return agl > self.LIFTOFF_AGL
+        return not self.landed
+
     def log_flight_state(self):
         lp = self.local_position
         if lp is None:
@@ -245,7 +327,8 @@ class OffboardTakeoff(Node):
         alt = self.relative_altitude()
         alt_str = f"{alt:+.2f} m" if alt is not None else "n/a"
         self.get_logger().info(
-            f"alt={alt_str} xy_valid={lp.xy_valid} z_valid={lp.z_valid} | "
+            f"alt={alt_str} airborne={self.is_airborne()} "
+            f"xy_valid={lp.xy_valid} z_valid={lp.z_valid} | "
             f"dist_bottom={lp.dist_bottom:.2f} m valid={lp.dist_bottom_valid} | "
             f"vz={lp.vz:+.2f} m/s landed={self.landed} | "
             f"xy={'POS-HOLD' if self.hold_xy else 'VEL-HOLD'} "
@@ -316,6 +399,7 @@ class OffboardTakeoff(Node):
         # Offboard never times out mid-flight.
         self.publish_offboard_control_mode()
         self.publish_position_setpoint()
+        self.publish_status()
 
         if self.kill_requested and self.current_stage not in (self.KILLING, self.DONE):
             self._enter_stage(self.KILLING)
@@ -349,10 +433,10 @@ class OffboardTakeoff(Node):
             self._enter_stage(self.DISARMING)
             return
 
-        # No vertical estimate, no flight. This is the one hard gate.
+        # No height estimate or no rangefinder, no flight. The one hard gate.
         if not self.position_is_usable():
             self.get_logger().error(
-                "Local position not valid (need xy_valid and z_valid). Not arming.",
+                "Not arming: need z_valid and dist_bottom_valid.",
                 throttle_duration_sec=2.0)
             self.log_flight_state()
             self.setpoint_counter = 0
@@ -434,14 +518,24 @@ class OffboardTakeoff(Node):
 
         remaining = self.GROUND_WAIT_SECONDS - self._in_stage_for()
         if remaining <= 0.0:
-            self.get_logger().warning(
-                f"Climbing to {self.TAKEOFF_ALTITUDE:.2f} m.")
+            # Re-latch the height datum immediately before the climb rather
+            # than trusting the one from arming: less time for drift, and any
+            # reset during the ground wait is already behind us.
+            self.home_z = self.local_position.z
+            self.setpoint_z = self.home_z
             self.target_z = self.home_z - self.TAKEOFF_ALTITUDE
             self.in_band_since = None
+            self.get_logger().warning(
+                f"Climbing to {self.TAKEOFF_ALTITUDE:.2f} m "
+                f"(datum z={self.home_z:.2f}).")
             self._enter_stage(self.TAKEOFF)
             return
 
-        self.target_z = self.home_z
+        # Hold the setpoint BELOW ground level. At home_z exactly, the
+        # controller sits at near-hover thrust for the whole wait and the
+        # vehicle skitters on the edge of liftoff, which is what makes it roll
+        # off when it finally goes. Pressing down keeps it planted.
+        self.target_z = self.home_z + self.GROUND_PRESS
         self.get_logger().info(f"Armed on the ground, {remaining:.1f} s to takeoff...",
                                throttle_duration_sec=1.0)
         self.log_flight_state()
@@ -452,11 +546,11 @@ class OffboardTakeoff(Node):
 
         self.log_flight_state()
 
-        alt = self.relative_altitude()
-        if alt is not None and abs(alt - self.TAKEOFF_ALTITUDE) <= self.ALTITUDE_TOLERANCE:
+        if self._at_takeoff_altitude():
             if self.in_band_since is None:
                 self.in_band_since = time.monotonic()
             elif time.monotonic() - self.in_band_since >= self.SETTLE_SECONDS:
+                alt = self.relative_altitude()
                 self.get_logger().warning(
                     f"Reached {alt:.2f} m. Holding for {self.HOLD_SECONDS:.0f} s.")
                 self._enter_stage(self.HOLD)
@@ -466,6 +560,35 @@ class OffboardTakeoff(Node):
 
         if self._in_stage_for() > self.TAKEOFF_TIMEOUT:
             self._begin_landing("takeoff did not settle in time")
+
+    def _at_takeoff_altitude(self):
+        """Three independent things must agree before we believe we arrived.
+
+        The EKF-relative altitude alone is not enough. A height reset can put
+        it at the target while the vehicle has not moved, which previously let
+        the node "arrive" at 0.80 m sitting on the ground and start its hold
+        countdown with the drone still on its feet.
+        """
+        # 1. Something concrete says we are off the ground.
+        if not self.is_airborne():
+            return False
+
+        # 2. The EKF-relative altitude is in the band.
+        alt = self.relative_altitude()
+        if alt is None or abs(alt - self.TAKEOFF_ALTITUDE) > self.ALTITUDE_TOLERANCE:
+            return False
+
+        # 3. The lidar, which knows nothing of the EKF datum, roughly agrees.
+        # Wider band than the EKF check: the ground is not perfectly flat and
+        # this is a cross-check, not the primary measurement.
+        agl = self.agl()
+        if agl is not None and abs(agl - self.TAKEOFF_ALTITUDE) > 4 * self.ALTITUDE_TOLERANCE:
+            self.get_logger().warning(
+                f"Altitude disagreement: ekf={alt:.2f} m lidar={agl:.2f} m. "
+                "Not accepting arrival.", throttle_duration_sec=2.0)
+            return False
+
+        return True
 
     def _handle_hold(self):
         if not self._still_flyable():
@@ -582,13 +705,45 @@ class OffboardTakeoff(Node):
             self._enter_stage(self.DONE)
             return False
 
-        if not self.position_is_usable():
-            self._begin_landing("position estimate went invalid")
+        # In flight the bar is lower than for arming: a momentary rangefinder
+        # dropout is survivable, losing the height estimate entirely is not.
+        lp = self.local_position
+        if lp is None or not lp.z_valid:
+            self._begin_landing("height estimate went invalid")
             return False
 
         return True
 
     # ------------------------------------------------------------ publishers
+
+    def publish_status(self):
+        """One pipe-separated line: stage|armed|altitude|flow|detail.
+
+        Fields are always present and always in this order so the consumer
+        can split on '|' without guessing. Empty detail is an empty field.
+        """
+        alt = self.relative_altitude()
+        armed = self.arming_state == VehicleStatus.ARMING_STATE_ARMED
+
+        detail = ''
+        if self.current_stage == self.GROUND_WAIT:
+            detail = f"{max(0.0, self.GROUND_WAIT_SECONDS - self._in_stage_for()):.0f}s"
+        elif self.current_stage == self.HOLD:
+            detail = f"{max(0.0, self.HOLD_SECONDS - self._in_stage_for()):.0f}s"
+        elif self.current_stage == self.TAKEOFF:
+            detail = f"tgt{self.TAKEOFF_ALTITUDE:.2f}"
+        elif self.current_stage == self.OFFBOARD_REQUEST:
+            detail = 'flip sw'
+
+        msg = String()
+        msg.data = "|".join([
+            self.current_stage,
+            'ARM' if armed else 'DIS',
+            f"{alt:.2f}" if alt is not None else 'nan',
+            'POS' if self.hold_xy else ('FLO' if self.flow_is_healthy() else '---'),
+            detail,
+        ])
+        self.status_pub.publish(msg)
 
     def publish_offboard_control_mode(self):
         msg = OffboardControlMode()

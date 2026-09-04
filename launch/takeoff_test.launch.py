@@ -18,7 +18,7 @@ convenience, not a substitute.
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, TimerAction
-from launch.conditions import UnlessCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -59,6 +59,19 @@ def generate_launch_description():
         condition=UnlessCondition(agent_only),
     )
 
+    # Status readout on the Arduino-driven LCD. Started with the agent, not
+    # with the flight node, so the display is alive from boot and can show
+    # "NO TAKEOFF NODE" while you are still getting set up.
+    lcd_node = Node(
+        package='drone_testing',
+        executable='lcd_status',
+        name='lcd_status',
+        output='screen',
+        emulate_tty=True,
+        parameters=[{'port': LaunchConfiguration('lcd_port')}],
+        condition=IfCondition(LaunchConfiguration('lcd')),
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(
             'agent_only', default_value='true',
@@ -82,6 +95,13 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'request_offboard_from_ros', default_value='true',
             description='false = you flip the Offboard switch on the TX yourself.'),
+        DeclareLaunchArgument(
+            'lcd', default_value='true',
+            description='Start the Arduino LCD status node.'),
+        DeclareLaunchArgument(
+            'lcd_port', default_value='',
+            description='Arduino serial port; empty = auto-detect ttyACM*/ttyUSB*.'),
         microxrce_node,
+        lcd_node,
         takeoff_node,
     ])
