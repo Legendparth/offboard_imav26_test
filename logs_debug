@@ -64,6 +64,7 @@
 /fmu/out/vehicle_status_v1
 /fmu/out/vtol_vehicle_status
 /fmu/out/wind
+
 timestamp: 1788547479911877
 timestamp_sample: 1788547479740212
 control_status_changes: 22
@@ -139,3 +140,87 @@ reject_hagl: false
 reject_optflow_x: false
 reject_optflow_y: false
 ---
+
+nsh> uavcan status
+Pool allocator status:
+    Capacity hard/soft: 500/250 blocks
+    Reserved:  107 blocks
+    Allocated: 14 blocks
+
+UAVCAN node status:
+    Internal failures: 0
+    Transfer errors:   3
+    RX transfers:      272356
+    TX transfers:      27314
+
+CAN1 status:
+    HW errors: 279
+    IO errors: 279
+    RX frames: 998801
+    TX frames: 42326
+CAN2 status:
+    HW errors: 45244
+    IO errors: 45328
+    RX frames: 0
+    TX frames: 42242
+
+Sensor 'flow':
+name: uavcan_flow
+channel 0: node id 125 --> instance 0
+
+Sensor 'mag':
+name: uavcan_mag
+
+Sensor 'rangefinder':
+name: uavcan_rangefinder
+channel 0: node id 125 --> instance 0
+
+Online nodes (Node ID, Health, Mode):
+     125 OK         OPERAT    
+
+uavcan: cycle time: 1425588 events, 49208542us elapsed, 34.52us avg, min 8us max 287138us 246.091us rms
+uavcan: cycle interval: 1425593 events, 1056.96us avg, min 12us max 287142us 1150.820us rms
+
+nsh> listener distance_sensor
+
+TOPIC: distance_sensor
+ distance_sensor
+    timestamp: 2171378358 (0.018687 seconds ago)
+    device_id: 9010435 (Type: 0x89, UAVCAN:0 (0x7D))
+    min_distance: 0.02000
+    max_distance: 30.00000
+    current_distance: 0.09198
+    variance: 0.00000
+    h_fov: 0.10473
+    v_fov: 0.10473
+    q: [0.00000, 0.00000, 0.00000, 0.00000] (Roll: 0.0 deg, Pitch: 0.0 deg, Yaw: 0.0 deg)
+    signal_quality: 100
+    type: 0
+    orientation: 25
+    mode: 0
+
+nsh> ver all
+HW arch: PX4_FMU_V6C
+HW type: V6C000001
+HW version: 0x000
+HW revision: 0x001
+PX4 git-hash: d6f12ad1c4f70ad3230afd7d86e971421e02fef4
+PX4 version: Release 1.17.0 (17891583)
+PX4 git-branch: stable
+OS: NuttX
+OS version: Release 11.0.0 (184549631)
+OS git-hash: fb2fadf6f599c1406f052db013efd00a2518e72c
+Build datetime: May 13 2026 18:50:30
+Build uri: localhost
+Build variant: default
+Toolchain: GNU GCC, 13.2.1 20231009
+PX4GUID: 0006000000003238363532335110002b0026
+MCU: STM32H7[4|5]xxx, rev. V
+
+EKF2_RNG_CTRL = 2 (Enabled)
+EKF2_HGT_REF = 2 (RANGE SENSOR)
+EKF2_OF_CTRL = 2 (enabled)
+EKF2_MIN_RNG = 0.1m
+UAVCAN_ENABLE = 2 (sensor auto...)
+UAVCAN_SUB_RNG = 1 (enabled)
+UAVCAN_SUB_FLOW = 1 (enabled)
