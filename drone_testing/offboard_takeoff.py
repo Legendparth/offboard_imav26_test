@@ -38,6 +38,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
 from px4_msgs.msg import (
+    EstimatorStatusFlags,
     OffboardControlMode,
     TrajectorySetpoint,
     VehicleCommand,
@@ -154,6 +155,13 @@ class OffboardTakeoff(Node):
             VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1',
             self.local_position_callback, qos_profile=sensor_qos)
 
+        # Unversioned topic, so the name is the same on every firmware that
+        # bridges it. This is the only place that tells us whether EKF2 is
+        # actually fusing the rangefinder -- see rangefinder_is_healthy().
+        self.estimator_flags_sub = self.create_subscription(
+            EstimatorStatusFlags, '/fmu/out/estimator_status_flags',
+            self.estimator_flags_callback, qos_profile=sensor_qos)
+
         # The land detector topic is unversioned on some builds and _v1 on
         # others; subscribe to both and take whichever one actually arrives.
         self.land_detected_subs = [
@@ -172,6 +180,7 @@ class OffboardTakeoff(Node):
         self.local_position = None
         self.landed = True
         self.land_detector_seen = False
+        self.estimator_flags = None
 
         # EKF2 reset bookkeeping. When the estimator re-datums its height or
         # lateral position it jumps x/y/z instantly and tells us by how much.
@@ -289,9 +298,48 @@ class OffboardTakeoff(Node):
                     f"EKF2 lateral reset: delta_xy=({msg.delta_xy[0]:+.2f}, "
                     f"{msg.delta_xy[1]:+.2f}) m, shifted x/y hold to match.")
 
+    def estimator_flags_callback(self, msg):
+        self.estimator_flags = msg
+
     def land_detected_callback(self, msg):
         self.landed = msg.landed
         self.land_detector_seen = True
+
+    def rangefinder_is_healthy(self):
+        """Is EKF2 actually fusing the downward rangefinder?
+
+        NOT the same question as VehicleLocalPosition.dist_bottom_valid, which
+        on PX4 up to and including v1.17 is just isTerrainEstimateValid():
+
+            EKF2.cpp:1622   lpos.dist_bottom_valid = _ekf.isTerrainEstimateValid();
+
+        With EKF2_HGT_REF = 2 (Range) that flag can NEVER be true, whatever the
+        sensor does, because the terrain state is not estimated at all in that
+        configuration -- the ground IS the height datum, so terrain is pinned
+        to zero and both terrain aiding paths are switched off by construction:
+
+          range_height_control.cpp  the do_range_aid branch sets rng_hgt = true
+                                    and then calls stopRngTerrFusion(); the only
+                                    place rng_terrain is ever set true sits in
+                                    the `else` of `if (rng_hgt || rng_terrain)`,
+                                    which is therefore unreachable from then on.
+          optical_flow_control.cpp  opt_flow_terrain = opt_flow && !(hgt_ref ==
+                                    RANGE)  ->  forced false.
+
+        So dist_bottom_valid is stuck false while the rangefinder is perfectly
+        healthy and is in fact the primary height source. PX4 v1.18 fixes the
+        symptom by adding `|| getHeightSensorRef() == RANGE` to that line; on
+        v1.17 we have to ask the question ourselves.
+
+        EstimatorStatusFlags answers it directly. Fall back to dist_bottom_valid
+        only if those flags are not being published.
+        """
+        f = self.estimator_flags
+        if f is None:
+            lp = self.local_position
+            return lp is not None and lp.dist_bottom_valid
+        return (f.cs_rng_hgt or f.cs_rng_terrain) and not f.cs_rng_fault \
+            and not f.cs_rng_stuck and f.cs_rng_kin_consistent
 
     def position_is_usable(self):
         """What we need to fly at all: a height estimate and a rangefinder.
@@ -304,7 +352,7 @@ class OffboardTakeoff(Node):
         something we depend on for takeoff.
         """
         lp = self.local_position
-        return lp is not None and lp.z_valid and lp.dist_bottom_valid
+        return lp is not None and lp.z_valid and self.rangefinder_is_healthy()
 
     def flow_is_healthy(self):
         """Is the optical flow actually correcting, or just dead-reckoning?
@@ -315,7 +363,8 @@ class OffboardTakeoff(Node):
         """
         lp = self.local_position
         return (lp is not None and lp.xy_valid and lp.v_xy_valid
-                and lp.dist_bottom_valid and lp.dist_bottom > self.FLOW_MIN_AGL)
+                and self.rangefinder_is_healthy()
+                and lp.dist_bottom > self.FLOW_MIN_AGL)
 
     def flow_healthy_for(self):
         """Seconds the flow has been continuously healthy, 0.0 if it is not."""
@@ -340,7 +389,7 @@ class OffboardTakeoff(Node):
         the altitude before we believe we have arrived.
         """
         lp = self.local_position
-        if lp is None or not lp.dist_bottom_valid:
+        if lp is None or not self.rangefinder_is_healthy():
             return None
         return lp.dist_bottom
 
@@ -365,7 +414,7 @@ class OffboardTakeoff(Node):
         self.get_logger().info(
             f"alt={alt_str} airborne={self.is_airborne()} "
             f"xy_valid={lp.xy_valid} z_valid={lp.z_valid} | "
-            f"dist_bottom={lp.dist_bottom:.2f} m valid={lp.dist_bottom_valid} | "
+            f"dist_bottom={lp.dist_bottom:.2f} m rng_ok={self.rangefinder_is_healthy()} "
             f"vz={lp.vz:+.2f} m/s landed={self.landed} | "
             f"xy={'POS-HOLD' if self.hold_xy else 'VEL-HOLD'} "
             f"flow_ok={self.flow_is_healthy()} "
@@ -482,9 +531,29 @@ class OffboardTakeoff(Node):
 
         # No height estimate or no rangefinder, no flight. The one hard gate.
         if not self.position_is_usable():
+            lp = self.local_position
+            reason = "no VehicleLocalPosition yet"
+            if lp is not None:
+                if not lp.z_valid:
+                    reason = "z_valid is false (no height estimate)"
+                else:
+                    f = self.estimator_flags
+                    if f is None:
+                        reason = ("rangefinder unusable: dist_bottom_valid is false "
+                                  "and /fmu/out/estimator_status_flags is not being "
+                                  "published, so there is no second opinion")
+                    elif f.cs_rng_fault:
+                        reason = "EKF2 has declared the rangefinder FAULTY (cs_rng_fault)"
+                    elif f.cs_rng_stuck:
+                        reason = "rangefinder data is stuck (cs_rng_stuck)"
+                    elif not f.cs_rng_kin_consistent:
+                        reason = "rangefinder failed the kinematic consistency check"
+                    elif not (f.cs_rng_hgt or f.cs_rng_terrain):
+                        reason = ("EKF2 is not fusing the rangefinder at all "
+                                  "(cs_rng_hgt and cs_rng_terrain both false) -- "
+                                  "check EKF2_RNG_CTRL and that the sensor is on the bus")
             self.get_logger().error(
-                "Not arming: need z_valid and dist_bottom_valid.",
-                throttle_duration_sec=2.0)
+                f"Not arming: {reason}.", throttle_duration_sec=2.0)
             self.log_flight_state()
             self.setpoint_counter = 0
             return
