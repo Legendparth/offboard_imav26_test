@@ -1,5 +1,0 @@
-setuptools
-pymavlink
-
-[test]
-pytest

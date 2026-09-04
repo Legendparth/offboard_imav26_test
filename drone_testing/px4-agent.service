@@ -45,14 +45,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=gymkhana
+User=ark-jetson-orin
 Group=dialout
-WorkingDirectory=/home/gymkhana/px4_ros_ws
-Environment="HOME=/home/gymkhana"
+WorkingDirectory=/home/ark-jetson-orin/imav26_ws
+Environment="HOME=/home/ark-jetson-orin"
 Environment="ROS_DOMAIN_ID=0"
 # bash -lc with inline sourcing is required: systemd does not read .bashrc,
 # so without it ros2 is not even on PATH.
-ExecStart=/bin/bash -lc 'source /opt/ros/humble/setup.bash && source /home/gymkhana/px4_ros_ws/install/setup.bash && exec ros2 launch drone_testing takeoff_test.launch.py agent_only:=false request_offboard_from_ros:=false takeoff_altitude:=0.30 hold_seconds:=5.0'
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/ark-jetson-orin/imav26_ws/install/setup.bash && exec ros2 launch drone_testing takeoff_test.launch.py agent_only:=false request_offboard_from_ros:=false takeoff_altitude:=0.30 hold_seconds:=5.0'
 Restart=no
 StandardOutput=journal
 StandardError=journal
