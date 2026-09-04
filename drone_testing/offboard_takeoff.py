@@ -75,6 +75,11 @@ class OffboardTakeoff(Node):
                                 # and waiting, so the vehicle stays firmly planted
                                 # instead of skittering at the edge of liftoff.
     LIFTOFF_AGL = 0.15          # m AGL above which we consider ourselves airborne
+    SETPOINT_LEASH = 0.60       # m the commanded z may lead the measured z by.
+                                # Without this the ramp keeps walking while the
+                                # vehicle is still thrust-limited on PX4's
+                                # takeoff ramp, builds a big position error, and
+                                # then flies it out in one jump.
 
     # ---- flow / estimator health -----------------------------------------
     # Below this AGL the rangefinder and optical flow are not trustworthy:
@@ -92,6 +97,10 @@ class OffboardTakeoff(Node):
     LANDING_TIMEOUT = 30.0
     DISARM_TIMEOUT = 5.0
     LANDED_CONFIRM_SECONDS = 1.0    # land-detector must agree this long
+    COMMAND_INTERVAL = 0.25         # s between repeats of a vehicle command.
+                                    # /fmu/in/vehicle_command at the full 20 Hz
+                                    # floods PX4's command queue and gets
+                                    # commands dropped rather than acted on.
     # If you switch to Offboard from your RC transmitter instead of from
     # this node, set this to False.
     REQUEST_OFFBOARD_FROM_ROS = True
@@ -103,18 +112,22 @@ class OffboardTakeoff(Node):
         # The numbers you actually want to change between hardware tests are
         # exposed as ROS parameters; the rest stay as class constants above.
         # e.g. ros2 run ... --ros-args -p takeoff_altitude:=0.30
-        self.TAKEOFF_ALTITUDE = self.declare_parameter(
-            'takeoff_altitude', self.TAKEOFF_ALTITUDE).value
-        self.HOLD_SECONDS = self.declare_parameter(
-            'hold_seconds', self.HOLD_SECONDS).value
-        self.GROUND_WAIT_SECONDS = self.declare_parameter(
-            'ground_wait_seconds', self.GROUND_WAIT_SECONDS).value
-        self.CLIMB_SPEED = self.declare_parameter(
-            'climb_speed', self.CLIMB_SPEED).value
-        self.LAND_SPEED = self.declare_parameter(
-            'land_speed', self.LAND_SPEED).value
-        self.REQUEST_OFFBOARD_FROM_ROS = self.declare_parameter(
-            'request_offboard_from_ros', self.REQUEST_OFFBOARD_FROM_ROS).value
+        # float() on the way out: launch passes parameters as YAML, so
+        # `takeoff_altitude:=1` arrives as an int and an unconverted int would
+        # make every altitude comparison integer-ish. (An int also gets
+        # rejected outright against a double-typed declaration.)
+        self.TAKEOFF_ALTITUDE = float(self._declare_number(
+            'takeoff_altitude', self.TAKEOFF_ALTITUDE))
+        self.HOLD_SECONDS = float(self._declare_number(
+            'hold_seconds', self.HOLD_SECONDS))
+        self.GROUND_WAIT_SECONDS = float(self._declare_number(
+            'ground_wait_seconds', self.GROUND_WAIT_SECONDS))
+        self.CLIMB_SPEED = float(self._declare_number(
+            'climb_speed', self.CLIMB_SPEED))
+        self.LAND_SPEED = float(self._declare_number(
+            'land_speed', self.LAND_SPEED))
+        self.REQUEST_OFFBOARD_FROM_ROS = bool(self.declare_parameter(
+            'request_offboard_from_ros', self.REQUEST_OFFBOARD_FROM_ROS).value)
 
         sensor_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -190,6 +203,14 @@ class OffboardTakeoff(Node):
         self.current_stage = self.PREPARATION
         self.abort_requested = False
         self.kill_requested = False
+        # Set when the height estimate dies in flight: the descent is then
+        # flown as a velocity, because a position setpoint against a dead
+        # z estimate is a setpoint against a number that means nothing.
+        self.blind_descent = False
+        # Cleared once we have stood down, so a vehicle PX4 or the pilot has
+        # taken back is not still being offered offboard setpoints.
+        self.stream_setpoints = True
+        self._last_command_time = {}
 
         self._stop_event = threading.Event()
         self._stdin_is_tty = False
@@ -204,6 +225,21 @@ class OffboardTakeoff(Node):
             f"Takeoff test: {self.TAKEOFF_ALTITUDE:.2f} m, "
             f"{self.HOLD_SECONDS:.0f} s hold. Press q to abort into a descent, "
             "k to force-disarm.")
+
+    # ------------------------------------------------------------ parameters
+
+    def _declare_number(self, name, default):
+        """Declare a numeric parameter that tolerates being given an int.
+
+        The launch file feeds parameters in as YAML, so `takeoff_altitude:=1`
+        arrives as an int and rclpy rejects it against a double-typed
+        declaration. Declaring it dynamically-typed and converting here means
+        both `1` and `1.0` work.
+        """
+        from rcl_interfaces.msg import ParameterDescriptor
+        return self.declare_parameter(
+            name, float(default),
+            ParameterDescriptor(dynamic_typing=True)).value
 
     # ------------------------------------------------------------------ subs
 
@@ -387,6 +423,7 @@ class OffboardTakeoff(Node):
     def _begin_landing(self, reason):
         self.get_logger().warning(f"Landing: {reason}")
         self.landed_since = None
+        self._update_blind_descent()
         # Flow degrades as we approach the ground, so stop chasing a latched
         # x/y point and go back to "just don't translate".
         if self.hold_xy:
@@ -395,18 +432,28 @@ class OffboardTakeoff(Node):
         self._enter_stage(self.LANDING)
 
     def timer_callback(self):
-        # Heartbeat + setpoint go out on every tick, in every stage, so
-        # Offboard never times out mid-flight.
-        self.publish_offboard_control_mode()
-        self.publish_position_setpoint()
+        # Heartbeat + setpoint go out on every tick while we still hold the
+        # aircraft, so Offboard never times out mid-flight. Once we have stood
+        # down they stop: continuing to offer setpoints to a vehicle PX4 or the
+        # pilot has taken back is how you get handed it again unexpectedly.
+        if self.stream_setpoints:
+            self.publish_offboard_control_mode()
+            self.publish_position_setpoint()
         self.publish_status()
 
         if self.kill_requested and self.current_stage not in (self.KILLING, self.DONE):
             self._enter_stage(self.KILLING)
-        elif self.abort_requested and self.current_stage in (
-                self.GROUND_WAIT, self.TAKEOFF, self.HOLD):
-            self.abort_requested = False
-            self._begin_landing("operator abort")
+        elif self.abort_requested:
+            if self.current_stage in (self.GROUND_WAIT, self.TAKEOFF, self.HOLD):
+                self.abort_requested = False
+                self._begin_landing("operator abort")
+            elif self.current_stage in (self.PREPARATION, self.OFFBOARD_REQUEST,
+                                        self.ARMING):
+                # Nothing is flying yet, so there is nothing to descend from.
+                # Make sure we are disarmed and stop.
+                self.abort_requested = False
+                self.get_logger().warning("Abort before takeoff: standing down.")
+                self._enter_stage(self.DISARMING)
 
         handler = {
             self.PREPARATION: self._handle_preparation,
@@ -629,11 +676,24 @@ class OffboardTakeoff(Node):
     def _handle_landing(self):
         if self.arming_state != VehicleStatus.ARMING_STATE_ARMED:
             self.get_logger().info("Disarmed during descent. Done.")
-            self._enter_stage(self.DONE)
+            self._stand_down()
             return
+
+        # If PX4 or the pilot has taken the aircraft off us mid-descent, let
+        # go of it completely. Carrying on would mean racing the pilot for the
+        # setpoint and, once LANDING_TIMEOUT expired, disarming an aircraft
+        # somebody else is flying.
+        if self.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
+            self.get_logger().error(
+                "Offboard lost during descent; PX4 has control now. Standing down.")
+            self._stand_down()
+            return
+
+        self._update_blind_descent()
 
         # Walk the setpoint below the arming point so the vehicle keeps
         # pushing down into the ground instead of hovering just above it.
+        # (Ignored while blind: there the descent is flown as a velocity.)
         self.target_z = self.home_z + self.LAND_OVERSHOOT
         self.log_flight_state()
 
@@ -643,8 +703,43 @@ class OffboardTakeoff(Node):
             return
 
         if self._in_stage_for() > self.LANDING_TIMEOUT:
-            self.get_logger().error("Landing timed out. Disarming anyway.")
+            # Never disarm on a timeout while we may still be in the air --
+            # that is a free-fall, not a landing. Hand the aircraft to PX4's
+            # own auto-land, which has a better height estimate than we do,
+            # and get out of its way.
+            if self.is_airborne():
+                self.get_logger().error(
+                    "Landing timed out and we may still be airborne. "
+                    "Handing over to PX4 AUTO.LAND.")
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND,
+                                             force=True)
+                self._stand_down()
+                return
+            self.get_logger().error("Landing timed out on the ground. Disarming.")
             self._enter_stage(self.DISARMING)
+
+    def _update_blind_descent(self):
+        """Descend on velocity, not position, when the height estimate is gone.
+
+        A position setpoint is a number in the estimator's frame. If z_valid
+        has dropped there is no frame, and commanding `home_z + 0.5` in it is
+        commanding a place that does not exist. A steady downward velocity is
+        still meaningful, so that is what we fall back to.
+        """
+        lp = self.local_position
+        blind = lp is None or not lp.z_valid
+        if blind != self.blind_descent:
+            self.blind_descent = blind
+            if blind:
+                self.get_logger().error(
+                    "Height estimate invalid: descending on velocity "
+                    f"({self.LAND_SPEED:.2f} m/s) instead of position.")
+            else:
+                self.get_logger().warning(
+                    "Height estimate back: resuming position-controlled descent.")
+                # Restart the ramp from where we actually are rather than from
+                # a stale pre-dropout value in a frame that has since reset.
+                self.setpoint_z = lp.z
 
     def _touchdown_confirmed(self):
         """Land detector if we have one, otherwise altitude + descent stall."""
@@ -674,20 +769,37 @@ class OffboardTakeoff(Node):
             VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=0.0)
 
         if self._in_stage_for() > self.DISARM_TIMEOUT:
+            # PX4 refuses a normal disarm in the air, and that refusal is
+            # correct. Force-disarming here would cut the motors on a flying
+            # aircraft, so escalate only once something says we are down.
+            if self.is_airborne():
+                self.get_logger().error(
+                    "Disarm refused and we still look airborne. Handing over to "
+                    "PX4 AUTO.LAND rather than cutting the motors.",
+                    throttle_duration_sec=2.0)
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND,
+                                             force=True)
+                self._stand_down()
+                return
             self.get_logger().error("Normal disarm ignored. Escalating to force disarm.")
             self.kill_requested = True
             self._enter_stage(self.KILLING)
 
+    def _stand_down(self):
+        """Let go of the aircraft: stop the offboard heartbeat and setpoints."""
+        self.stream_setpoints = False
+        self._enter_stage(self.DONE)
+
     def _handle_killing(self):
         if self.arming_state == VehicleStatus.ARMING_STATE_DISARMED:
             self.get_logger().warning("Aborted; vehicle is disarmed.")
-            self._enter_stage(self.DONE)
+            self._stand_down()
             return
 
         # param2 = 21196 is the PX4/MAVLink "force" magic number.
         self.publish_vehicle_command(
             VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM,
-            param1=0.0, param2=21196.0)
+            param1=0.0, param2=21196.0, force=True)
 
     def _handle_done(self):
         self.get_logger().info("Idle. Ctrl-C to exit.", throttle_duration_sec=5.0)
@@ -696,13 +808,14 @@ class OffboardTakeoff(Node):
         """Common bail-outs for every stage where the vehicle is under our control."""
         if self.arming_state != VehicleStatus.ARMING_STATE_ARMED:
             self.get_logger().warning("Vehicle disarmed by PX4. Stopping.")
-            self._enter_stage(self.DONE)
+            self._stand_down()
             return False
 
         if self.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-            # PX4 (or the pilot) took the aircraft off us -- stop commanding it.
+            # PX4 (or the pilot) took the aircraft off us -- stop commanding it,
+            # and stop the heartbeat too so it cannot be handed back to us.
             self.get_logger().error("Offboard lost; PX4 has control now. Standing down.")
-            self._enter_stage(self.DONE)
+            self._stand_down()
             return False
 
         # In flight the bar is lower than for arming: a momentary rangefinder
@@ -750,7 +863,7 @@ class OffboardTakeoff(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         # Both flags on: PX4 selects per-axis from which fields are NaN, so
         # we can fly z as a position and x/y as a velocity in one setpoint.
-        msg.position = True
+        msg.position = not self.blind_descent
         msg.velocity = True
         msg.acceleration = False
         msg.attitude = False
@@ -778,6 +891,15 @@ class OffboardTakeoff(Node):
             msg.position = [nan, nan, lp.z]
             msg.velocity = [0.0, 0.0, nan]
             msg.yaw = lp.heading
+            self.trajectory_setpoint_pub.publish(msg)
+            return
+
+        if self.blind_descent:
+            # No usable height estimate: no z position setpoint at all, just a
+            # steady sink rate and "do not translate".
+            msg.position = [nan, nan, nan]
+            msg.velocity = [0.0, 0.0, self.LAND_SPEED]
+            msg.yaw = self.home_yaw
             self.trajectory_setpoint_pub.publish(msg)
             return
 
@@ -815,7 +937,35 @@ class OffboardTakeoff(Node):
         else:
             self.setpoint_z += step if delta > 0 else -step
 
-    def publish_vehicle_command(self, command, param1=0.0, param2=0.0):
+        # Leash the commanded z to the measured one. PX4 spends MPC_TKO_RAMP_T
+        # ramping thrust at the start of the climb, during which the vehicle
+        # does not move; an unleashed ramp walks the full way to the target in
+        # that time, and the position error it banks up gets flown out as a
+        # lurch the moment there is thrust to do it with. The same clamp stops
+        # the descent from burying the setpoint metres underground if the
+        # vehicle hangs up on something.
+        lp = self.local_position
+        if lp is not None and lp.z_valid:
+            self.setpoint_z = min(max(self.setpoint_z, lp.z - self.SETPOINT_LEASH),
+                                  lp.z + self.SETPOINT_LEASH)
+
+    def publish_vehicle_command(self, command, param1=0.0, param2=0.0, force=False):
+        """Send a VehicleCommand, at most once every COMMAND_INTERVAL.
+
+        Every stage that sends a command sends it from a 20 Hz timer tick.
+        Unthrottled that is 20 identical commands a second into PX4's command
+        queue, which overruns it and gets commands dropped -- the arm request
+        and the mode request end up competing with their own repeats. One every
+        250 ms is still four chances a second and leaves the queue room.
+        `force=True` bypasses the throttle for one-shot commands.
+        """
+        now = time.monotonic()
+        if not force:
+            last = self._last_command_time.get(command)
+            if last is not None and now - last < self.COMMAND_INTERVAL:
+                return
+        self._last_command_time[command] = now
+
         msg = VehicleCommand()
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         msg.command = command
