@@ -1,23 +1,44 @@
-#!/usr/bin/env python3
 """
-Offboard takeoff / hold / land test.
+Offboard takeoff -> hold -> translate 1 m -> hold -> land test.
 
 Sequence: stream offboard setpoints -> enter Offboard -> arm -> sit armed
-on the ground for 5 s -> climb to 0.80 m above the arming point -> hold
-there for 15 s -> descend slowly -> disarm once landed.
+on the ground for 5 s -> climb to 1.00 m above the arming point -> hold
+until the optical flow is healthy and x/y is latched -> translate 1.00 m
+in the requested body-frame direction (forward by default; backward, left
+and right also available) -> hold again -> descend slowly -> disarm.
 
-Altitude is flown as a position setpoint relative to wherever the vehicle
-was standing when it armed. Horizontal is flown as a ZERO VELOCITY
-setpoint, not a position setpoint: on an optical-flow airframe the x/y
-position estimate on the ground is dead-reckoned garbage, and holding a
-position latched down there makes the vehicle fly out the accumulated
-error the moment flow starts correcting it. "Stay still" has no memory
-and cannot do that.
+WHY THE MOVE IS FLOWN AS A POSITION SETPOINT, NOT A VELOCITY
+------------------------------------------------------------
+A velocity setpoint is open loop with respect to distance: "1 m forward"
+becomes "0.5 m/s for 2 s and hope", and every source of error -- the
+optical flow's velocity bias, the acceleration and deceleration ramps PX4
+puts on the ends, wind -- integrates straight into the distance actually
+travelled with nothing to correct it. There is no feedback on the thing
+you asked for.
 
-Once the vehicle is at altitude with healthy flow, x/y position hold is
-latched onto a FRESH estimate for the duration of the hold, which removes
-the slow creep that a pure velocity hold has. The descent drops back to
-velocity hold, because flow degrades again near the ground.
+A position setpoint closes that loop: PX4 flies to a point and holds it,
+so flow bias produces a bounded offset instead of an unbounded drift, and
+the vehicle actively stops itself at the end instead of coasting.
+
+The catch is that a position setpoint is only as good as the x/y estimate
+it is expressed in, and on this flow-only airframe that estimate is
+garbage on the ground and only becomes meaningful once the vehicle is at
+altitude with the flow sensor actually correcting. So the move is gated on
+exactly that:
+
+  * the ground and the climb are flown as ZERO VELOCITY in x/y, same as
+    the takeoff test, because "stay still" has no memory and cannot fly
+    out an accumulated dead-reckoning error;
+  * once airborne, x/y position hold is latched onto a FRESH estimate
+    (see _try_latch_xy_hold);
+  * ONLY THEN is the move started, as a ramped position setpoint: a
+    carrot walked from the latched point to the target at MOVE_SPEED,
+    leashed to the measured position so it can never run away.
+
+If the flow never becomes healthy, or drops out mid-move, the node does
+NOT fall back to dead-reckoning on velocity -- it abandons the move and
+lands. A move you cannot measure is not a move you should be flying near
+people.
 
 Keys:  q -> abort into a controlled descent from wherever we are.
        k -> force-disarm immediately (motors cut, vehicle drops).
@@ -26,6 +47,7 @@ The vertical estimate must be healthy for this to be safe. The node
 refuses to arm without z_valid.
 """
 
+import math
 import select
 import sys
 import threading
@@ -48,7 +70,7 @@ from px4_msgs.msg import (
 )
 
 
-class OffboardTakeoff(Node):
+class OffboardTranslate(Node):
 
     PREPARATION = "PREPARATION"
     OFFBOARD_REQUEST = "OFFBOARD_REQUEST"
@@ -56,15 +78,18 @@ class OffboardTakeoff(Node):
     GROUND_WAIT = "GROUND_WAIT"
     TAKEOFF = "TAKEOFF"
     HOLD = "HOLD"
+    TRANSLATE = "TRANSLATE"
+    POST_HOLD = "POST_HOLD"
     LANDING = "LANDING"
     DISARMING = "DISARMING"
     KILLING = "KILLING"
     DONE = "DONE"
 
     # ---- flight parameters -----------------------------------------------
-    TAKEOFF_ALTITUDE = 0.80     # m above the arming point
+    TAKEOFF_ALTITUDE = 1.00     # m above the arming point
     GROUND_WAIT_SECONDS = 5.0   # armed on the ground before the climb starts
-    HOLD_SECONDS = 15.0         # station keeping once the altitude is reached
+    HOLD_SECONDS = 5.0          # station keeping before the move starts
+    POST_HOLD_SECONDS = 5.0     # station keeping after the move, before landing
     CLIMB_SPEED = 0.80          # m/s. Brisk on purpose: a slow climb lingers in
                                 # ground effect with no valid flow, which is the
                                 # least stable place the vehicle can be.
@@ -88,6 +113,34 @@ class OffboardTakeoff(Node):
                                 # vehicle is still thrust-limited on PX4's
                                 # takeoff ramp, builds a big position error, and
                                 # then flies it out in one jump.
+
+    # ---- translation ------------------------------------------------------
+    MOVE_DISTANCE = 1.00        # m to travel
+    MOVE_DIRECTION = 'forward'  # forward | backward | left | right, body frame
+                                # relative to the yaw held since arming
+    MOVE_SPEED = 0.30           # m/s the horizontal setpoint carrot is walked
+                                # at. Slow on purpose: the flow estimate is the
+                                # only thing measuring this move.
+    MOVE_TOLERANCE = 0.15       # m, "we are there" radius around the target
+    MOVE_SETTLE_SECONDS = 1.0   # time inside that radius before we call it done
+    MOVE_LEASH = 0.40           # m the commanded x/y may lead the measured x/y
+                                # by. Same job as SETPOINT_LEASH does for z:
+                                # stops the carrot walking off while the vehicle
+                                # is still accelerating and banking up an error
+                                # that gets flown out as a lurch.
+    # Body-frame unit vectors in NED, as a function of yaw (measured from
+    # North, x = North, y = East). Forward is (cos, sin); right is forward
+    # rotated 90 degrees clockwise seen from above, i.e. (-sin, cos).
+    DIRECTIONS = {
+        'forward':  lambda c, s: (c, s),
+        'backward': lambda c, s: (-c, -s),
+        'right':    lambda c, s: (-s, c),
+        'left':     lambda c, s: (s, -c),
+    }
+
+    MOVE_LATCH_TIMEOUT = 15.0   # s waiting for a flow-healthy x/y latch before
+                                # giving up on the move entirely
+    MOVE_TIMEOUT = 30.0         # s for the move itself
 
     # ---- flow / estimator health -----------------------------------------
     # Below this AGL the rangefinder and optical flow are not trustworthy:
@@ -115,7 +168,7 @@ class OffboardTakeoff(Node):
     # ----------------------------------------------------------------------
 
     def __init__(self):
-        super().__init__('offboard_takeoff')
+        super().__init__('offboard_translate')
 
         # The numbers you actually want to change between hardware tests are
         # exposed as ROS parameters; the rest stay as class constants above.
@@ -128,6 +181,19 @@ class OffboardTakeoff(Node):
             'takeoff_altitude', self.TAKEOFF_ALTITUDE))
         self.HOLD_SECONDS = float(self._declare_number(
             'hold_seconds', self.HOLD_SECONDS))
+        self.POST_HOLD_SECONDS = float(self._declare_number(
+            'post_hold_seconds', self.POST_HOLD_SECONDS))
+        self.MOVE_DISTANCE = float(self._declare_number(
+            'move_distance', self.MOVE_DISTANCE))
+        self.MOVE_SPEED = float(self._declare_number(
+            'move_speed', self.MOVE_SPEED))
+        self.MOVE_DIRECTION = str(self.declare_parameter(
+            'move_direction', self.MOVE_DIRECTION).value).strip().lower()
+        if self.MOVE_DIRECTION not in self.DIRECTIONS:
+            self.get_logger().error(
+                f"Unknown move_direction '{self.MOVE_DIRECTION}'; expected one of "
+                f"{sorted(self.DIRECTIONS)}. Falling back to 'forward'.")
+            self.MOVE_DIRECTION = 'forward'
         self.GROUND_WAIT_SECONDS = float(self._declare_number(
             'ground_wait_seconds', self.GROUND_WAIT_SECONDS))
         self.CLIMB_SPEED = float(self._declare_number(
@@ -214,6 +280,17 @@ class OffboardTakeoff(Node):
         self.hold_y = None
         self.flow_healthy_since = None
 
+        # Translation. move_target is where we are walking hold_x/hold_y to;
+        # move_start is where we started, kept only so the log can report how
+        # far the vehicle actually went versus how far it was asked to go.
+        self.moving = False
+        self.move_start_x = None
+        self.move_start_y = None
+        self.move_target_x = None
+        self.move_target_y = None
+        self.move_in_band_since = None
+        self.move_done = False
+
         self.setpoint_counter = 0
         self.stage_enter_time = time.monotonic()
         self.current_stage = self.PREPARATION
@@ -238,9 +315,11 @@ class OffboardTakeoff(Node):
         self.timer = self.create_timer(0.05, self.timer_callback)
 
         self.get_logger().warning(
-            f"Takeoff test: {self.TAKEOFF_ALTITUDE:.2f} m, "
-            f"{self.HOLD_SECONDS:.0f} s hold. Press q to abort into a descent, "
-            "k to force-disarm.")
+            f"Translate test: climb {self.TAKEOFF_ALTITUDE:.2f} m, hold "
+            f"{self.HOLD_SECONDS:.0f} s, move {self.MOVE_DISTANCE:.2f} m "
+            f"{self.MOVE_DIRECTION} at {self.MOVE_SPEED:.2f} m/s, hold "
+            f"{self.POST_HOLD_SECONDS:.0f} s, land. Press q to abort into a "
+            "descent, k to force-disarm.")
 
     # ------------------------------------------------------------ parameters
 
@@ -298,9 +377,18 @@ class OffboardTakeoff(Node):
 
         if msg.xy_reset_counter != self._xy_reset_counter:
             self._xy_reset_counter = msg.xy_reset_counter
-            if self.hold_xy and self.hold_x is not None:
+            if self.hold_x is not None:
                 self.hold_x += msg.delta_xy[0]
                 self.hold_y += msg.delta_xy[1]
+            # The move target lives in the same frame and has to move with it,
+            # or a reset mid-translation turns "1 m forward" into "1 m forward
+            # plus however far EKF2 just decided we actually were".
+            if self.move_target_x is not None:
+                self.move_target_x += msg.delta_xy[0]
+                self.move_target_y += msg.delta_xy[1]
+                self.move_start_x += msg.delta_xy[0]
+                self.move_start_y += msg.delta_xy[1]
+            if self.hold_x is not None:
                 self.get_logger().warning(
                     f"EKF2 lateral reset: delta_xy=({msg.delta_xy[0]:+.2f}, "
                     f"{msg.delta_xy[1]:+.2f}) m, shifted x/y hold to match.")
@@ -518,6 +606,8 @@ class OffboardTakeoff(Node):
     def _begin_landing(self, reason):
         self.get_logger().warning(f"Landing: {reason}")
         self.landed_since = None
+        # Whatever we were doing horizontally, stop walking the setpoint.
+        self.moving = False
         self._update_blind_descent()
         # Flow degrades as we approach the ground, so stop chasing a latched
         # x/y point and go back to "just don't translate".
@@ -539,7 +629,8 @@ class OffboardTakeoff(Node):
         if self.kill_requested and self.current_stage not in (self.KILLING, self.DONE):
             self._enter_stage(self.KILLING)
         elif self.abort_requested:
-            if self.current_stage in (self.GROUND_WAIT, self.TAKEOFF, self.HOLD):
+            if self.current_stage in (self.GROUND_WAIT, self.TAKEOFF, self.HOLD,
+                                      self.TRANSLATE, self.POST_HOLD):
                 self.abort_requested = False
                 self._begin_landing("operator abort")
             elif self.current_stage in (self.PREPARATION, self.OFFBOARD_REQUEST,
@@ -557,6 +648,8 @@ class OffboardTakeoff(Node):
             self.GROUND_WAIT: self._handle_ground_wait,
             self.TAKEOFF: self._handle_takeoff,
             self.HOLD: self._handle_hold,
+            self.TRANSLATE: self._handle_translate,
+            self.POST_HOLD: self._handle_post_hold,
             self.LANDING: self._handle_landing,
             self.DISARMING: self._handle_disarming,
             self.KILLING: self._handle_killing,
@@ -773,11 +866,125 @@ class OffboardTakeoff(Node):
 
         remaining = self.HOLD_SECONDS - self._in_stage_for()
         if remaining <= 0.0:
-            self._begin_landing("hold complete")
+            self._enter_stage(self.TRANSLATE)
             return
 
         self.get_logger().info(f"Holding, {remaining:.1f} s remaining...",
                                throttle_duration_sec=1.0)
+        self.log_flight_state()
+
+    # ------------------------------------------------------------ translate
+
+    def _handle_translate(self):
+        """Fly MOVE_DISTANCE in the requested body direction, on position.
+
+        Gated on a flow-healthy x/y latch: without one there is no meaningful
+        frame to express a target point in, and the honest answer is to skip
+        the move rather than dead-reckon it on velocity.
+        """
+        if not self._still_flyable():
+            return
+
+        self._try_latch_xy_hold()
+        self.log_flight_state()
+
+        if not self.hold_xy:
+            if self.moving:
+                # Lost the estimate we were measuring the move against. Stop
+                # where we are; do not coast onwards on a number we no longer
+                # believe.
+                self.moving = False
+                self.get_logger().error(
+                    "Flow lost mid-move: abandoning the translation and holding.")
+                self._enter_stage(self.POST_HOLD)
+                return
+            if self._in_stage_for() > self.MOVE_LATCH_TIMEOUT:
+                self.get_logger().error(
+                    "Flow never became healthy enough to latch x/y, so the move "
+                    "cannot be measured. Skipping it and landing.")
+                self._enter_stage(self.POST_HOLD)
+            else:
+                self.get_logger().info(
+                    "Waiting for a flow-healthy x/y hold before moving...",
+                    throttle_duration_sec=1.0)
+            return
+
+        if not self.moving:
+            self._begin_move()
+            return
+
+        lp = self.local_position
+        remaining = math.hypot(self.move_target_x - lp.x, self.move_target_y - lp.y)
+
+        if remaining <= self.MOVE_TOLERANCE:
+            if self.move_in_band_since is None:
+                self.move_in_band_since = time.monotonic()
+            elif time.monotonic() - self.move_in_band_since >= self.MOVE_SETTLE_SECONDS:
+                travelled = math.hypot(lp.x - self.move_start_x,
+                                       lp.y - self.move_start_y)
+                self.get_logger().warning(
+                    f"Move complete: {travelled:.2f} m travelled of "
+                    f"{self.MOVE_DISTANCE:.2f} m commanded {self.MOVE_DIRECTION}.")
+                # Park the hold exactly on the target so the post-move hold is
+                # station keeping, not a slow continuation of the move.
+                self.hold_x = self.move_target_x
+                self.hold_y = self.move_target_y
+                self.moving = False
+                self.move_done = True
+                self._enter_stage(self.POST_HOLD)
+            return
+
+        self.move_in_band_since = None
+        self.get_logger().info(
+            f"Moving {self.MOVE_DIRECTION}: {remaining:.2f} m to go.",
+            throttle_duration_sec=1.0)
+
+        if self._in_stage_for() > self.MOVE_TIMEOUT:
+            # Stop pushing towards a target we are evidently not reaching, and
+            # hold wherever the vehicle actually is instead.
+            self.moving = False
+            self.hold_x = lp.x
+            self.hold_y = lp.y
+            self.get_logger().error(
+                f"Move timed out {remaining:.2f} m short of the target. "
+                "Holding here, then landing.")
+            self._enter_stage(self.POST_HOLD)
+
+    def _begin_move(self):
+        cos_yaw = math.cos(self.home_yaw)
+        sin_yaw = math.sin(self.home_yaw)
+        ux, uy = self.DIRECTIONS[self.MOVE_DIRECTION](cos_yaw, sin_yaw)
+
+        # From the LATCHED point, not from the raw estimate: hold_x/hold_y is
+        # what the vehicle is currently being commanded to, so measuring the
+        # move from it is what makes the commanded distance the flown distance.
+        self.move_start_x = self.hold_x
+        self.move_start_y = self.hold_y
+        self.move_target_x = self.hold_x + ux * self.MOVE_DISTANCE
+        self.move_target_y = self.hold_y + uy * self.MOVE_DISTANCE
+        self.move_in_band_since = None
+        self.moving = True
+
+        self.get_logger().warning(
+            f"Moving {self.MOVE_DISTANCE:.2f} m {self.MOVE_DIRECTION} at "
+            f"{self.MOVE_SPEED:.2f} m/s: ({self.move_start_x:.2f}, "
+            f"{self.move_start_y:.2f}) -> ({self.move_target_x:.2f}, "
+            f"{self.move_target_y:.2f}) NED.")
+
+    def _handle_post_hold(self):
+        if not self._still_flyable():
+            return
+
+        self._try_latch_xy_hold()
+
+        remaining = self.POST_HOLD_SECONDS - self._in_stage_for()
+        if remaining <= 0.0:
+            self._begin_landing("post-move hold complete")
+            return
+
+        self.get_logger().info(
+            f"Holding after the move, {remaining:.1f} s remaining...",
+            throttle_duration_sec=1.0)
         self.log_flight_state()
 
     def _try_latch_xy_hold(self):
@@ -992,8 +1199,17 @@ class OffboardTakeoff(Node):
             detail = f"{max(0.0, self.GROUND_WAIT_SECONDS - self._in_stage_for()):.0f}s"
         elif self.current_stage == self.HOLD:
             detail = f"{max(0.0, self.HOLD_SECONDS - self._in_stage_for()):.0f}s"
+        elif self.current_stage == self.POST_HOLD:
+            detail = f"{max(0.0, self.POST_HOLD_SECONDS - self._in_stage_for()):.0f}s"
         elif self.current_stage == self.TAKEOFF:
             detail = f"tgt{self.TAKEOFF_ALTITUDE:.2f}"
+        elif self.current_stage == self.TRANSLATE:
+            if self.moving and self.local_position is not None:
+                left = math.hypot(self.move_target_x - self.local_position.x,
+                                  self.move_target_y - self.local_position.y)
+                detail = f"{self.MOVE_DIRECTION[:3]}{left:.2f}"
+            else:
+                detail = f"{self.MOVE_DIRECTION[:3]} wait"
         elif self.current_stage == self.OFFBOARD_REQUEST:
             detail = 'flip sw'
 
@@ -1053,6 +1269,7 @@ class OffboardTakeoff(Node):
             return
 
         self._step_setpoint_ramp()
+        self._step_xy_ramp()
 
         if self.hold_xy:
             # Latched in flight on a flow-corrected estimate.
@@ -1104,6 +1321,47 @@ class OffboardTakeoff(Node):
             self.setpoint_z = min(max(self.setpoint_z, lp.z - self.SETPOINT_LEASH),
                                   lp.z + self.SETPOINT_LEASH)
 
+    def _step_xy_ramp(self):
+        """Walk the latched x/y hold one tick towards the move target.
+
+        The vehicle is never commanded to the far end of the move directly.
+        Instead the held point -- which is what PX4 is flying to anyway -- is
+        walked there at MOVE_SPEED, so the horizontal speed is set by the
+        carrot rather than by whatever MPC_XY_VEL_MAX happens to be, and the
+        position error PX4 is correcting stays small the whole way.
+        """
+        if not self.moving or not self.hold_xy or self.move_target_x is None:
+            return
+
+        dt = 0.05
+        step = self.MOVE_SPEED * dt
+
+        dx = self.move_target_x - self.hold_x
+        dy = self.move_target_y - self.hold_y
+        remaining = math.hypot(dx, dy)
+        if remaining <= step:
+            self.hold_x = self.move_target_x
+            self.hold_y = self.move_target_y
+        else:
+            self.hold_x += step * dx / remaining
+            self.hold_y += step * dy / remaining
+
+        # Same leash as the z ramp, for the same reason: while the vehicle is
+        # still accelerating up to MOVE_SPEED the carrot would otherwise walk
+        # away from it, bank up a position error, and have PX4 fly that error
+        # out as an overshoot at the far end. Unlike the z leash this one stays
+        # bound for the whole move -- the horizontal axes have no equivalent of
+        # PX4's takeoff thrust ramp to release it after, and capping the lead
+        # distance is also what stops a stuck vehicle from being dragged.
+        lp = self.local_position
+        if lp is not None and lp.xy_valid:
+            ex = self.hold_x - lp.x
+            ey = self.hold_y - lp.y
+            error = math.hypot(ex, ey)
+            if error > self.MOVE_LEASH:
+                self.hold_x = lp.x + ex / error * self.MOVE_LEASH
+                self.hold_y = lp.y + ey / error * self.MOVE_LEASH
+
     def publish_vehicle_command(self, command, param1=0.0, param2=0.0, force=False):
         """Send a VehicleCommand, at most once every COMMAND_INTERVAL.
 
@@ -1141,7 +1399,7 @@ class OffboardTakeoff(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = OffboardTakeoff()
+    node = OffboardTranslate()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
