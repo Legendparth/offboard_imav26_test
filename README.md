@@ -10,7 +10,9 @@ lateral position from optical flow, and the code is written around the
 limitations that implies.
 
 The headline node is `offboard_takeoff`: arm → sit on the ground → climb to a
-set altitude → hold → descend → disarm, entirely on its own.
+set altitude → hold → descend → disarm, entirely on its own. `offboard_translate`
+adds a horizontal leg to that — climb, then move a set distance forward,
+backward, left or right, then land (see section 6).
 
 ---
 
@@ -232,7 +234,111 @@ ros2 topic echo /takeoff_status
 
 ---
 
-## 6. Optional: LCD status display
+## 6. The translate test (`offboard_translate`)
+
+Same flight as above with a horizontal leg in the middle: arm → ground wait →
+climb to **1.0 m** → hold → **move 1.0 m** in a body-frame direction → hold →
+land. Everything about the estimator gating, aborts and landing is identical —
+it is the takeoff node plus two stages.
+
+### Running it
+
+**Pane 1:**
+
+```bash
+ros2 launch drone_testing translate_test.launch.py
+```
+
+**Pane 2:**
+
+```bash
+ros2 run drone_testing offboard_translate --ros-args \
+  -p takeoff_altitude:=1.0 \
+  -p move_distance:=1.0 \
+  -p move_direction:=forward \
+  -p move_speed:=0.30 \
+  -p hold_seconds:=5.0 \
+  -p post_hold_seconds:=5.0
+```
+
+**Start small.** `takeoff_altitude:=0.5`, `move_distance:=0.5` for the first
+flight. A flow-only lateral move needs far more clear floor than a hover does —
+give it several metres in the direction of travel and be ready on `q`.
+
+### Directions
+
+`move_direction` is **body frame**, relative to the yaw the vehicle held when it
+armed (yaw is pinned for the whole flight — it never rotates):
+
+| value      | where it goes                |
+|------------|------------------------------|
+| `forward`  | out the nose (default)       |
+| `backward` | out the tail                 |
+| `left`     | out the left side            |
+| `right`    | out the right side           |
+
+### Parameters
+
+| parameter            | default   | meaning                                              |
+|----------------------|-----------|------------------------------------------------------|
+| `move_distance`      | `1.0`     | metres to travel                                     |
+| `move_direction`     | `forward` | `forward` / `backward` / `left` / `right`            |
+| `move_speed`         | `0.30`    | m/s the horizontal setpoint is walked at             |
+| `takeoff_altitude`   | `1.0`     | metres above the arming point                        |
+| `hold_seconds`       | `5.0`     | hold **before** the move — the flow latch happens here |
+| `post_hold_seconds`  | `5.0`     | hold **after** the move, before the descent          |
+
+The rest (`ground_wait_seconds`, `climb_speed`, `land_speed`,
+`request_offboard_from_ros`, `lcd`, `lcd_port`) are the same as the takeoff
+test. `translate_test.launch.py` takes all of them as launch arguments too, with
+`agent_only:=true` by default.
+
+### Stages
+
+```
+... TAKEOFF, then:
+HOLD        station-keep and wait for optical flow to latch x/y position hold
+TRANSLATE   walk the held point to the target at move_speed
+POST_HOLD   station-keep at the new point
+LANDING     as before
+```
+
+### Why the move is a position setpoint, not a velocity one
+
+A velocity setpoint is open loop *with respect to distance* — "1 m forward"
+becomes "0.3 m/s for 3.3 s and hope", and flow bias, the accel/decel ramps and
+any wind integrate straight into the distance actually flown. A position
+setpoint closes that loop: the vehicle flies to a point and brakes itself
+there, so bias shows up as a bounded offset instead of unbounded drift.
+
+The cost is that a position setpoint is only as good as the x/y estimate it is
+written in, so the move is **gated on the flow actually working**:
+
+- the ground and the climb stay on zero-velocity hold, exactly as before;
+- x/y position hold is latched only once airborne on a *fresh* estimate;
+- only then does the move start, and it moves the **latched point**, walking it
+  to the target at `move_speed` — a carrot. That is what sets the flight speed
+  (rather than `MPC_XY_VEL_MAX`) and keeps the position error PX4 is correcting
+  small the whole way. The carrot is leashed to 0.40 m ahead of the measured
+  position so it cannot run away, or drag a snagged vehicle.
+
+If the flow never latches within 15 s, or drops out mid-move, the node
+**abandons the move and lands**. It will not dead-reckon the move on velocity:
+a move you cannot measure is not a move worth flying.
+
+On completion it logs the distance actually travelled against the distance
+commanded — that number is your flow accuracy, and it is worth writing down
+after each flight.
+
+### Status output
+
+Same `/takeoff_status` topic and format as the takeoff node, so the LCD works
+unchanged. During the move the detail field reads e.g. `for0.62` — direction
+plus metres still to go.
+
+---
+
+## 7. Optional: LCD status display
 
 An Arduino running `arduino/tft_status/tft_status.ino` shows the stage, arm
 state and altitude. It is started by default with the launch file:
@@ -245,7 +351,7 @@ Disable it with `lcd:=false`.
 
 ---
 
-## 7. Optional: start at boot via systemd
+## 8. Optional: start at boot via systemd
 
 `drone_testing/px4-agent.service` brings the Jetson up flight-ready: DDS agent
 plus the takeoff node waiting for your Offboard switch.
@@ -281,11 +387,12 @@ sudo systemctl daemon-reload && sudo systemctl restart px4-agent.service
 
 ---
 
-## 8. Other nodes in the package
+## 9. Other nodes in the package
 
 | node               | what it does                                                     |
 |--------------------|------------------------------------------------------------------|
 | `offboard_takeoff` | the autonomous takeoff / hold / land test (this README's subject) |
+| `offboard_translate` | takeoff, then a 1 m horizontal move, then land (section 6)      |
 | `offboard_mission` | multi-waypoint offboard mission                                   |
 | `zed_localization` | feeds ZED visual odometry into PX4 as `vehicle_visual_odometry`   |
 | `lcd_status`       | drives the Arduino status display                                 |
@@ -294,12 +401,13 @@ sudo systemctl daemon-reload && sudo systemctl restart px4-agent.service
 
 Other launch files:
 
+- `translate_test.launch.py` — agent + `offboard_translate` (section 6)
 - `arm_test.launch.py` — agent + `offboard_mission`, for arm/disarm bench tests
 - `offboard_launch.launch.py` — agent + ZED localization + `offboard_mission`
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | symptom | cause / fix |
 |---|---|
@@ -314,7 +422,7 @@ Other launch files:
 
 ---
 
-## 10. Pre-flight checklist
+## 11. Pre-flight checklist
 
 1. Props **off** for the first run of any changed code.
 2. `ros2 topic echo /fmu/out/vehicle_local_position_v1 --once` → `z_valid` and
