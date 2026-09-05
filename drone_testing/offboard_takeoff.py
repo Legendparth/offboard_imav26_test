@@ -89,6 +89,24 @@ FAILSAFE_FLAG_NAMES = (
     'flight_time_limit_exceeded',
 )
 
+# Conditions that are permanently true on THIS airframe and mean nothing here.
+# None of them is one of Offboard's mode requirements (which are only angular
+# velocity, attitude and offboard signal -- see mode_requirements.cpp), so
+# none can take the aircraft off us:
+#
+#   home_position_invalid  PX4 sets home from GPS. There is no GPS, so there
+#                          is never a home position. Only RTL consumes it, and
+#                          RTL is not available on this vehicle anyway.
+#   gcs_connection_lost    No ground station is connected to the FCU. Normal
+#                          when flying from the companion computer alone.
+#
+# Still tracked and still reported in the "PX4 failsafe:" summary line, just
+# not shouted about as if something had gone wrong.
+EXPECTED_FAILSAFE_FLAGS = (
+    'home_position_invalid',
+    'gcs_connection_lost',
+)
+
 
 class OffboardTakeoff(Node):
 
@@ -376,7 +394,14 @@ class OffboardTakeoff(Node):
         cleared = [f for f in self._last_failsafes if f not in active]
         self._last_failsafes = active
         if appeared:
-            self.get_logger().error("PX4 failsafe SET: " + ", ".join(appeared))
+            real = [f for f in appeared if f not in EXPECTED_FAILSAFE_FLAGS]
+            expected = [f for f in appeared if f in EXPECTED_FAILSAFE_FLAGS]
+            if expected:
+                self.get_logger().info(
+                    "PX4 failsafe (expected on this airframe, harmless): "
+                    + ", ".join(expected))
+            if real:
+                self.get_logger().error("PX4 failsafe SET: " + ", ".join(real))
         if cleared:
             self.get_logger().info("PX4 failsafe cleared: " + ", ".join(cleared))
 
