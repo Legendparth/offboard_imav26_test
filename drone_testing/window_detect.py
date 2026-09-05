@@ -21,6 +21,11 @@ Check what your wrapper actually publishes with:
 
     ros2 topic list | grep zed
 
+Deliberately no cv_bridge: its compiled extension is built against the
+distro's NumPy, and a pip-installed NumPy 2 in ~/.local makes it segfault on
+the first frame. imgmsg_to_bgr() / imgmsg_to_depth() below do the same job in
+pure NumPy, so the node runs whichever NumPy is on the path.
+
 Depth is NOT synchronised with the image through a message filter: the most
 recent depth frame is kept and used if it is younger than depth_max_age.
 The two come out of the same SDK grab at the same rate, so approximate
@@ -62,8 +67,6 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Image
 from std_msgs.msg import Bool, String
-
-from cv_bridge import CvBridge
 
 
 HSV_RANGES = {
@@ -151,6 +154,97 @@ def filter_depth(new_d, prev_d, alpha=0.3):
     return prev_d, prev_d
 
 
+# ---------------------------------------------------------------- conversion
+#
+# sensor_msgs/Image <-> numpy by hand, instead of through cv_bridge.
+#
+# cv_bridge's conversion lives in a compiled extension (cv_bridge_boost) that
+# is built against whatever NumPy the distro shipped. A pip-installed NumPy 2
+# in ~/.local shadows that one, the extension's C API lookup fails, and the
+# process dies with SIGSEGV on the first frame -- which is exactly what
+# happened on the Jetson (exit code -11). None of this code is compiled, so
+# it does not care which NumPy is on the path.
+
+# Encodings a ZED (and most cameras) publish, keyed in LOWER CASE -- ROS
+# spells them '32FC1' and '16UC1', so every lookup lowercases first.
+_DTYPES = {
+    'mono8': (np.uint8, 1), 'mono16': (np.uint16, 1),
+    '8uc1': (np.uint8, 1), '8uc3': (np.uint8, 3), '8uc4': (np.uint8, 4),
+    'rgb8': (np.uint8, 3), 'bgr8': (np.uint8, 3),
+    'rgba8': (np.uint8, 4), 'bgra8': (np.uint8, 4),
+    '16uc1': (np.uint16, 1), '32fc1': (np.float32, 1),
+}
+
+
+def imgmsg_to_array(msg):
+    """sensor_msgs/Image -> numpy array, in the message's own encoding."""
+    enc = msg.encoding.lower()
+    if enc not in _DTYPES:
+        raise ValueError(f"unsupported image encoding '{msg.encoding}'")
+    dtype, channels = _DTYPES[enc]
+    dtype = np.dtype(dtype).newbyteorder('>' if msg.is_bigendian else '<')
+
+    data = np.frombuffer(msg.data, dtype=dtype)
+    # step is the row stride in BYTES and may be padded past width*channels.
+    stride = msg.step // dtype.itemsize
+    array = data[:msg.height * stride].reshape(msg.height, stride)
+    array = array[:, :msg.width * channels]
+    if channels > 1:
+        array = array.reshape(msg.height, msg.width, channels)
+    return array
+
+
+def imgmsg_to_bgr(msg):
+    """sensor_msgs/Image -> a 3-channel BGR image, whatever it came in as.
+
+    The ZED publishes its colour topics as bgra8, so the alpha drop here is
+    the same cvtColor(BGRA2BGR) the standalone script did on the SDK buffer.
+    """
+    enc = msg.encoding.lower()
+    array = imgmsg_to_array(msg)
+
+    if enc in ('bgr8', '8uc3'):
+        return array.copy()
+    if enc == 'rgb8':
+        return cv2.cvtColor(array, cv2.COLOR_RGB2BGR)
+    if enc in ('bgra8', '8uc4'):
+        return cv2.cvtColor(array, cv2.COLOR_BGRA2BGR)
+    if enc == 'rgba8':
+        return cv2.cvtColor(array, cv2.COLOR_RGBA2BGR)
+    if enc in ('mono8', '8uc1'):
+        return cv2.cvtColor(array, cv2.COLOR_GRAY2BGR)
+    if enc in ('mono16', '16uc1'):
+        return cv2.cvtColor((array >> 8).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+    raise ValueError(f"unsupported colour encoding '{msg.encoding}'")
+
+
+def imgmsg_to_depth(msg):
+    """sensor_msgs/Image -> a float32 depth map in METRES.
+
+    32FC1 is already metres. 16UC1 is the millimetre convention, and 0 there
+    means "no reading" -- it is turned into NaN so the median filter in
+    get_median_depth() rejects it rather than averaging a zero in.
+    """
+    array = imgmsg_to_array(msg)
+    if msg.encoding.lower() == '16uc1':
+        depth = array.astype(np.float32) / 1000.0
+        depth[array == 0] = np.nan
+        return depth
+    return array.astype(np.float32, copy=False)
+
+
+def array_to_imgmsg(array, encoding, header):
+    """numpy array -> sensor_msgs/Image, for the annotated output topic."""
+    msg = Image()
+    msg.header = header
+    msg.height, msg.width = array.shape[:2]
+    msg.encoding = encoding
+    msg.is_bigendian = 0
+    msg.step = int(array.strides[0])
+    msg.data = np.ascontiguousarray(array).tobytes()
+    return msg
+
+
 class WindowDetect(Node):
 
     # Topic defaults. These are the standard zed_wrapper (ROS 2) names for the
@@ -193,8 +287,6 @@ class WindowDetect(Node):
         if self.color not in HSV_RANGES:
             raise SystemExit(
                 f"Unknown color '{self.color}'; expected one of {sorted(HSV_RANGES)}")
-
-        self.bridge = CvBridge()
 
         # Sensor QoS (best effort, depth 1). A best-effort subscription is
         # compatible with a reliable publisher as well, so this works whichever
@@ -245,7 +337,7 @@ class WindowDetect(Node):
 
     def depth_callback(self, msg):
         try:
-            self.depth_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+            self.depth_image = imgmsg_to_depth(msg)
             self.depth_time = time.monotonic()
         except Exception as exc:
             self.get_logger().warning(f"Cannot convert depth frame: {exc}",
@@ -261,7 +353,7 @@ class WindowDetect(Node):
 
     def image_callback(self, msg):
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            cv_image = imgmsg_to_bgr(msg)
         except Exception as exc:
             self.get_logger().error(f"Cannot convert image frame: {exc}",
                                     throttle_duration_sec=5.0)
@@ -452,13 +544,9 @@ class WindowDetect(Node):
 
     def publish_frames(self, cv_image, mask, header):
         if self.image_pub is not None:
-            out = self.bridge.cv2_to_imgmsg(cv_image, encoding='bgr8')
-            out.header = header
-            self.image_pub.publish(out)
+            self.image_pub.publish(array_to_imgmsg(cv_image, 'bgr8', header))
         if self.mask_pub is not None:
-            out = self.bridge.cv2_to_imgmsg(mask, encoding='mono8')
-            out.header = header
-            self.mask_pub.publish(out)
+            self.mask_pub.publish(array_to_imgmsg(mask, 'mono8', header))
 
     def watchdog(self):
         """Complain if the camera stops, and keep /window_detected fresh.

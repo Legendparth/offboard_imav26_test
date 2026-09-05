@@ -166,7 +166,7 @@ def generate_launch_description():
             description='Namespace zed_wrapper publishes under; the default '
                         'image_topic below assumes "zed".'),
         DeclareLaunchArgument(
-            'image_topic', default_value='/zed/zed_node/rgb/image_rect_color',
+            'image_topic', default_value='/zed/zed_node/rgb/color/rect/image',
             description='Rectified colour image from the left camera. Check '
                         'yours with `ros2 topic list | grep zed`.'),
         DeclareLaunchArgument(

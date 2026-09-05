@@ -490,6 +490,12 @@ It publishes:
 | `/window_info`            | `std_msgs/String`  | `u\|v\|offset\|area\|d1\|d2\|d3\|d4\|dc` — centre pixel, horizontal offset as a fraction of half the frame (-1 left, 0 centred, +1 right), contour area, the four corner depths and the centre depth |
 | `/window_detection/image` | `sensor_msgs/Image`| the annotated frame, with a `WINDOW LOCKED` / `searching...` banner |
 
+`window_detect` does **not** use `cv_bridge`. Its conversion lives in a
+compiled extension built against the distro's NumPy, and a pip-installed
+NumPy 2 in `~/.local` makes it segfault on the first frame (`process has
+died ... exit code -11`). The node converts `sensor_msgs/Image` in pure
+NumPy instead, so it runs whichever NumPy is on the path.
+
 ### Seeing whether the window is detected
 
 In the terminal — the node logs one line a second either way, plus a WARN
