@@ -61,12 +61,54 @@ from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPo
 from std_msgs.msg import String
 from px4_msgs.msg import (
     EstimatorStatusFlags,
+    FailsafeFlags,
     OffboardControlMode,
     TrajectorySetpoint,
     VehicleCommand,
     VehicleLandDetected,
     VehicleLocalPosition,
     VehicleStatus,
+)
+
+
+# PX4's nav_state is an integer in the log and unreadable at 3 a.m. on a
+# flight line. Built from the message constants rather than hard-coded so it
+# cannot drift out of date with px4_msgs.
+NAV_STATE_NAMES = {
+    getattr(VehicleStatus, _n): _n[len('NAVIGATION_STATE_'):]
+    for _n in dir(VehicleStatus) if _n.startswith('NAVIGATION_STATE_')
+}
+
+
+def nav_state_name(value):
+    return f"{NAV_STATE_NAMES.get(value, 'UNKNOWN')}({value})"
+
+
+# Every boolean in FailsafeFlags that can plausibly explain PX4 taking the
+# aircraft off us. Checked by name with getattr so a firmware/px4_msgs pair
+# that lacks one of them degrades quietly instead of crashing the node.
+FAILSAFE_FLAG_NAMES = (
+    'angular_velocity_invalid',
+    'attitude_invalid',
+    'local_altitude_invalid',
+    'local_position_invalid',
+    'local_position_invalid_relaxed',
+    'local_velocity_invalid',
+    'offboard_control_signal_lost',
+    'manual_control_signal_lost',
+    'gcs_connection_lost',
+    'home_position_invalid',
+    'battery_low_remaining_time',
+    'battery_unhealthy',
+    'fd_critical_failure',
+    'fd_esc_arming_failure',
+    'fd_motor_failure',
+    'fd_alt_loss',
+    'geofence_breached',
+    'position_accuracy_low',
+    'navigator_failure',
+    'wind_limit_exceeded',
+    'flight_time_limit_exceeded',
 )
 
 
@@ -235,6 +277,14 @@ class OffboardTranslate(Node):
             EstimatorStatusFlags, '/fmu/out/estimator_status_flags',
             self.estimator_flags_callback, qos_profile=sensor_qos)
 
+        # PX4's own account of why it would take the aircraft away from us.
+        # Purely diagnostic -- nothing here gates a decision -- but it is the
+        # difference between "Offboard lost" and knowing WHICH condition
+        # tripped, which is otherwise only visible in the ulog or QGC.
+        self.failsafe_flags_sub = self.create_subscription(
+            FailsafeFlags, '/fmu/out/failsafe_flags',
+            self.failsafe_flags_callback, qos_profile=sensor_qos)
+
         # The land detector topic is unversioned on some builds and _v1 on
         # others; subscribe to both and take whichever one actually arrives.
         self.land_detected_subs = [
@@ -254,6 +304,8 @@ class OffboardTranslate(Node):
         self.landed = True
         self.land_detector_seen = False
         self.estimator_flags = None
+        self.failsafe_flags = None
+        self._last_failsafes = []
 
         # EKF2 reset bookkeeping. When the estimator re-datums its height or
         # lateral position it jumps x/y/z instantly and tells us by how much.
@@ -345,7 +397,7 @@ class OffboardTranslate(Node):
 
         if self.nav_state != self._last_nav_state:
             self._last_nav_state = self.nav_state
-            self.get_logger().info(f"nav_state -> {self.nav_state}")
+            self.get_logger().info(f"nav_state -> {nav_state_name(self.nav_state)}")
 
     def local_position_callback(self, msg):
         self._handle_estimator_resets(msg)
@@ -395,6 +447,42 @@ class OffboardTranslate(Node):
 
     def estimator_flags_callback(self, msg):
         self.estimator_flags = msg
+
+    def failsafe_flags_callback(self, msg):
+        """Log PX4's failsafe conditions as they change.
+
+        PX4 does not tell the offboard node why it took the aircraft; it just
+        changes nav_state. These flags are the why, and logging the edges
+        means the answer is sitting in the terminal scrollback next to the
+        "Offboard lost" line instead of only in the ulog.
+        """
+        self.failsafe_flags = msg
+        active = self.active_failsafes()
+        if active == self._last_failsafes:
+            return
+        appeared = [f for f in active if f not in self._last_failsafes]
+        cleared = [f for f in self._last_failsafes if f not in active]
+        self._last_failsafes = active
+        if appeared:
+            self.get_logger().error("PX4 failsafe SET: " + ", ".join(appeared))
+        if cleared:
+            self.get_logger().info("PX4 failsafe cleared: " + ", ".join(cleared))
+
+    def active_failsafes(self):
+        f = self.failsafe_flags
+        if f is None:
+            return []
+        active = [n for n in FAILSAFE_FLAG_NAMES if getattr(f, n, False)]
+        warning = getattr(f, 'battery_warning', 0)
+        if warning:
+            active.append(f"battery_warning={warning}")
+        return active
+
+    def failsafe_summary(self):
+        if self.failsafe_flags is None:
+            return "/fmu/out/failsafe_flags is not being published"
+        active = self.active_failsafes()
+        return ", ".join(active) if active else "none active"
 
     def land_detected_callback(self, msg):
         self.landed = msg.landed
@@ -743,7 +831,9 @@ class OffboardTranslate(Node):
 
         # Lost Offboard before we got the chance to arm.
         if self.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-            self.get_logger().error("Dropped out of Offboard. Aborting.")
+            self.get_logger().error(
+                f"Dropped out of Offboard into {nav_state_name(self.nav_state)} "
+                f"before arming completed. PX4 failsafe: {self.failsafe_summary()}.")
             self.kill_requested = True
             self._enter_stage(self.KILLING)
             return
@@ -1020,7 +1110,9 @@ class OffboardTranslate(Node):
         # somebody else is flying.
         if self.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
             self.get_logger().error(
-                "Offboard lost during descent; PX4 has control now. Standing down.")
+                "Offboard lost during descent; PX4 has control now "
+                f"(nav_state {nav_state_name(self.nav_state)}). Standing down. "
+                f"PX4 failsafe: {self.failsafe_summary()}.")
             self._stand_down()
             return
 
@@ -1149,7 +1241,10 @@ class OffboardTranslate(Node):
         if self.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
             # PX4 (or the pilot) took the aircraft off us -- stop commanding it,
             # and stop the heartbeat too so it cannot be handed back to us.
-            self.get_logger().error("Offboard lost; PX4 has control now. Standing down.")
+            self.get_logger().error(
+                "Offboard lost; PX4 has control now "
+                f"(nav_state {nav_state_name(self.nav_state)}). Standing down. "
+                f"PX4 failsafe: {self.failsafe_summary()}.")
             self._stand_down()
             return False
 

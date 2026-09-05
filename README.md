@@ -412,22 +412,101 @@ Other launch files:
 | symptom | cause / fix |
 |---|---|
 | `Waiting for VehicleStatus from PX4...` forever | DDS link down. Check the agent is running, the baud is 921600 both ends, `UXRCE_DDS_CFG` is set, and nothing else holds `/dev/ttyTHS1`. |
+| `Not arming: rangefinder is NOT being fused (cs_rng_kin_consistent false)` | **Reboot the flight controller.** This flag is sticky: EKF2 only updates it while `in_air` is true (`range_height_control.cpp` runs the consistency check inside `if (_control_status.flags.in_air)`), so once it latches false in flight nothing on the ground can clear it. It comes back true at boot. See section 11.1. |
+| `dist_bottom` stuck at exactly `EKF2_MIN_RNG` | The lidar is **not** healthy and EKF2 is synthesising the on-ground value: `_range_sensor.setRange(_params.ekf2_min_rng); setValidity(true)`. That number is not a measurement. `rng_ok=False` in the same log line confirms it. |
 | `Not arming: need z_valid and dist_bottom_valid` | Rangefinder not being fused. Check the ARK Flow wiring and `EKF2_HGT_REF` / `EKF2_RNG_CTRL`. |
 | `Offboard mode not entered in time` | PX4 rejected the mode. Usually pre-arm checks failing — look at the PX4 console or QGC for the reason. |
 | `Arming rejected / timed out` | Pre-arm check failure, or the safety switch is not pressed. |
 | `Altitude disagreement: ekf=... lidar=...` | The EKF datum and the rangefinder disagree by more than 32 cm. Normally an estimator reset mid-climb; the node correctly refuses to accept arrival. |
+| `Offboard lost; PX4 has control now (nav_state AUTO_LAND(18))` | A PX4 failsafe fired. The node now logs `PX4 failsafe: ...` on the same line — read that. Offboard's *only* special mode requirement is `mode_req_offboard_signal`, so the usual culprit is `offboard_control_signal_lost` (a gap > `COM_OF_LOSS_T`, default 1.0 s, in the setpoint stream). See section 11.2. |
 | `Offboard lost; PX4 has control now` | The TX switch moved, or PX4 failsafed. The node lets go on purpose. |
 | `error: option --uninstall not recognized` on build | Stale `--symlink-install` state; see the build section above. |
 | `q` / `k` do nothing | The node was started via `ros2 launch` or systemd, so stdin is not a tty. Run it with `ros2 run` in its own pane. |
 
 ---
 
+### 10.1 The sticky rangefinder flag (`cs_rng_kin_consistent`)
+
+This is the single most common reason the node refuses to arm, and it is
+**not** a wiring fault — the sensor is usually fine.
+
+EKF2 runs its rangefinder kinematic-consistency check only while airborne:
+
+```c
+// range_height_control.cpp
+if (_control_status.flags.in_air) {
+    _rng_consistency_check.update(...);
+}
+```
+
+and `updateConsistency()` can only set the flag back to true when
+`|vz| > 0.5 m/s`. So the flag starts `true` at boot, can only go false in
+flight, and can only recover in flight. **On the ground it is frozen.** A run
+that trips it poisons every subsequent run in that power cycle.
+
+- **Fix:** reboot the flight controller (`reboot` in the nsh console, QGC's
+  reboot button, or a power cycle). Then confirm before you touch anything:
+
+  ```bash
+  ros2 topic echo /fmu/out/estimator_status_flags --once | grep -E "cs_rng_hgt|cs_rng_kin_consistent"
+  ```
+
+  You want `cs_rng_hgt: true` **and** `cs_rng_kin_consistent: true`. If
+  `cs_rng_hgt` is false and `cs_baro_hgt` is true, EKF2 has given up on the
+  lidar and fallen back to the barometer — do not fly, the height datum is
+  the baro and it drifts metres indoors.
+
+- **Avoid:** reboot the FC at the start of every test session, and again after
+  any flight where the flag tripped. Fly over flat, uniform floor — a mat, a
+  cable, or a door threshold under the vehicle looks like vertical motion to
+  the check and is a good way to trip it.
+
+- **If it keeps tripping in flight:** the likely cause on a DroneCAN sensor
+  like the ARK Flow is sensor lag. `EKF2_RNG_DELAY` (default 5 ms) is compared
+  against the EKF's own `vz`; DroneCAN adds more latency than that, which
+  produces a systematic innovation exactly when the vehicle is climbing or
+  descending. Raise it (try 20–40 ms) and/or loosen `EKF2_RNG_K_GATE`.
+
+Also worth knowing: `EKF2_MIN_RNG` is **not** a validity threshold. The
+validity window comes from the sensor's own reported `min_distance` /
+`max_distance` (0.02 m / 30 m on the ARK Flow). `EKF2_MIN_RNG` is the value
+EKF2 *substitutes* when the lidar is unhealthy and the vehicle is at rest on
+the ground — which is why a `dist_bottom` frozen at exactly that value means
+"no measurement", not "9 cm".
+
+### 10.2 Losing Offboard shortly after arming
+
+Offboard has only three mode requirements in PX4 (`mode_requirements.cpp`):
+angular velocity, attitude, and **offboard signal**. Nothing about position —
+so a flaky position estimate cannot, by itself, kick you out of Offboard.
+That narrows the causes a lot:
+
+| flag in the new `PX4 failsafe:` log line | meaning | fix |
+|---|---|---|
+| `offboard_control_signal_lost` | No `OffboardControlMode` reached PX4 for `COM_OF_LOSS_T` (default **1.0 s**). Almost always a stall in the uXRCE-DDS uplink, not in the node. | Run the node with `ros2 run`, not inside a busy launch; cut the number of `/fmu/out` topics being bridged; check the agent with `-v6` for dropped uplink; consider `COM_OF_LOSS_T` 1.5–2.0. |
+| `manual_control_signal_lost` | RC link lost while armed. | Keep the TX on. If you deliberately fly without RC, set `COM_RCL_EXCEPT` bit 2 (value `4`) to exempt Offboard. |
+| `gcs_connection_lost` | QGC/datalink dropped, `COM_DL_LOSS_T` expired. | `COM_DLL_EXCEPT`, or keep QGC connected. |
+
+Why it lands rather than holds: `COM_OBL_RC_ACT` defaults to **0 = Position
+mode**, and this airframe has no usable horizontal position estimate on the
+ground, so Position mode is unavailable and PX4 escalates down to Land —
+`nav_state -> AUTO_LAND(18)`. Set `COM_OBL_RC_ACT = 4` (Land) so the
+behaviour is at least explicit and predictable rather than the result of a
+fallback chain.
+
+---
+
 ## 11. Pre-flight checklist
 
 1. Props **off** for the first run of any changed code.
-2. `ros2 topic echo /fmu/out/vehicle_local_position_v1 --once` → `z_valid` and
+2. **Reboot the flight controller.** `cs_rng_kin_consistent` is sticky across a
+   whole power cycle and is the usual reason the node will not arm (10.1).
+3. `ros2 topic echo /fmu/out/estimator_status_flags --once` → `cs_rng_hgt` and
+   `cs_rng_kin_consistent` both true, `cs_baro_hgt` is *not* carrying the
+   height on its own.
+4. `ros2 topic echo /fmu/out/vehicle_local_position_v1 --once` → `z_valid` and
    `dist_bottom_valid` both true.
-3. RC kill switch tested on the bench, this session.
-4. `takeoff_altitude` set low (0.30 m).
-5. Clear space around and above the vehicle — flow-only hold drifts.
-6. You know which pane has the `q` key.
+5. RC kill switch tested on the bench, this session.
+6. `takeoff_altitude` set low (0.30 m).
+7. Clear space around and above the vehicle — flow-only hold drifts.
+8. You know which pane has the `q` key.
