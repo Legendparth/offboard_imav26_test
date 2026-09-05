@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "drone_testing",
+			"path": "."
+		},
+		{
+			"name": "zed-ros2-wrapper",
+			"path": "../zed-ros2-wrapper"
+		},
+		{
+			"name": "pixhawk_utils",
+			"path": "../../pixhawk_utils"
+		}
+	],
+	"settings": {}
+}
