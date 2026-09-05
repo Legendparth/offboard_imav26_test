@@ -15,7 +15,7 @@ Screen:
     row 1    arming state
     row 2    altitude above the arming point
     row 3    horizontal control mode (velocity hold / latched position)
-    row 4    optical flow health
+    row 4    optical flow health + window detection (/window_detected)
     row 5    stage-specific detail (countdown, target altitude)
     row 6    PX4 nav state
 
@@ -29,7 +29,7 @@ import time
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
-from std_msgs.msg import String
+from std_msgs.msg import Bool, String
 from px4_msgs.msg import VehicleStatus
 
 try:
@@ -55,6 +55,11 @@ class LcdStatus(Node):
         'GROUND_WAIT': 'GND WAIT',
         'TAKEOFF': 'TAKEOFF',
         'HOLD': 'HOLD',
+        'SCAN': 'SCANNING',
+        'LOCK': 'WIN LOCK',
+        'STEP': 'STEP',
+        'STEP_HOLD': 'SETTLING',
+        'POST_HOLD': 'HOLD',
         'LANDING': 'LANDING',
         'DISARMING': 'DISARM',
         'KILLING': 'KILL',
@@ -69,6 +74,11 @@ class LcdStatus(Node):
         'GROUND_WAIT': 2,
         'TAKEOFF': 2,
         'HOLD': 1,
+        'SCAN': 2,
+        'LOCK': 1,
+        'STEP': 2,
+        'STEP_HOLD': 2,
+        'POST_HOLD': 1,
         'LANDING': 2,
         'DISARMING': 2,
         'KILLING': 3,
@@ -98,12 +108,19 @@ class LcdStatus(Node):
 
         self.create_subscription(String, 'takeoff_status',
                                  self.status_callback, 10)
+        # Window detection, straight from window_detect. Subscribed here rather
+        # than routed through the flight node so the display is honest about the
+        # camera even when no flight node is running.
+        self.create_subscription(Bool, 'window_detected',
+                                 self.window_callback, 10)
         self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status_v1',
                                  self.vehicle_status_callback,
                                  qos_profile=sensor_qos)
 
         self.status_fields = None
         self.status_time = 0.0
+        self.window_detected = False
+        self.window_time = 0.0
         self.arming_state = None
         self.nav_state = None
 
@@ -173,6 +190,16 @@ class LcdStatus(Node):
             self.status_fields = parts
             self.status_time = time.monotonic()
 
+    def window_callback(self, msg):
+        self.window_detected = msg.data
+        self.window_time = time.monotonic()
+
+    def window_text(self):
+        """'win YES' / 'win no' / 'win --' when the detector is not talking."""
+        if time.monotonic() - self.window_time > self.STATUS_STALE_SECONDS:
+            return 'win --'
+        return 'win YES' if self.window_detected else 'win no'
+
     def vehicle_status_callback(self, msg):
         self.arming_state = msg.arming_state
         self.nav_state = msg.nav_state
@@ -201,7 +228,7 @@ class LcdStatus(Node):
             return "NO NODE", 0, [
                 "ARMED" if armed else "disarmed",
                 "takeoff node down",
-                "", "", "",
+                "", self.window_text(), "",
                 nav,
             ]
 
@@ -216,7 +243,7 @@ class LcdStatus(Node):
             "ARMED" if armed else "disarmed",
             alt_str,
             f"xy  {self.XY_LABELS.get(xy, xy)}",
-            f"flow {'ok' if flow_ok else 'NO'}",
+            f"flow {'ok' if flow_ok else 'NO'}  {self.window_text()}",
             detail,
             nav,
         ]

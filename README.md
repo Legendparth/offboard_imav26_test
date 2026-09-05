@@ -450,6 +450,160 @@ for0.62`, `3/4 up1.50`.
 
 ---
 
+## 6c. The window scan (`window_detect` + `window_scan`)
+
+Takeoff, sweep the nose through a 90 degree arc until the ZED sees the
+window, lock onto it, land 40 s after the climb started.
+
+Two nodes:
+
+| node            | what it does |
+|-----------------|--------------|
+| `window_detect` | subscribes to the ZED image (and depth) topics from `zed_wrapper`, runs the HSV / quadrilateral window detection, publishes `/window_detected` |
+| `window_scan`   | the flight. Everything about arming, the climb, the health gates and the landing is inherited from `offboard_sequence`; only the middle of the flight is different |
+
+### The camera side
+
+`window_detect` reads two topics published by `zed_wrapper`:
+
+```
+/zed/zed_node/rgb/image_rect_color      rectified LEFT colour image
+/zed/zed_node/depth/depth_registered    depth, 32FC1 in metres, same frame
+```
+
+**Check these names on the Jetson first** — they vary between wrapper
+versions and with `camera_name`:
+
+```bash
+ros2 topic list | grep zed
+```
+
+and if yours differ, pass `image_topic:=...` / `depth_topic:=...`. Depth is
+optional (`use_depth:=false`): without it the window is still detected, only
+the corner distances go missing.
+
+It publishes:
+
+| topic                     | type               | what |
+|---------------------------|--------------------|------|
+| `/window_detected`        | `std_msgs/Bool`    | debounced: true after 3 consecutive hits, false after 5 misses |
+| `/window_info`            | `std_msgs/String`  | `u\|v\|offset\|area\|d1\|d2\|d3\|d4\|dc` — centre pixel, horizontal offset as a fraction of half the frame (-1 left, 0 centred, +1 right), contour area, the four corner depths and the centre depth |
+| `/window_detection/image` | `sensor_msgs/Image`| the annotated frame, with a `WINDOW LOCKED` / `searching...` banner |
+
+### Seeing whether the window is detected
+
+In the terminal — the node logs one line a second either way, plus a WARN
+the moment the detection latches or is lost:
+
+```
+[INFO] [window_detect]: window: no   (streak 12 misses, 143 frames seen)
+[WARN] [window_detect]: WINDOW DETECTED  (centre=(671,342) offset=+0.05 area=18422px dist=2.31m)
+[INFO] [window_detect]: window: YES  centre=(671,342) offset=+0.05 area=18422px dist=2.31m
+```
+
+or straight off the topics:
+
+```bash
+ros2 topic echo /window_detected
+ros2 topic echo /window_info
+ros2 topic hz /window_detection/image      # is the camera actually feeding us?
+```
+
+As a picture, over the network from your laptop or on the Jetson with a
+monitor:
+
+```bash
+ros2 run rqt_image_view rqt_image_view /window_detection/image
+```
+
+With a monitor on the Jetson you can also have the original OpenCV windows
+back — the frame and the HSV mask, same as the standalone script:
+
+```bash
+ros2 run drone_testing window_detect --ros-args -p show_windows:=true
+```
+
+On the **LCD**: `lcd_status` subscribes to `/window_detected` itself and
+row 4 becomes `flow ok  win YES` / `win no` / `win --` (the last one means
+the detector is not publishing at all). The banner reads `SCANNING` during
+the sweep and `WIN LOCK` once it has locked on.
+
+### Running it
+
+Bench test, no props — camera and detection only, no DDS agent and no
+flight node. This is how you tune the HSV thresholds:
+
+```bash
+ros2 launch drone_testing window_scan.launch.py flight:=false
+ros2 launch drone_testing window_scan.launch.py flight:=false publish_mask:=true
+```
+
+Flight. The default starts the agent, the ZED and the detector but not the
+flight node, so you run that by hand and keep the `q` / `k` aborts:
+
+```bash
+ros2 launch drone_testing window_scan.launch.py
+ros2 run drone_testing window_scan --ros-args \
+    -p takeoff_altitude:=1.0 -p flight_seconds:=40.0
+```
+
+Everything from the launch file (no keyboard abort — RC kill switch only):
+
+```bash
+ros2 launch drone_testing window_scan.launch.py agent_only:=false
+```
+
+Add `zed:=false` if `zed_wrapper` is already running from somewhere else,
+or you will start a second copy of it and the SDK will refuse the camera.
+
+### What the flight does
+
+| stage | what happens |
+|---|---|
+| `PREPARATION` … `TAKEOFF` | identical to the other nodes: health gates, Offboard, arm, ground wait, ramped climb |
+| `HOLD` | `hold_seconds` at altitude, waiting for the flow to latch x/y. If the window is already in sight when the hold ends, it skips straight to `LOCK` |
+| `SCAN` | the nose sweeps +45 deg, then -90, then +90, … about the takeoff heading at `yaw_rate`, until the window is confirmed |
+| `LOCK` | yaw frozen at the heading the airframe actually has, x/y hold re-latched here, and it sits there |
+| `LANDING` | starts `flight_seconds` after the **start of the climb**, whether or not a window was ever found |
+
+The 40 s clock is checked before every stage handler, so a stage that gets
+stuck cannot postpone the landing. The descent itself takes as long as it
+takes on top of that.
+
+A detection only stops the sweep if it is **live and sustained**:
+`/window_detected` is already debounced in the detector, and `window_scan`
+additionally requires it to have been true for `detect_seconds` and to be
+no more than a second old. A camera that dies goes quiet, and quiet reads
+as "keep looking" — never as a lock.
+
+### Parameters
+
+| parameter | default | what |
+|---|---|---|
+| `takeoff_altitude` | 1.0 | m above the arming point |
+| `flight_seconds` | 40.0 | s from the start of the climb to the descent |
+| `scan_span_deg` | 90.0 | total sweep width, centred on the takeoff heading |
+| `yaw_rate` | 0.35 | rad/s (~20 deg/s) the yaw setpoint is walked at |
+| `detect_seconds` | 0.4 | how long the detection must hold before the sweep stops |
+| `relock_on_loss` | false | true = resume sweeping if the window is lost after the lock |
+| `hold_seconds` | 5.0 | station keeping at altitude before the sweep |
+| `image_topic` / `depth_topic` | see above | the ZED topics (`window_detect`) |
+| `color` | green | which HSV range to look for: green, blue, red |
+| `min_area` | 1500 | px^2 the contour must exceed |
+| `show_windows` | false | cv2.imshow windows; needs a display |
+
+Plus everything `offboard_sequence` takes for the climb and the descent
+(`ground_wait_seconds`, `climb_speed`, `land_speed`, `min_altitude`,
+`max_altitude`, `request_offboard_from_ros`).
+
+### Status output
+
+Same `/takeoff_status` topic and format. The detail field carries the sweep
+and the clock: `scan37 22s` (37 deg of setpoint left in this leg, 22 s to
+the landing), `lock-30 14s` (locked on a heading of -30 deg).
+
+---
+
 ## 7. Optional: LCD status display
 
 An Arduino running `arduino/tft_status/tft_status.ino` shows the stage, arm
@@ -511,11 +665,14 @@ sudo systemctl daemon-reload && sudo systemctl restart px4-agent.service
 | `lcd_status`       | drives the Arduino status display                                 |
 | `pixhawk_node`     | MAVLink telemetry reader                                          |
 | `cam`              | camera capture helper                                             |
+| `window_detect`    | ZED window detection, publishes `/window_detected` (section 6c)    |
+| `window_scan`      | takeoff, yaw sweep, lock onto the window, land after 40 s (section 6c) |
 
 Other launch files:
 
 - `translate_test.launch.py` — agent + `offboard_translate` (section 6)
 - `sequence_test.launch.py` — agent + `offboard_sequence` (section 6b)
+- `window_scan.launch.py` — agent + ZED + `window_detect` + `window_scan` (section 6c)
 - `arm_test.launch.py` — agent + `offboard_mission`, for arm/disarm bench tests
 - `offboard_launch.launch.py` — agent + ZED localization + `offboard_mission`
 

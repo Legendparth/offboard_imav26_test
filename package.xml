@@ -10,10 +10,14 @@
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>px4_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>zed_wrapper</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
   <exec_depend>micro_ros_agent</exec_depend>
 
   <!-- Python library dependencies -->

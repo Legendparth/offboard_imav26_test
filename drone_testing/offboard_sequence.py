@@ -360,8 +360,10 @@ class OffboardSequence(Node):
     REQUEST_OFFBOARD_FROM_ROS = True
     # ----------------------------------------------------------------------
 
-    def __init__(self):
-        super().__init__('offboard_sequence')
+    def __init__(self, node_name='offboard_sequence'):
+        # node_name is a parameter so a subclass -- window_scan is the one that
+        # does this -- can reuse the whole state machine under its own name.
+        super().__init__(node_name)
 
         # The numbers you actually want to change between hardware tests are
         # exposed as ROS parameters; the rest stay as class constants above.
@@ -542,6 +544,11 @@ class OffboardSequence(Node):
 
         # 20 Hz. PX4 drops Offboard if setpoints arrive slower than 2 Hz.
         self.timer = self.create_timer(0.05, self.timer_callback)
+
+        # Subclasses (window_scan) fly their own plan and print their own
+        # summary; the sequence plan below would only be misleading there.
+        if self.__class__ is not OffboardSequence:
+            return
 
         plan = " -> ".join(str(s) for s in self.steps)
         self.get_logger().warning(
