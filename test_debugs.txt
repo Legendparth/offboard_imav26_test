@@ -1,87 +1,38 @@
-[INFO] [window_detect-3]: process started with pid [11752]
-[window_detect-3] 
-[window_detect-3] A module that was compiled using NumPy 1.x cannot be run in
-[window_detect-3] NumPy 2.5.2 as it may crash. To support both 1.x and 2.x
-[window_detect-3] versions of NumPy, modules must be compiled with NumPy 2.0.
-[window_detect-3] Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
-[window_detect-3] 
-[window_detect-3] If you are a user of the module, the easiest solution will be to
-[window_detect-3] downgrade to 'numpy<2' or try to upgrade the affected module.
-[window_detect-3] We expect that some modules will need time to support NumPy 2.
-[window_detect-3] 
-[window_detect-3] Traceback (most recent call last):  File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect", line 33, in <module>
-[window_detect-3]     sys.exit(load_entry_point('drone_testing==0.0.0', 'console_scripts', 'window_detect')())
-[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect", line 25, in importlib_load_entry_point
-[window_detect-3]     return next(matches).load()
-[window_detect-3]   File "/usr/lib/python3.12/importlib/metadata/__init__.py", line 205, in load
-[window_detect-3]     module = import_module(match.group('module'))
-[window_detect-3]   File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
-[window_detect-3]     return _bootstrap._gcd_import(name[level:], package, level)
-[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_detect.py", line 66, in <module>
-[window_detect-3]     from cv_bridge import CvBridge
-[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/cv_bridge/__init__.py", line 6, in <module>
-[window_detect-3]     from cv_bridge.boost.cv_bridge_boost import cvtColorForDisplay, getCvType
+[INFO] [window_detect-3]: process started with pid [13885]
+[window_detect-3] [INFO] [1788648352.996865266] [window_detect]: Window detection up. image=/zed/zed_node/rgb/color/rect/image depth=/zed/zed_node/depth/depth_registered color=red. Publishing /window_detected, /window_info, /window_detection/image.
+[window_detect-3] [INFO] [1788648353.130603188] [window_detect]: First frame from /zed/zed_node/rgb/color/rect/image: 1280x720.
+[window_detect-3] [INFO] [1788648353.235262060] [window_detect]: window: no   (streak 0 misses, 1 frames seen)
 [window_detect-3] Traceback (most recent call last):
-[window_detect-3]   File "/home/ark-jetson-orin/.local/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
-[window_detect-3]     raise ImportError(msg)
-[window_detect-3] ImportError: 
-[window_detect-3] A module that was compiled using NumPy 1.x cannot be run in
-[window_detect-3] NumPy 2.5.2 as it may crash. To support both 1.x and 2.x
-[window_detect-3] versions of NumPy, modules must be compiled with NumPy 2.0.
-[window_detect-3] Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
-[window_detect-3] 
-[window_detect-3] If you are a user of the module, the easiest solution will be to
-[window_detect-3] downgrade to 'numpy<2' or try to upgrade the affected module.
-[window_detect-3] We expect that some modules will need time to support NumPy 2.
-[window_detect-3] 
-[window_detect-3] 
-[window_detect-3] [INFO] [1788647655.479900805] [window_detect]: Window detection up. image=/zed/zed_node/rgb/color/rect/image depth=/zed/zed_node/depth/depth_registered color=red. Publishing /window_detected, /window_info, /window_detection/image.
-[window_detect-3] 
-[window_detect-3] A module that was compiled using NumPy 1.x cannot be run in
-[window_detect-3] NumPy 2.5.2 as it may crash. To support both 1.x and 2.x
-[window_detect-3] versions of NumPy, modules must be compiled with NumPy 2.0.
-[window_detect-3] Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
-[window_detect-3] 
-[window_detect-3] If you are a user of the module, the easiest solution will be to
-[window_detect-3] downgrade to 'numpy<2' or try to upgrade the affected module.
-[window_detect-3] We expect that some modules will need time to support NumPy 2.
-[window_detect-3] 
-[window_detect-3] Traceback (most recent call last):  File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect", line 33, in <module>
+[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect", line 33, in <module>
 [window_detect-3]     sys.exit(load_entry_point('drone_testing==0.0.0', 'console_scripts', 'window_detect')())
+[window_detect-3]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 [window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_detect.py", line 499, in main
 [window_detect-3]     rclpy.spin(node)
 [window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/__init__.py", line 247, in spin
 [window_detect-3]     executor.spin_once()
 [window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 926, in spin_once
 [window_detect-3]     self._spin_once_impl(timeout_sec)
-[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 916, in _spin_once_impl
-[window_detect-3]     handler()
-[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/task.py", line 270, in __call__
-[window_detect-3]     self._execute_coroutine_step(self._handler)
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 918, in _spin_once_impl
+[window_detect-3]     raise handler.exception()
 [window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/task.py", line 286, in _execute_coroutine_step
 [window_detect-3]     result = coro.send(None)
+[window_detect-3]              ^^^^^^^^^^^^^^^
 [window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 592, in handler
 [window_detect-3]     await call_coroutine()
 [window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 480, in _execute
 [window_detect-3]     await await_or_execute(sub.callback, *msg_tuple)
 [window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 115, in await_or_execute
 [window_detect-3]     return callback(*args)
-[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_detect.py", line 264, in image_callback
-[window_detect-3]     cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/cv_bridge/core.py", line 194, in imgmsg_to_cv2
-[window_detect-3]     res = cvtColor2(im, img_msg.encoding, desired_encoding)
-[window_detect-3] Traceback (most recent call last):
-[window_detect-3]   File "/home/ark-jetson-orin/.local/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
-[window_detect-3]     raise ImportError(msg)
-[window_detect-3] ImportError: 
-[window_detect-3] A module that was compiled using NumPy 1.x cannot be run in
-[window_detect-3] NumPy 2.5.2 as it may crash. To support both 1.x and 2.x
-[window_detect-3] versions of NumPy, modules must be compiled with NumPy 2.0.
-[window_detect-3] Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
-[window_detect-3] 
-[window_detect-3] If you are a user of the module, the easiest solution will be to
-[window_detect-3] downgrade to 'numpy<2' or try to upgrade the affected module.
-[window_detect-3] We expect that some modules will need time to support NumPy 2.
-[window_detect-3] 
-[window_detect-3] 
-[ERROR] [window_detect-3]: process has died [pid 11752, exit code -11, cmd '/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect --ros-args -r __node:=window_detect --params-file /tmp/launch_params_g8wy14if'].
+[window_detect-3]            ^^^^^^^^^^^^^^^
+[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_detect.py", line 277, in image_callback
+[window_detect-3]     self.process(cv_image, msg.header)
+[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_detect.py", line 359, in process
+[window_detect-3]     self.publish_frames(cv_image, green_mask, header)
+[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_detect.py", line 455, in publish_frames
+[window_detect-3]     out = self.bridge.cv2_to_imgmsg(cv_image, encoding='bgr8')
+[window_detect-3]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/cv_bridge/core.py", line 276, in cv2_to_imgmsg
+[window_detect-3]     if self.cvtype_to_name[self.encoding_to_cvtype2(encoding)] != cv_type:
+[window_detect-3]        ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[window_detect-3] KeyError: 16
+[ERROR] [window_detect-3]: process has died [pid 13885, exit code 1, cmd '/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect --ros-args -r __node:=window_detect --params-file /tmp/launch_params_7v2oqcbg'].
