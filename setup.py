@@ -32,6 +32,7 @@ setup(
             'offboard_mission = drone_testing.offboard_mission:main',
             'offboard_takeoff = drone_testing.offboard_takeoff:main',
             'offboard_translate = drone_testing.offboard_translate:main',
+            'offboard_sequence = drone_testing.offboard_sequence:main',
             'lcd_status = drone_testing.lcd_status:main',
             'zed_localization = drone_testing.zed_localization:main',
             'cam = drone_testing.cam:main',

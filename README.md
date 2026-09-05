@@ -12,7 +12,9 @@ limitations that implies.
 The headline node is `offboard_takeoff`: arm → sit on the ground → climb to a
 set altitude → hold → descend → disarm, entirely on its own. `offboard_translate`
 adds a horizontal leg to that — climb, then move a set distance forward,
-backward, left or right, then land (see section 6).
+backward, left or right, then land (see section 6). `offboard_sequence` goes one
+further: climb, then a list of motions — translations, altitude changes and yaws
+— flown one at a time, then land (see section 6b).
 
 ---
 
@@ -338,6 +340,116 @@ plus metres still to go.
 
 ---
 
+## 6b. The sequence test (`offboard_sequence`)
+
+Same machinery again, but instead of one horizontal leg it flies **a list of
+motions, one at a time**: arm → ground wait → climb → hold → step 1 → settle →
+step 2 → settle → step 3 → settle → step 4 → hold → land.
+
+A step is one of:
+
+| step                                 | units   | what it does                          |
+|--------------------------------------|---------|---------------------------------------|
+| `forward` / `backward` / `left` / `right` | metres  | horizontal translation           |
+| `up` / `down`                        | metres  | altitude change from where it is now  |
+| `yaw`                                | degrees | rotate in place, `+` = clockwise seen from above |
+
+### Running it
+
+**Pane 1:**
+
+```bash
+ros2 launch drone_testing sequence_test.launch.py
+```
+
+**Pane 2:**
+
+```bash
+ros2 run drone_testing offboard_sequence --ros-args \
+  -p takeoff_altitude:=1.0 \
+  -p sequence:="forward 1.0, yaw 30, up 0.5, right 1.0"
+```
+
+The whole mission is that one `sequence` string: comma-separated items, each a
+name and a number separated by a space, a colon or an `=`. Four steps is what
+this test was written for; any number up to 12 is accepted. A malformed string
+is **fatal at startup** — the node refuses to run rather than fly a mission
+other than the one you typed.
+
+**Start small.** `takeoff_altitude:=0.5` and half-metre steps for the first
+flight, and check you have clear floor along the *whole* path, not just the
+first leg. Be ready on `q`.
+
+### Which frame the directions are in
+
+`forward` means **the direction the vehicle was facing when it armed**, and it
+keeps meaning that for the entire flight. A `yaw 30` step rotates the airframe
+but does **not** rotate what `forward` means — so in the example above, `right
+1.0` after the yaw flies the same ground track it would have flown without the
+yaw, with the airframe crabbing 30°.
+
+This is deliberate, and it is the same convention as a velocity setpoint in
+SITL: every setpoint that leaves this node is in the NED local frame, not the
+body frame, so a fixed reference yaw is the only reading that does not silently
+depend on how well the yaw step tracked.
+
+Pass `direction_frame:=current` if you want the other convention, where each
+move is resolved against the yaw commanded at that point and the example flies
+a 30° dog-leg.
+
+### Parameters
+
+| parameter           | default                                | meaning                                              |
+|---------------------|----------------------------------------|------------------------------------------------------|
+| `sequence`          | `forward 1.0, yaw 30, up 0.5, right 1.0` | the mission                                        |
+| `direction_frame`   | `home`                                 | `home` / `current` — see above                       |
+| `step_hold_seconds` | `3.0`                                  | settle time **between** steps                        |
+| `yaw_rate`          | `0.35`                                 | rad/s (~20°/s) the yaw setpoint is walked at         |
+| `min_altitude`      | `0.4`                                  | m a `down` step may not go below                     |
+| `max_altitude`      | `3.0`                                  | m an `up` step may not exceed                        |
+
+`takeoff_altitude`, `hold_seconds`, `post_hold_seconds`, `move_speed`,
+`ground_wait_seconds`, `climb_speed`, `land_speed`,
+`request_offboard_from_ros`, `lcd`, `lcd_port` are all the same as the translate
+test, and `sequence_test.launch.py` takes every one of them as a launch
+argument with `agent_only:=true` by default.
+
+### How a step can end without ending the flight
+
+Steps are individually recoverable — a bad one is reported and the sequence
+carries on, because the next step may not depend on whatever failed:
+
+| outcome        | when                                                          |
+|----------------|---------------------------------------------------------------|
+| `done`         | reached and settled inside tolerance                          |
+| `SKIPPED`      | a horizontal step, but optical flow never latched x/y         |
+| `ABANDONED`    | a horizontal step, flow lost part-way through it              |
+| `TIMED OUT`    | did not get there in time; holds wherever it actually is      |
+
+Yaw and altitude steps do **not** need the lateral estimate — they are measured
+by the gyro/compass and the lidar — so they still run on a flight where the
+flow never comes good and the horizontal steps are skipped. Anything more
+serious than a failed step (lost height estimate, rangefinder fusion stopping,
+Offboard taken away) lands or stands down exactly as in the other tests.
+
+The per-step results are printed as one summary line at the end of the flight,
+and again after disarm.
+
+### Settle time between steps
+
+`step_hold_seconds` exists so each step starts from a **stationary** vehicle.
+Without it, step *n+1* samples its start point while the vehicle is still
+overshooting step *n*, and the errors compound down the sequence instead of
+each step correcting from where the previous one really finished.
+
+### Status output
+
+Same `/takeoff_status` topic and format as the other nodes, so the LCD works
+unchanged. The detail field carries the step counter: `2/4 yaw18`, `1/4
+for0.62`, `3/4 up1.50`.
+
+---
+
 ## 7. Optional: LCD status display
 
 An Arduino running `arduino/tft_status/tft_status.ino` shows the stage, arm
@@ -393,6 +505,7 @@ sudo systemctl daemon-reload && sudo systemctl restart px4-agent.service
 |--------------------|------------------------------------------------------------------|
 | `offboard_takeoff` | the autonomous takeoff / hold / land test (this README's subject) |
 | `offboard_translate` | takeoff, then a 1 m horizontal move, then land (section 6)      |
+| `offboard_sequence` | takeoff, then a list of moves / climbs / yaws, then land (section 6b) |
 | `offboard_mission` | multi-waypoint offboard mission                                   |
 | `zed_localization` | feeds ZED visual odometry into PX4 as `vehicle_visual_odometry`   |
 | `lcd_status`       | drives the Arduino status display                                 |
@@ -402,6 +515,7 @@ sudo systemctl daemon-reload && sudo systemctl restart px4-agent.service
 Other launch files:
 
 - `translate_test.launch.py` — agent + `offboard_translate` (section 6)
+- `sequence_test.launch.py` — agent + `offboard_sequence` (section 6b)
 - `arm_test.launch.py` — agent + `offboard_mission`, for arm/disarm bench tests
 - `offboard_launch.launch.py` — agent + ZED localization + `offboard_mission`
 

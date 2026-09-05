@@ -1,14 +1,45 @@
 """
-Offboard takeoff -> hold -> translate 1 m -> hold -> land test.
+Offboard takeoff -> four commanded motions -> land.
 
 Sequence: stream offboard setpoints -> enter Offboard -> arm -> sit armed
-on the ground for 5 s -> climb to 1.00 m above the arming point -> hold
-until the optical flow is healthy and x/y is latched -> translate 1.00 m
-in the requested body-frame direction (forward by default; backward, left
-and right also available) -> hold again -> descend slowly -> disarm.
+on the ground -> climb to the takeoff altitude -> hold until the optical
+flow is healthy and x/y is latched -> execute the requested motions one at
+a time, holding between each -> hold -> descend slowly -> disarm.
 
-WHY THE MOVE IS FLOWN AS A POSITION SETPOINT, NOT A VELOCITY
-------------------------------------------------------------
+Each motion is one of:
+
+    forward / backward / left / right   <metres>   horizontal translation
+    up / down                           <metres>   altitude change
+    yaw                                 <degrees>  rotation in place
+
+given as a single `sequence` string, e.g.
+
+    -p sequence:="forward 1.0, yaw 30, up 0.5, right 1.0"
+
+Comma-separated; each item is a name and a number separated by a space, a
+colon or an equals sign. Any number of steps is accepted (up to MAX_STEPS);
+four is what this test was written for.
+
+WHICH FRAME THE DIRECTIONS ARE IN
+---------------------------------
+By default `forward` means the direction the vehicle was FACING WHEN IT
+ARMED, and it keeps meaning that for the whole flight. A `yaw 30` step in
+the middle of the sequence rotates the airframe but does NOT rotate what
+`forward` means -- a following `forward 1.0` flies along the same ground
+track it would have flown without the yaw, just crabbing 30 degrees.
+
+That is the behaviour asked for, and it is also the honest one: every
+setpoint PX4 is given here is in the NED local frame (this is the same
+reason a velocity setpoint in SITL does not turn with the airframe), so a
+fixed reference yaw is the only interpretation that does not silently
+depend on how well the yaw step tracked.
+
+Set `direction_frame:=current` if you want the other convention, where
+each move is resolved against the yaw currently being commanded and the
+sequence above would fly a 30-degree dog-leg.
+
+WHY EACH MOVE IS FLOWN AS A POSITION SETPOINT, NOT A VELOCITY
+-------------------------------------------------------------
 A velocity setpoint is open loop with respect to distance: "1 m forward"
 becomes "0.5 m/s for 2 s and hope", and every source of error -- the
 optical flow's velocity bias, the acceleration and deceleration ramps PX4
@@ -23,22 +54,22 @@ the vehicle actively stops itself at the end instead of coasting.
 The catch is that a position setpoint is only as good as the x/y estimate
 it is expressed in, and on this flow-only airframe that estimate is
 garbage on the ground and only becomes meaningful once the vehicle is at
-altitude with the flow sensor actually correcting. So the move is gated on
-exactly that:
+altitude with the flow sensor actually correcting. So the horizontal moves
+are gated on exactly that:
 
-  * the ground and the climb are flown as ZERO VELOCITY in x/y, same as
-    the takeoff test, because "stay still" has no memory and cannot fly
-    out an accumulated dead-reckoning error;
+  * the ground and the climb are flown as ZERO VELOCITY in x/y, because
+    "stay still" has no memory and cannot fly out an accumulated
+    dead-reckoning error;
   * once airborne, x/y position hold is latched onto a FRESH estimate
     (see _try_latch_xy_hold);
-  * ONLY THEN is the move started, as a ramped position setpoint: a
-    carrot walked from the latched point to the target at MOVE_SPEED,
+  * ONLY THEN is a horizontal move started, as a ramped position setpoint:
+    a carrot walked from the latched point to the target at MOVE_SPEED,
     leashed to the measured position so it can never run away.
 
-If the flow never becomes healthy, or drops out mid-move, the node does
-NOT fall back to dead-reckoning on velocity -- it abandons the move and
-lands. A move you cannot measure is not a move you should be flying near
-people.
+If the flow never becomes healthy, a horizontal step is SKIPPED rather
+than dead-reckoned. Altitude and yaw steps do not need the lateral
+estimate and still run: they are measured by the lidar and the compass /
+gyro respectively.
 
 Keys:  q -> abort into a controlled descent from wherever we are.
        k -> force-disarm immediately (motors cut, vehicle drops).
@@ -48,6 +79,7 @@ refuses to arm without z_valid.
 """
 
 import math
+import re
 import select
 import sys
 import threading
@@ -84,6 +116,11 @@ def nav_state_name(value):
     return f"{NAV_STATE_NAMES.get(value, 'UNKNOWN')}({value})"
 
 
+def wrap_pi(angle):
+    """Wrap an angle in radians into (-pi, pi]."""
+    return math.atan2(math.sin(angle), math.cos(angle))
+
+
 # Every boolean in FailsafeFlags that can plausibly explain PX4 taking the
 # aircraft off us. Checked by name with getattr so a firmware/px4_msgs pair
 # that lacks one of them degrades quietly instead of crashing the node.
@@ -112,25 +149,104 @@ FAILSAFE_FLAG_NAMES = (
 )
 
 # Conditions that are permanently true on THIS airframe and mean nothing here.
-# None of them is one of Offboard's mode requirements (which are only angular
-# velocity, attitude and offboard signal -- see mode_requirements.cpp), so
-# none can take the aircraft off us:
-#
-#   home_position_invalid  PX4 sets home from GPS. There is no GPS, so there
-#                          is never a home position. Only RTL consumes it, and
-#                          RTL is not available on this vehicle anyway.
-#   gcs_connection_lost    No ground station is connected to the FCU. Normal
-#                          when flying from the companion computer alone.
-#
-# Still tracked and still reported in the "PX4 failsafe:" summary line, just
-# not shouted about as if something had gone wrong.
+# See the same list in offboard_translate.py for the full reasoning.
 EXPECTED_FAILSAFE_FLAGS = (
     'home_position_invalid',
     'gcs_connection_lost',
 )
 
 
-class OffboardTranslate(Node):
+class Step:
+    """One commanded motion, parsed from the `sequence` string.
+
+    kind is 'move' (horizontal, arg = metres, with a body-frame unit vector
+    picked at execution time), 'alt' (arg = metres, positive up) or 'yaw'
+    (arg = radians, positive clockwise seen from above, i.e. PX4's yaw sign).
+    """
+
+    def __init__(self, kind, name, arg):
+        self.kind = kind
+        self.name = name
+        self.arg = arg
+
+    def __str__(self):
+        if self.kind == 'yaw':
+            return f"yaw {math.degrees(self.arg):+.0f} deg"
+        if self.kind == 'alt':
+            return f"{self.name} {abs(self.arg):.2f} m"
+        return f"{self.name} {self.arg:.2f} m"
+
+
+# Body-frame horizontal unit vectors in NED, as a function of the reference
+# yaw (measured from North, x = North, y = East). Forward is (cos, sin);
+# right is forward rotated 90 degrees clockwise seen from above, (-sin, cos).
+DIRECTIONS = {
+    'forward':  lambda c, s: (c, s),
+    'backward': lambda c, s: (-c, -s),
+    'right':    lambda c, s: (-s, c),
+    'left':     lambda c, s: (s, -c),
+}
+
+# Everything the sequence parser accepts, mapped to a canonical name.
+STEP_ALIASES = {
+    'forward': 'forward', 'fwd': 'forward', 'front': 'forward', 'f': 'forward',
+    'backward': 'backward', 'back': 'backward', 'bwd': 'backward', 'b': 'backward',
+    'left': 'left', 'l': 'left',
+    'right': 'right', 'r': 'right',
+    'up': 'up', 'u': 'up', 'climb': 'up', 'ascend': 'up',
+    'down': 'down', 'd': 'down', 'descend': 'down',
+    'yaw': 'yaw', 'turn': 'yaw', 'rotate': 'yaw', 'heading': 'yaw',
+}
+
+
+def parse_sequence(text):
+    """Parse "forward 1.0, yaw 30, up 0.5, right 1.0" into a list of Steps.
+
+    Raises ValueError with a message aimed at whoever typed the string, since
+    a typo here is a typo in a flight plan and must not be quietly guessed at.
+    """
+    steps = []
+    for item in re.split(r'[,;]', str(text)):
+        item = item.strip()
+        if not item:
+            continue
+        parts = [p for p in re.split(r'[:\s=]+', item) if p]
+        if len(parts) != 2:
+            raise ValueError(
+                f"cannot read step '{item}': expected a name and a number, "
+                "e.g. 'forward 1.0' or 'yaw:30'")
+        name, value = parts[0].lower(), parts[1]
+        if name not in STEP_ALIASES:
+            raise ValueError(
+                f"unknown motion '{parts[0]}' in '{item}'; expected one of "
+                f"{sorted(set(STEP_ALIASES.values()))}")
+        name = STEP_ALIASES[name]
+        try:
+            value = float(value)
+        except ValueError:
+            raise ValueError(f"'{parts[1]}' in '{item}' is not a number")
+
+        if name == 'yaw':
+            steps.append(Step('yaw', 'yaw', math.radians(value)))
+        elif name in ('up', 'down'):
+            # A negative distance is almost always a typo rather than an
+            # inverted intent -- "down -1" reads as "up 1" but nobody means
+            # that -- so reject it instead of flying it.
+            if value < 0.0:
+                raise ValueError(
+                    f"'{item}': use 'up'/'down' to choose the direction, not a "
+                    "negative distance")
+            steps.append(Step('alt', name, value if name == 'up' else -value))
+        else:
+            if value < 0.0:
+                raise ValueError(
+                    f"'{item}': use the opposite direction rather than a "
+                    "negative distance")
+            steps.append(Step('move', name, value))
+    return steps
+
+
+class OffboardSequence(Node):
 
     PREPARATION = "PREPARATION"
     OFFBOARD_REQUEST = "OFFBOARD_REQUEST"
@@ -138,18 +254,28 @@ class OffboardTranslate(Node):
     GROUND_WAIT = "GROUND_WAIT"
     TAKEOFF = "TAKEOFF"
     HOLD = "HOLD"
-    TRANSLATE = "TRANSLATE"
+    STEP = "STEP"
+    STEP_HOLD = "STEP_HOLD"
     POST_HOLD = "POST_HOLD"
     LANDING = "LANDING"
     DISARMING = "DISARMING"
     KILLING = "KILLING"
     DONE = "DONE"
 
+    # ---- the mission ------------------------------------------------------
+    SEQUENCE = "forward 1.0, yaw 30, up 0.5, right 1.0"
+    MAX_STEPS = 12              # sanity cap, not a design limit
+    STEP_HOLD_SECONDS = 3.0     # station keeping between steps. Each step is
+                                # measured from where the previous one ended,
+                                # so this is what stops errors compounding
+                                # while the vehicle is still settling.
+    DIRECTION_FRAME = 'home'    # home | current -- see the module docstring
+
     # ---- flight parameters -----------------------------------------------
     TAKEOFF_ALTITUDE = 1.00     # m above the arming point
     GROUND_WAIT_SECONDS = 5.0   # armed on the ground before the climb starts
-    HOLD_SECONDS = 5.0          # station keeping before the move starts
-    POST_HOLD_SECONDS = 5.0     # station keeping after the move, before landing
+    HOLD_SECONDS = 5.0          # station keeping before the first step
+    POST_HOLD_SECONDS = 5.0     # station keeping after the last step
     CLIMB_SPEED = 0.80          # m/s. Brisk on purpose: a slow climb lingers in
                                 # ground effect with no valid flow, which is the
                                 # least stable place the vehicle can be.
@@ -161,46 +287,44 @@ class OffboardTranslate(Node):
                                 # and waiting, so the vehicle stays firmly planted
                                 # instead of skittering at the edge of liftoff.
     LIFTOFF_AGL = 0.15          # m AGL above which we consider ourselves airborne
-    OVERSHOOT_ABORT = 0.50      # m above the target before we call the climb a
-                                # runaway and land. Without this the node will
-                                # happily watch the vehicle sail past the target
-                                # until TAKEOFF_TIMEOUT expires -- which is what
-                                # let a 1.00 m takeoff reach 2.9 m.
+    OVERSHOOT_ABORT = 0.50      # m above the commanded altitude before we call
+                                # the climb a runaway and land.
     LEASH_RELEASE_VZ = 0.10     # m/s. Above this the vehicle is tracking, so the
                                 # leash lets go (see _step_setpoint_ramp).
     SETPOINT_LEASH = 0.60       # m the commanded z may lead the measured z by.
-                                # Without this the ramp keeps walking while the
-                                # vehicle is still thrust-limited on PX4's
-                                # takeoff ramp, builds a big position error, and
-                                # then flies it out in one jump.
 
-    # ---- translation ------------------------------------------------------
-    MOVE_DISTANCE = 1.00        # m to travel
-    MOVE_DIRECTION = 'forward'  # forward | backward | left | right, body frame
-                                # relative to the yaw held since arming
+    # Altitude steps are clamped into this envelope. A "+0.5" typed as "+5"
+    # should not be a flight into the ceiling.
+    MIN_ALTITUDE = 0.40         # m above the arming point
+    MAX_ALTITUDE = 3.00         # m above the arming point
+
+    # ---- horizontal translation ------------------------------------------
     MOVE_SPEED = 0.30           # m/s the horizontal setpoint carrot is walked
                                 # at. Slow on purpose: the flow estimate is the
                                 # only thing measuring this move.
     MOVE_TOLERANCE = 0.15       # m, "we are there" radius around the target
     MOVE_SETTLE_SECONDS = 1.0   # time inside that radius before we call it done
     MOVE_LEASH = 0.40           # m the commanded x/y may lead the measured x/y
-                                # by. Same job as SETPOINT_LEASH does for z:
-                                # stops the carrot walking off while the vehicle
-                                # is still accelerating and banking up an error
-                                # that gets flown out as a lurch.
-    # Body-frame unit vectors in NED, as a function of yaw (measured from
-    # North, x = North, y = East). Forward is (cos, sin); right is forward
-    # rotated 90 degrees clockwise seen from above, i.e. (-sin, cos).
-    DIRECTIONS = {
-        'forward':  lambda c, s: (c, s),
-        'backward': lambda c, s: (-c, -s),
-        'right':    lambda c, s: (-s, c),
-        'left':     lambda c, s: (s, -c),
-    }
-
+                                # by. Same job as SETPOINT_LEASH does for z.
     MOVE_LATCH_TIMEOUT = 15.0   # s waiting for a flow-healthy x/y latch before
-                                # giving up on the move entirely
-    MOVE_TIMEOUT = 30.0         # s for the move itself
+                                # giving up on a horizontal step
+    MOVE_TIMEOUT = 30.0         # s for one horizontal step
+    ALT_STEP_TIMEOUT = 20.0     # s for one altitude step
+
+    # ---- yaw --------------------------------------------------------------
+    YAW_RATE = 0.35             # rad/s (~20 deg/s) the yaw setpoint is walked
+                                # at. Slow: a fast yaw smears the optical flow
+                                # and the whole point of holding position
+                                # through the turn is that the flow keeps
+                                # working.
+    YAW_TOLERANCE = math.radians(5.0)
+    YAW_SETTLE_SECONDS = 1.0    # time inside tolerance before the step is done
+    YAW_LEASH = math.radians(25.0)  # rad the commanded yaw may lead the measured
+                                # heading by, for the same reason as the x/y and
+                                # z leashes: stop the ramp walking away from an
+                                # airframe that is not keeping up and having the
+                                # error flown out as one fast spin at the end.
+    YAW_TIMEOUT = 30.0          # s for one yaw step
 
     # ---- flow / estimator health -----------------------------------------
     # Below this AGL the rangefinder and optical flow are not trustworthy:
@@ -218,62 +342,77 @@ class OffboardTranslate(Node):
     LANDING_TIMEOUT = 30.0
     DISARM_TIMEOUT = 5.0
     LANDED_CONFIRM_SECONDS = 1.0    # land-detector must agree this long
+    COMMAND_INTERVAL = 0.25         # s between repeats of a vehicle command.
 
     # ---- touchdown fallback ----------------------------------------------
     # PX4's land detector is the primary answer, but it is not sufficient on
     # its own in Offboard -- see _touchdown_confirmed() for exactly why it can
-    # sit at landed=false on a vehicle that is plainly on the floor, which is
-    # what it did on the forward-translation flight. These are the thresholds
-    # for the independent, geometric fallback.
+    # sit at landed=false on a vehicle that is plainly sitting on the floor.
+    # These are the thresholds for the independent, geometric fallback.
     STALL_CONFIRM_SECONDS = 2.0     # how long the stalled descent must persist
     STALL_VZ = 0.10                 # m/s below which the descent has stopped
     STALL_AGL = 0.25                # m AGL below which we are plausibly down
     STALL_SETPOINT_BURIED = 0.20    # m the commanded z must be below measured z,
                                     # i.e. we are definitely still pushing down
-    COMMAND_INTERVAL = 0.25         # s between repeats of a vehicle command.
-                                    # /fmu/in/vehicle_command at the full 20 Hz
-                                    # floods PX4's command queue and gets
-                                    # commands dropped rather than acted on.
+
     # If you switch to Offboard from your RC transmitter instead of from
     # this node, set this to False.
     REQUEST_OFFBOARD_FROM_ROS = True
     # ----------------------------------------------------------------------
 
     def __init__(self):
-        super().__init__('offboard_translate')
+        super().__init__('offboard_sequence')
 
         # The numbers you actually want to change between hardware tests are
         # exposed as ROS parameters; the rest stay as class constants above.
-        # e.g. ros2 run ... --ros-args -p takeoff_altitude:=0.30
         # float() on the way out: launch passes parameters as YAML, so
-        # `takeoff_altitude:=1` arrives as an int and an unconverted int would
-        # make every altitude comparison integer-ish. (An int also gets
-        # rejected outright against a double-typed declaration.)
+        # `takeoff_altitude:=1` arrives as an int.
         self.TAKEOFF_ALTITUDE = float(self._declare_number(
             'takeoff_altitude', self.TAKEOFF_ALTITUDE))
         self.HOLD_SECONDS = float(self._declare_number(
             'hold_seconds', self.HOLD_SECONDS))
         self.POST_HOLD_SECONDS = float(self._declare_number(
             'post_hold_seconds', self.POST_HOLD_SECONDS))
-        self.MOVE_DISTANCE = float(self._declare_number(
-            'move_distance', self.MOVE_DISTANCE))
+        self.STEP_HOLD_SECONDS = float(self._declare_number(
+            'step_hold_seconds', self.STEP_HOLD_SECONDS))
         self.MOVE_SPEED = float(self._declare_number(
             'move_speed', self.MOVE_SPEED))
-        self.MOVE_DIRECTION = str(self.declare_parameter(
-            'move_direction', self.MOVE_DIRECTION).value).strip().lower()
-        if self.MOVE_DIRECTION not in self.DIRECTIONS:
-            self.get_logger().error(
-                f"Unknown move_direction '{self.MOVE_DIRECTION}'; expected one of "
-                f"{sorted(self.DIRECTIONS)}. Falling back to 'forward'.")
-            self.MOVE_DIRECTION = 'forward'
+        self.YAW_RATE = float(self._declare_number('yaw_rate', self.YAW_RATE))
         self.GROUND_WAIT_SECONDS = float(self._declare_number(
             'ground_wait_seconds', self.GROUND_WAIT_SECONDS))
         self.CLIMB_SPEED = float(self._declare_number(
             'climb_speed', self.CLIMB_SPEED))
         self.LAND_SPEED = float(self._declare_number(
             'land_speed', self.LAND_SPEED))
+        self.MIN_ALTITUDE = float(self._declare_number(
+            'min_altitude', self.MIN_ALTITUDE))
+        self.MAX_ALTITUDE = float(self._declare_number(
+            'max_altitude', self.MAX_ALTITUDE))
         self.REQUEST_OFFBOARD_FROM_ROS = bool(self.declare_parameter(
             'request_offboard_from_ros', self.REQUEST_OFFBOARD_FROM_ROS).value)
+
+        self.DIRECTION_FRAME = str(self.declare_parameter(
+            'direction_frame', self.DIRECTION_FRAME).value).strip().lower()
+        if self.DIRECTION_FRAME not in ('home', 'current'):
+            self.get_logger().error(
+                f"Unknown direction_frame '{self.DIRECTION_FRAME}'; expected "
+                "'home' or 'current'. Falling back to 'home'.")
+            self.DIRECTION_FRAME = 'home'
+
+        # The flight plan. A bad sequence string is fatal: there is no sane
+        # default to fall back on, and taking off with a mission other than
+        # the one that was typed is the worst possible failure mode here.
+        sequence_text = str(self.declare_parameter('sequence', self.SEQUENCE).value)
+        try:
+            self.steps = parse_sequence(sequence_text)
+        except ValueError as exc:
+            raise SystemExit(f"Bad `sequence` parameter: {exc}")
+        if not self.steps:
+            raise SystemExit("Bad `sequence` parameter: no steps in it.")
+        if len(self.steps) > self.MAX_STEPS:
+            raise SystemExit(
+                f"Bad `sequence` parameter: {len(self.steps)} steps, "
+                f"the cap is {self.MAX_STEPS}.")
 
         sensor_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -289,8 +428,9 @@ class OffboardTranslate(Node):
         self.trajectory_setpoint_pub = self.create_publisher(
             TrajectorySetpoint, '/fmu/in/trajectory_setpoint', 10)
 
-        # Compact machine-readable status for the LCD node (and anything else
-        # that wants to watch the state machine without parsing log text).
+        # Compact machine-readable status for the LCD node. Same pipe-separated
+        # format as the takeoff/translate nodes, and the same topic, so the LCD
+        # needs no changes.
         self.status_pub = self.create_publisher(String, 'takeoff_status', 10)
 
         self.vehicle_status_sub = self.create_subscription(
@@ -308,9 +448,6 @@ class OffboardTranslate(Node):
             self.estimator_flags_callback, qos_profile=sensor_qos)
 
         # PX4's own account of why it would take the aircraft away from us.
-        # Purely diagnostic -- nothing here gates a decision -- but it is the
-        # difference between "Offboard lost" and knowing WHICH condition
-        # tripped, which is otherwise only visible in the ulog or QGC.
         self.failsafe_flags_sub = self.create_subscription(
             FailsafeFlags, '/fmu/out/failsafe_flags',
             self.failsafe_flags_callback, qos_profile=sensor_qos)
@@ -339,8 +476,6 @@ class OffboardTranslate(Node):
 
         # EKF2 reset bookkeeping. When the estimator re-datums its height or
         # lateral position it jumps x/y/z instantly and tells us by how much.
-        # Anything we latched in the old frame has to be shifted with it or it
-        # silently becomes a setpoint in the wrong place.
         self._z_reset_counter = None
         self._xy_reset_counter = None
 
@@ -352,6 +487,9 @@ class OffboardTranslate(Node):
 
         self.target_z = None        # NED z the ramp is currently walking towards
         self.setpoint_z = None      # NED z actually being commanded right now
+        self.commanded_altitude = self.TAKEOFF_ALTITUDE  # m above home, what we
+                                    # are currently asking for. Altitude steps
+                                    # move this; the overshoot guard reads it.
         self.in_band_since = None
         self.landed_since = None
         self.stall_since = None
@@ -363,16 +501,25 @@ class OffboardTranslate(Node):
         self.hold_y = None
         self.flow_healthy_since = None
 
-        # Translation. move_target is where we are walking hold_x/hold_y to;
-        # move_start is where we started, kept only so the log can report how
-        # far the vehicle actually went versus how far it was asked to go.
+        # Yaw control. yaw_setpoint is what is commanded every tick;
+        # yaw_target is where a yaw step is walking it to.
+        self.yaw_setpoint = 0.0
+        self.yaw_remaining = 0.0    # rad still to be walked, signed
+        self.yaw_in_band_since = None
+
+        # Horizontal translation bookkeeping for the step in progress.
         self.moving = False
         self.move_start_x = None
         self.move_start_y = None
         self.move_target_x = None
         self.move_target_y = None
         self.move_in_band_since = None
-        self.move_done = False
+
+        # Where we are in the sequence. step_index is the step being executed
+        # (or about to be); step_started guards the one-shot setup.
+        self.step_index = 0
+        self.step_started = False
+        self.step_results = []
 
         self.setpoint_counter = 0
         self.stage_enter_time = time.monotonic()
@@ -383,8 +530,7 @@ class OffboardTranslate(Node):
         # flown as a velocity, because a position setpoint against a dead
         # z estimate is a setpoint against a number that means nothing.
         self.blind_descent = False
-        # Cleared once we have stood down, so a vehicle PX4 or the pilot has
-        # taken back is not still being offered offboard setpoints.
+        # Cleared once we have stood down.
         self.stream_setpoints = True
         self._last_command_time = {}
 
@@ -397,11 +543,12 @@ class OffboardTranslate(Node):
         # 20 Hz. PX4 drops Offboard if setpoints arrive slower than 2 Hz.
         self.timer = self.create_timer(0.05, self.timer_callback)
 
+        plan = " -> ".join(str(s) for s in self.steps)
         self.get_logger().warning(
-            f"Translate test: climb {self.TAKEOFF_ALTITUDE:.2f} m, hold "
-            f"{self.HOLD_SECONDS:.0f} s, move {self.MOVE_DISTANCE:.2f} m "
-            f"{self.MOVE_DIRECTION} at {self.MOVE_SPEED:.2f} m/s, hold "
-            f"{self.POST_HOLD_SECONDS:.0f} s, land. Press q to abort into a "
+            f"Sequence test: climb {self.TAKEOFF_ALTITUDE:.2f} m, hold "
+            f"{self.HOLD_SECONDS:.0f} s, then {len(self.steps)} steps: {plan}, "
+            f"hold {self.POST_HOLD_SECONDS:.0f} s, land. Directions are in the "
+            f"'{self.DIRECTION_FRAME}' yaw frame. Press q to abort into a "
             "descent, k to force-disarm.")
 
     # ------------------------------------------------------------ parameters
@@ -483,9 +630,7 @@ class OffboardTranslate(Node):
         """Log PX4's failsafe conditions as they change.
 
         PX4 does not tell the offboard node why it took the aircraft; it just
-        changes nav_state. These flags are the why, and logging the edges
-        means the answer is sitting in the terminal scrollback next to the
-        "Offboard lost" line instead of only in the ulog.
+        changes nav_state. These flags are the why.
         """
         self.failsafe_flags = msg
         active = self.active_failsafes()
@@ -537,33 +682,10 @@ class OffboardTranslate(Node):
         With EKF2_HGT_REF = 2 (Range) that flag can NEVER be true, whatever the
         sensor does, because the terrain state is not estimated at all in that
         configuration -- the ground IS the height datum, so terrain is pinned
-        to zero and both terrain aiding paths are switched off by construction:
-
-          range_height_control.cpp  the do_range_aid branch sets rng_hgt = true
-                                    and then calls stopRngTerrFusion(); the only
-                                    place rng_terrain is ever set true sits in
-                                    the `else` of `if (rng_hgt || rng_terrain)`,
-                                    which is therefore unreachable from then on.
-          optical_flow_control.cpp  opt_flow_terrain = opt_flow && !(hgt_ref ==
-                                    RANGE)  ->  forced false.
-
-        So dist_bottom_valid is stuck false while the rangefinder is perfectly
-        healthy and is in fact the primary height source. PX4 v1.18 fixes the
-        symptom by adding `|| getHeightSensorRef() == RANGE` to that line; on
-        v1.17 we have to ask the question ourselves.
+        to zero and both terrain aiding paths are switched off by construction.
 
         EstimatorStatusFlags answers it directly. Fall back to dist_bottom_valid
         only if those flags are not being published.
-
-        Deliberately does NOT require cs_rng_kin_consistent. That flag compares
-        the rangefinder's rate of change against the EKF's vertical velocity,
-        and RangeFinderConsistencyCheck::updateConsistency() can only ever set
-        it back to true while the vehicle is moving vertically:
-
-            if ((fabsf(vz) > _min_vz_for_valid_consistency)   // 0.5 m/s, fixed
-                && (_test_ratio < 1.f)
-                && ((time_us - _time_last_inconsistent_us) > _consistency_hyst_time_us))
-                    _is_kinematically_consistent = true;
 
         cs_rng_kin_consistent IS required, and that is not negotiable, because
         it is the switch that actually gates fusion:
@@ -574,25 +696,16 @@ class OffboardTranslate(Node):
                         fuseHaglRng(...);
                 }
 
-        With it false, no range measurement is ever fused. cs_rng_hgt stays
-        true -- it only means "range is the intended height source" -- so the
-        vehicle looks healthy while its height estimate quietly free-runs on
-        integrated accelerometer data. With EKF2_HGT_REF = 2 that estimate is
-        also what VehicleLocalPosition.dist_bottom reports:
+        With it false, no range measurement is ever fused, cs_rng_hgt stays
+        true, and the height estimate quietly free-runs on integrated
+        accelerometer data -- which is exactly how a vehicle sitting on the
+        ground once reported 2.9 m while never leaving the floor. The flag
+        starts true and can only be re-earned at |vz| > 0.5 m/s, so if it is
+        false on the ground the vehicle genuinely cannot be flown safely until
+        PX4 is rebooted or it is flown up and down manually. Refusing to arm is
+        the correct answer, not an inconvenience.
 
-            EKF2.cpp:1623   lpos.dist_bottom = math::max(_ekf.getHagl(), 0.f);
-
-        getHagl() is terrain + altitude, and terrain is pinned to zero in this
-        configuration, so dist_bottom IS the EKF altitude. It is not a second
-        opinion from the lidar. When fusion stops, dist_bottom and the altitude
-        drift together, agreeing perfectly with each other and with nothing
-        real -- which is exactly how a vehicle sitting on the ground reported
-        2.9 m while never leaving the floor.
-
-        The flag starts true and can only be re-earned at |vz| > 0.5 m/s, so if
-        it is false on the ground the vehicle genuinely cannot be flown safely
-        until PX4 is rebooted or it is flown up and down manually. Refusing to
-        arm is the correct answer, not an inconvenience.
+        See offboard_translate.py for the full annotated version of this note.
         """
         f = self.estimator_flags
         if f is None:
@@ -607,9 +720,7 @@ class OffboardTranslate(Node):
         Deliberately does NOT require xy_valid. On a flow-only airframe the
         lateral estimate cannot converge until the vehicle is off the ground
         and the flow sensor can see motion -- demanding xy_valid before arming
-        is a chicken-and-egg that only passes by luck. We fly x/y as a zero
-        velocity setpoint anyway, so the lateral POSITION estimate is not
-        something we depend on for takeoff.
+        is a chicken-and-egg that only passes by luck.
         """
         lp = self.local_position
         return lp is not None and lp.z_valid and self.rangefinder_is_healthy()
@@ -645,8 +756,7 @@ class OffboardTranslate(Node):
         """Height above ground straight from the lidar, or None.
 
         Independent of the EKF's height datum, so it survives an estimator
-        reset that would corrupt relative_altitude(). Used to sanity-check
-        the altitude before we believe we have arrived.
+        reset that would corrupt relative_altitude().
         """
         lp = self.local_position
         if lp is None or not self.rangefinder_is_healthy():
@@ -678,7 +788,9 @@ class OffboardTranslate(Node):
             f"vz={lp.vz:+.2f} m/s landed={self.landed} | "
             f"xy={'POS-HOLD' if self.hold_xy else 'VEL-HOLD'} "
             f"flow_ok={self.flow_is_healthy()} "
-            f"vxy=({lp.vx:+.2f},{lp.vy:+.2f})",
+            f"vxy=({lp.vx:+.2f},{lp.vy:+.2f}) | "
+            f"hdg={math.degrees(lp.heading):+.0f} deg "
+            f"yaw_sp={math.degrees(self.yaw_setpoint):+.0f} deg",
             throttle_duration_sec=1.0)
 
     # -------------------------------------------------------------- keyboard
@@ -729,12 +841,23 @@ class OffboardTranslate(Node):
     def _in_stage_for(self):
         return time.monotonic() - self.stage_enter_time
 
+    def _restart_stage_clock(self):
+        """Reset the per-stage timeout without leaving the stage.
+
+        A step begins while we are already in STEP, so _enter_stage() would
+        no-op and the step would inherit whatever time the previous phase --
+        typically the wait for a flow-healthy x/y latch -- had already burned
+        off its timeout.
+        """
+        self.stage_enter_time = time.monotonic()
+
     def _begin_landing(self, reason):
         self.get_logger().warning(f"Landing: {reason}")
         self.landed_since = None
         self.stall_since = None
         # Whatever we were doing horizontally, stop walking the setpoint.
         self.moving = False
+        self.yaw_remaining = 0.0
         self._update_blind_descent()
         # Flow degrades as we approach the ground, so stop chasing a latched
         # x/y point and go back to "just don't translate".
@@ -757,13 +880,12 @@ class OffboardTranslate(Node):
             self._enter_stage(self.KILLING)
         elif self.abort_requested:
             if self.current_stage in (self.GROUND_WAIT, self.TAKEOFF, self.HOLD,
-                                      self.TRANSLATE, self.POST_HOLD):
+                                      self.STEP, self.STEP_HOLD, self.POST_HOLD):
                 self.abort_requested = False
                 self._begin_landing("operator abort")
             elif self.current_stage in (self.PREPARATION, self.OFFBOARD_REQUEST,
                                         self.ARMING):
                 # Nothing is flying yet, so there is nothing to descend from.
-                # Make sure we are disarmed and stop.
                 self.abort_requested = False
                 self.get_logger().warning("Abort before takeoff: standing down.")
                 self._enter_stage(self.DISARMING)
@@ -775,7 +897,8 @@ class OffboardTranslate(Node):
             self.GROUND_WAIT: self._handle_ground_wait,
             self.TAKEOFF: self._handle_takeoff,
             self.HOLD: self._handle_hold,
-            self.TRANSLATE: self._handle_translate,
+            self.STEP: self._handle_step,
+            self.STEP_HOLD: self._handle_step_hold,
             self.POST_HOLD: self._handle_post_hold,
             self.LANDING: self._handle_landing,
             self.DISARMING: self._handle_disarming,
@@ -850,10 +973,7 @@ class OffboardTranslate(Node):
             self.get_logger().info("Waiting for you to flip the Offboard switch on the TX...",
                                    throttle_duration_sec=2.0)
 
-        # The timeout only applies when WE are the ones requesting the mode --
-        # if it has not taken by now it is not going to. When a human flips the
-        # switch we wait indefinitely instead, so the node can be started at
-        # boot and sit there until someone is actually ready to fly.
+        # The timeout only applies when WE are the ones requesting the mode.
         if (self.REQUEST_OFFBOARD_FROM_ROS
                 and self._in_stage_for() > self.OFFBOARD_TIMEOUT):
             self.get_logger().error("Offboard mode not entered in time. Aborting.")
@@ -886,7 +1006,7 @@ class OffboardTranslate(Node):
             self._enter_stage(self.KILLING)
 
     def _capture_home(self):
-        # Only z and yaw are actually flown from this. x/y are recorded for
+        # z and yaw are what is actually flown from this. x/y are recorded for
         # logging only -- the ground x/y estimate is not trustworthy enough
         # to be a setpoint (see the module docstring).
         lp = self.local_position
@@ -894,11 +1014,17 @@ class OffboardTranslate(Node):
         self.home_y = lp.y
         self.home_z = lp.z
         self.home_yaw = lp.heading
+        self.yaw_setpoint = lp.heading
         self.target_z = lp.z
         self.setpoint_z = lp.z
         self.get_logger().info(
             f"Arming point captured: x={self.home_x:.2f} y={self.home_y:.2f} "
-            f"z={self.home_z:.2f} yaw={self.home_yaw:+.2f} rad")
+            f"z={self.home_z:.2f} yaw={math.degrees(self.home_yaw):+.0f} deg. "
+            f"'forward' means this heading for the whole flight."
+            if self.DIRECTION_FRAME == 'home' else
+            f"Arming point captured: x={self.home_x:.2f} y={self.home_y:.2f} "
+            f"z={self.home_z:.2f} yaw={math.degrees(self.home_yaw):+.0f} deg. "
+            f"Directions follow the commanded yaw (direction_frame=current).")
 
     def _handle_ground_wait(self):
         if not self._still_flyable():
@@ -911,7 +1037,8 @@ class OffboardTranslate(Node):
             # reset during the ground wait is already behind us.
             self.home_z = self.local_position.z
             self.setpoint_z = self.home_z
-            self.target_z = self.home_z - self.TAKEOFF_ALTITUDE
+            self.commanded_altitude = self.TAKEOFF_ALTITUDE
+            self.target_z = self.home_z - self.commanded_altitude
             self.in_band_since = None
             self.get_logger().warning(
                 f"Climbing to {self.TAKEOFF_ALTITUDE:.2f} m "
@@ -938,12 +1065,12 @@ class OffboardTranslate(Node):
         # a vehicle that blows through the target is never "there" and would
         # otherwise keep climbing for the whole TAKEOFF_TIMEOUT.
         alt = self.relative_altitude()
-        if alt is not None and alt > self.TAKEOFF_ALTITUDE + self.OVERSHOOT_ABORT:
+        if alt is not None and alt > self.commanded_altitude + self.OVERSHOOT_ABORT:
             self._begin_landing(
-                f"climb overshot: {alt:.2f} m vs {self.TAKEOFF_ALTITUDE:.2f} m target")
+                f"climb overshot: {alt:.2f} m vs {self.commanded_altitude:.2f} m target")
             return
 
-        if self._at_takeoff_altitude():
+        if self._at_commanded_altitude():
             if self.in_band_since is None:
                 self.in_band_since = time.monotonic()
             elif time.monotonic() - self.in_band_since >= self.SETTLE_SECONDS:
@@ -958,7 +1085,7 @@ class OffboardTranslate(Node):
         if self._in_stage_for() > self.TAKEOFF_TIMEOUT:
             self._begin_landing("takeoff did not settle in time")
 
-    def _at_takeoff_altitude(self):
+    def _at_commanded_altitude(self):
         """Three independent things must agree before we believe we arrived.
 
         The EKF-relative altitude alone is not enough. A height reset can put
@@ -972,14 +1099,14 @@ class OffboardTranslate(Node):
 
         # 2. The EKF-relative altitude is in the band.
         alt = self.relative_altitude()
-        if alt is None or abs(alt - self.TAKEOFF_ALTITUDE) > self.ALTITUDE_TOLERANCE:
+        if alt is None or abs(alt - self.commanded_altitude) > self.ALTITUDE_TOLERANCE:
             return False
 
         # 3. The lidar, which knows nothing of the EKF datum, roughly agrees.
         # Wider band than the EKF check: the ground is not perfectly flat and
         # this is a cross-check, not the primary measurement.
         agl = self.agl()
-        if agl is not None and abs(agl - self.TAKEOFF_ALTITUDE) > 4 * self.ALTITUDE_TOLERANCE:
+        if agl is not None and abs(agl - self.commanded_altitude) > 4 * self.ALTITUDE_TOLERANCE:
             self.get_logger().warning(
                 f"Altitude disagreement: ekf={alt:.2f} m lidar={agl:.2f} m. "
                 "Not accepting arrival.", throttle_duration_sec=2.0)
@@ -995,51 +1122,110 @@ class OffboardTranslate(Node):
 
         remaining = self.HOLD_SECONDS - self._in_stage_for()
         if remaining <= 0.0:
-            self._enter_stage(self.TRANSLATE)
+            self.step_index = 0
+            self.step_started = False
+            self._enter_stage(self.STEP)
             return
 
         self.get_logger().info(f"Holding, {remaining:.1f} s remaining...",
                                throttle_duration_sec=1.0)
         self.log_flight_state()
 
-    # ------------------------------------------------------------ translate
+    # ----------------------------------------------------------- the sequence
 
-    def _handle_translate(self):
-        """Fly MOVE_DISTANCE in the requested body direction, on position.
+    def current_step(self):
+        if self.step_index < len(self.steps):
+            return self.steps[self.step_index]
+        return None
 
-        Gated on a flow-healthy x/y latch: without one there is no meaningful
-        frame to express a target point in, and the honest answer is to skip
-        the move rather than dead-reckon it on velocity.
-        """
+    def _finish_step(self, outcome):
+        """Record how a step went and hold before starting the next one."""
+        step = self.current_step()
+        self.step_results.append(f"{step} -> {outcome}")
+        self.get_logger().warning(
+            f"Step {self.step_index + 1}/{len(self.steps)} ({step}): {outcome}")
+        self.moving = False
+        self.yaw_remaining = 0.0
+        self.step_started = False
+        self._enter_stage(self.STEP_HOLD)
+
+    def _handle_step(self):
         if not self._still_flyable():
+            return
+
+        step = self.current_step()
+        if step is None:
+            self._enter_stage(self.POST_HOLD)
             return
 
         self._try_latch_xy_hold()
         self.log_flight_state()
 
+        if step.kind == 'move':
+            self._run_move_step(step)
+        elif step.kind == 'alt':
+            self._run_alt_step(step)
+        else:
+            self._run_yaw_step(step)
+
+    def _handle_step_hold(self):
+        """Settle between steps, so each one starts from a stationary vehicle.
+
+        Without this the next step's start point is sampled while the vehicle
+        is still overshooting the last one, and the errors compound down the
+        sequence instead of each step correcting from where the previous one
+        actually finished.
+        """
+        if not self._still_flyable():
+            return
+
+        self._try_latch_xy_hold()
+
+        remaining = self.STEP_HOLD_SECONDS - self._in_stage_for()
+        if remaining <= 0.0:
+            self.step_index += 1
+            self.step_started = False
+            if self.current_step() is None:
+                self._enter_stage(self.POST_HOLD)
+            else:
+                self._enter_stage(self.STEP)
+            return
+
+        self.get_logger().info(
+            f"Settling between steps, {remaining:.1f} s remaining...",
+            throttle_duration_sec=1.0)
+        self.log_flight_state()
+
+    # ------------------------------------------------------- horizontal step
+
+    def _run_move_step(self, step):
+        """Fly step.arg metres in the step's direction, on position.
+
+        Gated on a flow-healthy x/y latch: without one there is no meaningful
+        frame to express a target point in, and the honest answer is to skip
+        the step rather than dead-reckon it on velocity.
+        """
         if not self.hold_xy:
-            if self.moving:
+            if self.step_started:
                 # Lost the estimate we were measuring the move against. Stop
                 # where we are; do not coast onwards on a number we no longer
-                # believe.
+                # believe. The rest of the sequence still runs -- the next step
+                # may well be a yaw or an altitude change, which do not need
+                # the lateral estimate at all.
                 self.moving = False
-                self.get_logger().error(
-                    "Flow lost mid-move: abandoning the translation and holding.")
-                self._enter_stage(self.POST_HOLD)
+                self._finish_step("ABANDONED, flow lost mid-move")
                 return
             if self._in_stage_for() > self.MOVE_LATCH_TIMEOUT:
-                self.get_logger().error(
-                    "Flow never became healthy enough to latch x/y, so the move "
-                    "cannot be measured. Skipping it and landing.")
-                self._enter_stage(self.POST_HOLD)
+                self._finish_step(
+                    "SKIPPED, flow never healthy enough to latch x/y")
             else:
                 self.get_logger().info(
                     "Waiting for a flow-healthy x/y hold before moving...",
                     throttle_duration_sec=1.0)
             return
 
-        if not self.moving:
-            self._begin_move()
+        if not self.step_started:
+            self._begin_move(step)
             return
 
         lp = self.local_position
@@ -1051,21 +1237,17 @@ class OffboardTranslate(Node):
             elif time.monotonic() - self.move_in_band_since >= self.MOVE_SETTLE_SECONDS:
                 travelled = math.hypot(lp.x - self.move_start_x,
                                        lp.y - self.move_start_y)
-                self.get_logger().warning(
-                    f"Move complete: {travelled:.2f} m travelled of "
-                    f"{self.MOVE_DISTANCE:.2f} m commanded {self.MOVE_DIRECTION}.")
-                # Park the hold exactly on the target so the post-move hold is
-                # station keeping, not a slow continuation of the move.
+                # Park the hold exactly on the target so the settle is station
+                # keeping, not a slow continuation of the move.
                 self.hold_x = self.move_target_x
                 self.hold_y = self.move_target_y
-                self.moving = False
-                self.move_done = True
-                self._enter_stage(self.POST_HOLD)
+                self._finish_step(
+                    f"done, {travelled:.2f} m travelled of {step.arg:.2f} m")
             return
 
         self.move_in_band_since = None
         self.get_logger().info(
-            f"Moving {self.MOVE_DIRECTION}: {remaining:.2f} m to go.",
+            f"Moving {step.name}: {remaining:.2f} m to go.",
             throttle_duration_sec=1.0)
 
         if self._in_stage_for() > self.MOVE_TIMEOUT:
@@ -1074,31 +1256,177 @@ class OffboardTranslate(Node):
             self.moving = False
             self.hold_x = lp.x
             self.hold_y = lp.y
-            self.get_logger().error(
-                f"Move timed out {remaining:.2f} m short of the target. "
-                "Holding here, then landing.")
-            self._enter_stage(self.POST_HOLD)
+            self._finish_step(f"TIMED OUT {remaining:.2f} m short")
 
-    def _begin_move(self):
-        cos_yaw = math.cos(self.home_yaw)
-        sin_yaw = math.sin(self.home_yaw)
-        ux, uy = self.DIRECTIONS[self.MOVE_DIRECTION](cos_yaw, sin_yaw)
+    def _reference_yaw(self):
+        """The yaw that 'forward' is measured against.
+
+        'home' (the default) is the heading held at arming, so a yaw step in
+        the middle of the sequence changes where the airframe points but not
+        what 'forward' means. 'current' is the yaw currently commanded, which
+        makes each move relative to whatever the last yaw step left us at.
+        """
+        return self.home_yaw if self.DIRECTION_FRAME == 'home' else self.yaw_setpoint
+
+    def _begin_move(self, step):
+        ref_yaw = self._reference_yaw()
+        ux, uy = DIRECTIONS[step.name](math.cos(ref_yaw), math.sin(ref_yaw))
 
         # From the LATCHED point, not from the raw estimate: hold_x/hold_y is
         # what the vehicle is currently being commanded to, so measuring the
         # move from it is what makes the commanded distance the flown distance.
         self.move_start_x = self.hold_x
         self.move_start_y = self.hold_y
-        self.move_target_x = self.hold_x + ux * self.MOVE_DISTANCE
-        self.move_target_y = self.hold_y + uy * self.MOVE_DISTANCE
+        self.move_target_x = self.hold_x + ux * step.arg
+        self.move_target_y = self.hold_y + uy * step.arg
         self.move_in_band_since = None
         self.moving = True
+        self.step_started = True
+        self._restart_stage_clock()
 
         self.get_logger().warning(
-            f"Moving {self.MOVE_DISTANCE:.2f} m {self.MOVE_DIRECTION} at "
-            f"{self.MOVE_SPEED:.2f} m/s: ({self.move_start_x:.2f}, "
-            f"{self.move_start_y:.2f}) -> ({self.move_target_x:.2f}, "
-            f"{self.move_target_y:.2f}) NED.")
+            f"Step {self.step_index + 1}/{len(self.steps)}: {step.arg:.2f} m "
+            f"{step.name} at {self.MOVE_SPEED:.2f} m/s, in the "
+            f"{math.degrees(ref_yaw):+.0f} deg frame: "
+            f"({self.move_start_x:.2f}, {self.move_start_y:.2f}) -> "
+            f"({self.move_target_x:.2f}, {self.move_target_y:.2f}) NED.")
+
+    # --------------------------------------------------------- altitude step
+
+    def _run_alt_step(self, step):
+        """Climb or descend step.arg metres (signed, positive up).
+
+        Flown by the same z ramp as the takeoff, just with a new target, so
+        the leash and the climb/descend rate limits all still apply.
+        """
+        if not self.step_started:
+            requested = self.commanded_altitude + step.arg
+            clamped = min(max(requested, self.MIN_ALTITUDE), self.MAX_ALTITUDE)
+            if abs(clamped - requested) > 1e-3:
+                self.get_logger().error(
+                    f"Altitude step would take us to {requested:.2f} m, outside "
+                    f"the {self.MIN_ALTITUDE:.2f}-{self.MAX_ALTITUDE:.2f} m "
+                    f"envelope. Clamping to {clamped:.2f} m.")
+            self.commanded_altitude = clamped
+            self.target_z = self.home_z - self.commanded_altitude
+            self.in_band_since = None
+            self.step_started = True
+            self._restart_stage_clock()
+            self.get_logger().warning(
+                f"Step {self.step_index + 1}/{len(self.steps)}: "
+                f"{'up' if step.arg > 0 else 'down'} {abs(step.arg):.2f} m "
+                f"to {self.commanded_altitude:.2f} m above the arming point.")
+            return
+
+        # Same runaway guard as the takeoff: the arrival test only fires inside
+        # a narrow band, so without this a vehicle that sails past the target
+        # is simply never "there".
+        alt = self.relative_altitude()
+        if alt is not None and alt > self.commanded_altitude + self.OVERSHOOT_ABORT:
+            self._begin_landing(
+                f"altitude step overshot: {alt:.2f} m vs "
+                f"{self.commanded_altitude:.2f} m target")
+            return
+
+        if self._at_commanded_altitude():
+            if self.in_band_since is None:
+                self.in_band_since = time.monotonic()
+            elif time.monotonic() - self.in_band_since >= self.SETTLE_SECONDS:
+                self._finish_step(f"done, now at {alt:.2f} m")
+            return
+
+        self.in_band_since = None
+        self.get_logger().info(
+            f"Changing altitude: {alt:+.2f} m now, "
+            f"{self.commanded_altitude:.2f} m wanted.",
+            throttle_duration_sec=1.0)
+
+        if self._in_stage_for() > self.ALT_STEP_TIMEOUT:
+            # Freeze the ramp where the vehicle actually is rather than leaving
+            # a setpoint it is evidently not reaching hanging over the rest of
+            # the sequence.
+            if alt is not None:
+                self.commanded_altitude = alt
+                self.target_z = self.local_position.z
+                self.setpoint_z = self.local_position.z
+            self._finish_step("TIMED OUT, holding the altitude we reached")
+
+    # -------------------------------------------------------------- yaw step
+
+    def _run_yaw_step(self, step):
+        """Rotate step.arg radians in place.
+
+        Walked as a ramped yaw setpoint rather than commanded as a step, for
+        the same reason the translations are ramped: a step change makes PX4
+        spin as fast as MC_YAWRATE_MAX allows, and a fast yaw both smears the
+        optical flow and, on a vehicle holding position from that flow, turns
+        a rotation into a translation.
+
+        The requested sign is respected rather than taking the short way
+        round, so `yaw -270` really does rotate 270 degrees anticlockwise.
+        """
+        if not self.step_started:
+            self.yaw_remaining = step.arg
+            self.yaw_in_band_since = None
+            self.step_started = True
+            self._restart_stage_clock()
+            target = math.degrees(wrap_pi(self.yaw_setpoint + step.arg))
+            self.get_logger().warning(
+                f"Step {self.step_index + 1}/{len(self.steps)}: yaw "
+                f"{math.degrees(step.arg):+.0f} deg at "
+                f"{math.degrees(self.YAW_RATE):.0f} deg/s, to a heading of "
+                f"{target:+.0f} deg. Holding position through the turn.")
+            return
+
+        lp = self.local_position
+        error = abs(wrap_pi(self.yaw_setpoint - lp.heading))
+
+        if abs(self.yaw_remaining) < 1e-3 and error <= self.YAW_TOLERANCE:
+            if self.yaw_in_band_since is None:
+                self.yaw_in_band_since = time.monotonic()
+            elif time.monotonic() - self.yaw_in_band_since >= self.YAW_SETTLE_SECONDS:
+                self._finish_step(
+                    f"done, heading {math.degrees(lp.heading):+.0f} deg")
+            return
+
+        self.yaw_in_band_since = None
+        self.get_logger().info(
+            f"Yawing: {math.degrees(abs(self.yaw_remaining)):.0f} deg of setpoint "
+            f"left, airframe {math.degrees(error):.0f} deg behind it.",
+            throttle_duration_sec=1.0)
+
+        if self._in_stage_for() > self.YAW_TIMEOUT:
+            # Accept whatever heading we actually have and stop asking for the
+            # rest, so the next step is not fighting a yaw error forever.
+            self.yaw_remaining = 0.0
+            self.yaw_setpoint = lp.heading
+            self._finish_step(
+                f"TIMED OUT at {math.degrees(lp.heading):+.0f} deg, "
+                f"{math.degrees(error):.0f} deg short")
+
+    def _step_yaw_ramp(self):
+        """Walk the commanded yaw one tick towards the requested rotation."""
+        if abs(self.yaw_remaining) < 1e-9:
+            return
+
+        lp = self.local_position
+        # Leash: while the airframe is more than YAW_LEASH behind the commanded
+        # yaw it is not keeping up, and walking further just banks up an error
+        # PX4 pays back as one fast spin when it finally catches up.
+        if lp is not None:
+            if abs(wrap_pi(self.yaw_setpoint - lp.heading)) > self.YAW_LEASH:
+                return
+
+        step = self.YAW_RATE * 0.05
+        if abs(self.yaw_remaining) <= step:
+            self.yaw_setpoint = wrap_pi(self.yaw_setpoint + self.yaw_remaining)
+            self.yaw_remaining = 0.0
+        else:
+            move = step if self.yaw_remaining > 0 else -step
+            self.yaw_setpoint = wrap_pi(self.yaw_setpoint + move)
+            self.yaw_remaining -= move
+
+    # ------------------------------------------------------------- post hold
 
     def _handle_post_hold(self):
         if not self._still_flyable():
@@ -1108,11 +1436,13 @@ class OffboardTranslate(Node):
 
         remaining = self.POST_HOLD_SECONDS - self._in_stage_for()
         if remaining <= 0.0:
-            self._begin_landing("post-move hold complete")
+            self.get_logger().warning(
+                "Sequence complete: " + "; ".join(self.step_results))
+            self._begin_landing("sequence complete")
             return
 
         self.get_logger().info(
-            f"Holding after the move, {remaining:.1f} s remaining...",
+            f"Holding after the last step, {remaining:.1f} s remaining...",
             throttle_duration_sec=1.0)
         self.log_flight_state()
 
@@ -1137,6 +1467,8 @@ class OffboardTranslate(Node):
             self.get_logger().warning(
                 "Flow unhealthy: reverting to zero-velocity hold.")
 
+    # --------------------------------------------------------------- landing
+
     def _handle_landing(self):
         if self.arming_state != VehicleStatus.ARMING_STATE_ARMED:
             self.get_logger().info("Disarmed during descent. Done.")
@@ -1144,9 +1476,7 @@ class OffboardTranslate(Node):
             return
 
         # If PX4 or the pilot has taken the aircraft off us mid-descent, let
-        # go of it completely. Carrying on would mean racing the pilot for the
-        # setpoint and, once LANDING_TIMEOUT expired, disarming an aircraft
-        # somebody else is flying.
+        # go of it completely.
         if self.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
             self.get_logger().error(
                 "Offboard lost during descent; PX4 has control now "
@@ -1171,8 +1501,7 @@ class OffboardTranslate(Node):
         if self._in_stage_for() > self.LANDING_TIMEOUT:
             # Never disarm on a timeout while we may still be in the air --
             # that is a free-fall, not a landing. Hand the aircraft to PX4's
-            # own auto-land, which has a better height estimate than we do,
-            # and get out of its way.
+            # own auto-land and get out of its way.
             if self.is_airborne():
                 self.get_logger().error(
                     "Landing timed out and we may still be airborne. "
@@ -1212,9 +1541,9 @@ class OffboardTranslate(Node):
 
         WHY THE LAND DETECTOR IS NOT ENOUGH ON ITS OWN
         ----------------------------------------------
-        This is the bug from the forward-translation flight: the vehicle was
+        This is the bug from the last translate flight: the vehicle was
         visibly sitting on the ground and VehicleLandDetected.landed stayed
-        false, so the descent ran until LANDING_TIMEOUT expired.
+        false until LANDING_TIMEOUT expired.
 
         MulticopterLandDetector::_get_ground_contact_state() refuses to declare
         ground contact while it believes the vehicle is being asked to hold or
@@ -1225,13 +1554,12 @@ class OffboardTranslate(Node):
 
         and, when altitude/climb-rate control is active and _in_descend is
         false, it treats the vehicle as still flying. A pure position setpoint
-        publishes velocity[2] = NaN, so _in_descend is false by construction no
-        matter how firmly the vehicle is planted -- which is exactly what this
-        node was sending. publish_position_setpoint() now sends a finite
-        descent velocity alongside the position ramp while landing, but note it
-        only satisfies PX4's test if LAND_SPEED >= 0.9 * MPC_LAND_SPEED, so set
-        MPC_LAND_SPEED at or below the land_speed used here (0.2 is a sensible
-        pairing for land_speed 0.15).
+        publishes velocity[2] = NaN, so _in_descend is false by construction
+        no matter how firmly the vehicle is planted. That is why publish_
+        position_setpoint() now sends a finite descent velocity alongside the
+        position ramp while landing -- but note it only satisfies PX4's test if
+        land_speed >= 0.9 * MPC_LAND_SPEED, so set MPC_LAND_SPEED at or below
+        the land_speed used here (0.2 is a sensible pair for land_speed 0.15+).
 
         Rather than depend on getting that parameter pairing right on the day,
         the fallback below answers the question from geometry we measure
@@ -1247,8 +1575,11 @@ class OffboardTranslate(Node):
         ground, so all three together for STALL_CONFIRM_SECONDS means down.
         """
         touched = self.land_detector_seen and self.landed
-        if not touched:
-            self.landed_since = None
+        if touched:
+            self.stall_since = None
+        else:
+            if self.landed_since is not None:
+                self.landed_since = None
             if self._descent_has_stalled():
                 if self.stall_since is None:
                     self.stall_since = time.monotonic()
@@ -1266,7 +1597,6 @@ class OffboardTranslate(Node):
                 self.stall_since = None
             return False
 
-        self.stall_since = None
         if self.landed_since is None:
             self.landed_since = time.monotonic()
         return time.monotonic() - self.landed_since >= self.LANDED_CONFIRM_SECONDS
@@ -1296,6 +1626,9 @@ class OffboardTranslate(Node):
     def _handle_disarming(self):
         if self.arming_state == VehicleStatus.ARMING_STATE_DISARMED:
             self.get_logger().info("Disarmed. Flight complete.")
+            if self.step_results:
+                self.get_logger().info(
+                    "Sequence result: " + "; ".join(self.step_results))
             self._enter_stage(self.DONE)
             return
 
@@ -1392,6 +1725,8 @@ class OffboardTranslate(Node):
 
         Fields are always present and always in this order so the consumer
         can split on '|' without guessing. Empty detail is an empty field.
+        Same format and topic as the takeoff and translate nodes, so the LCD
+        node reads this one unchanged.
         """
         alt = self.relative_altitude()
         armed = self.arming_state == VehicleStatus.ARMING_STATE_ARMED
@@ -1404,14 +1739,24 @@ class OffboardTranslate(Node):
         elif self.current_stage == self.POST_HOLD:
             detail = f"{max(0.0, self.POST_HOLD_SECONDS - self._in_stage_for()):.0f}s"
         elif self.current_stage == self.TAKEOFF:
-            detail = f"tgt{self.TAKEOFF_ALTITUDE:.2f}"
-        elif self.current_stage == self.TRANSLATE:
-            if self.moving and self.local_position is not None:
+            detail = f"tgt{self.commanded_altitude:.2f}"
+        elif self.current_stage == self.STEP_HOLD:
+            detail = f"{self.step_index + 1}/{len(self.steps)} ok"
+        elif self.current_stage == self.STEP:
+            step = self.current_step()
+            n = f"{self.step_index + 1}/{len(self.steps)}"
+            if step is None:
+                detail = n
+            elif step.kind == 'move' and self.moving and self.local_position is not None:
                 left = math.hypot(self.move_target_x - self.local_position.x,
                                   self.move_target_y - self.local_position.y)
-                detail = f"{self.MOVE_DIRECTION[:3]}{left:.2f}"
+                detail = f"{n} {step.name[:3]}{left:.2f}"
+            elif step.kind == 'alt':
+                detail = f"{n} {step.name[:2]}{self.commanded_altitude:.2f}"
+            elif step.kind == 'yaw':
+                detail = f"{n} yaw{math.degrees(abs(self.yaw_remaining)):.0f}"
             else:
-                detail = f"{self.MOVE_DIRECTION[:3]} wait"
+                detail = f"{n} {step.name[:3]} wait"
         elif self.current_stage == self.OFFBOARD_REQUEST:
             detail = 'flip sw'
 
@@ -1466,18 +1811,19 @@ class OffboardTranslate(Node):
             # steady sink rate and "do not translate".
             msg.position = [nan, nan, nan]
             msg.velocity = [0.0, 0.0, self.LAND_SPEED]
-            msg.yaw = self.home_yaw
+            msg.yaw = self.yaw_setpoint
             self.trajectory_setpoint_pub.publish(msg)
             return
 
         self._step_setpoint_ramp()
         self._step_xy_ramp()
+        self._step_yaw_ramp()
 
         # While landing, publish the sink rate as well as the position ramp.
         # PX4's land detector reads velocity[2] out of this very message and
         # will not declare ground contact while it is NaN -- see
-        # _touchdown_confirmed() for the full story. As a setpoint it is only a
-        # feed-forward on top of the position ramp, which is already walking
+        # _touchdown_confirmed() for the full story. As a setpoint it is only
+        # a feed-forward on top of the position ramp, which is already walking
         # down at exactly this rate, so it changes nothing about the descent.
         vz = self.LAND_SPEED if self.current_stage == self.LANDING else nan
 
@@ -1492,7 +1838,7 @@ class OffboardTranslate(Node):
             msg.position = [nan, nan, self.setpoint_z]
             msg.velocity = [0.0, 0.0, vz]
 
-        msg.yaw = self.home_yaw
+        msg.yaw = self.yaw_setpoint
         self.trajectory_setpoint_pub.publish(msg)
 
     def _step_setpoint_ramp(self):
@@ -1517,15 +1863,12 @@ class OffboardTranslate(Node):
         # ramping thrust at the start of the climb, during which the vehicle
         # does not move; an unleashed ramp walks the full way to the target in
         # that time, and the position error it banks up gets flown out as a
-        # lurch the moment there is thrust to do it with. The same clamp stops
-        # the descent from burying the setpoint metres underground if the
-        # vehicle hangs up on something.
-        # Only bind the leash while the vehicle is not actually following. Its
-        # job is the standing start, where PX4 is still ramping thrust and the
-        # ramp would otherwise walk away unopposed. Once the vehicle is moving
-        # vertically, holding the setpoint a fixed distance ahead of it just
-        # manufactures a constant position error for PX4's velocity integrator
-        # to wind up on, and that windup is paid back as overshoot at the top.
+        # lurch the moment there is thrust to do it with.
+        #
+        # Only bind the leash while the vehicle is not actually following. Once
+        # it is moving vertically, holding the setpoint a fixed distance ahead
+        # just manufactures a constant position error for PX4's velocity
+        # integrator to wind up on, and that windup is paid back as overshoot.
         lp = self.local_position
         if lp is not None and lp.z_valid and abs(lp.vz) < self.LEASH_RELEASE_VZ:
             self.setpoint_z = min(max(self.setpoint_z, lp.z - self.SETPOINT_LEASH),
@@ -1577,9 +1920,8 @@ class OffboardTranslate(Node):
 
         Every stage that sends a command sends it from a 20 Hz timer tick.
         Unthrottled that is 20 identical commands a second into PX4's command
-        queue, which overruns it and gets commands dropped -- the arm request
-        and the mode request end up competing with their own repeats. One every
-        250 ms is still four chances a second and leaves the queue room.
+        queue, which overruns it and gets commands dropped. One every 250 ms is
+        still four chances a second and leaves the queue room.
         `force=True` bypasses the throttle for one-shot commands.
         """
         now = time.monotonic()
@@ -1609,7 +1951,7 @@ class OffboardTranslate(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = OffboardTranslate()
+    node = OffboardSequence()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
