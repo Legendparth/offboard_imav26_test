@@ -1,18 +1,87 @@
-[offboard_takeoff-3] [INFO] [1788564598.111270295] [offboard_takeoff]: nav_state -> 4
-[offboard_takeoff-3] [ERROR] [1788564598.116499113] [offboard_takeoff]: Not arming: rangefinder is NOT being fused (cs_rng_kin_consistent false) -- the height estimate is unanchored and would free-run. Reboot the flight controller, or fly it up and down faster than 0.5 m/s in Position mode to let the check re-latch.
-[offboard_takeoff-3] [INFO] [1788564598.117470274] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00)
-[offboard_takeoff-3] [INFO] [1788564599.118671055] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00)
-[offboard_takeoff-3] [ERROR] [1788564600.117557643] [offboard_takeoff]: Not arming: rangefinder is NOT being fused (cs_rng_kin_consistent false) -- the height estimate is unanchored and would free-run. Reboot the flight controller, or fly it up and down faster than 0.5 m/s in Position mode to let the check re-latch.
-[offboard_takeoff-3] [INFO] [1788564600.119269320] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.00)
-[offboard_takeoff-3] [INFO] [1788564601.168597057] [offboard_takeoff]: alt=n/a airborne=False xy_valid=False z_valid=True | dist_bottom=0.10 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.00)
-
-## this message comes up when i try to run the ros2 launch file, why does this happen and how can we avoid this?? what can be the fix for this??
-
-[offboard_takeoff-3] [INFO] [1788564374.067343763] [offboard_takeoff]: Armed on the ground, 1.9 s to takeoff...
-[offboard_takeoff-3] [INFO] [1788564374.069015036] [offboard_takeoff]: alt=+0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.11 m rng_ok=True vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.00)
-[offboard_takeoff-3] [INFO] [1788564374.183000391] [offboard_takeoff]: nav_state -> 18
-[offboard_takeoff-3] [ERROR] [1788564374.217410397] [offboard_takeoff]: Offboard lost; PX4 has control now. Standing down.
-[offboard_takeoff-3] [INFO] [1788564374.266654559] [offboard_takeoff]: Idle. Ctrl-C to exit.
-^C[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
-
-## even after arming, it happened twice that the offboard was lost and it shows this error message, please help me figure this out and fix it.
+[INFO] [window_detect-3]: process started with pid [11752]
+[window_detect-3] 
+[window_detect-3] A module that was compiled using NumPy 1.x cannot be run in
+[window_detect-3] NumPy 2.5.2 as it may crash. To support both 1.x and 2.x
+[window_detect-3] versions of NumPy, modules must be compiled with NumPy 2.0.
+[window_detect-3] Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+[window_detect-3] 
+[window_detect-3] If you are a user of the module, the easiest solution will be to
+[window_detect-3] downgrade to 'numpy<2' or try to upgrade the affected module.
+[window_detect-3] We expect that some modules will need time to support NumPy 2.
+[window_detect-3] 
+[window_detect-3] Traceback (most recent call last):  File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect", line 33, in <module>
+[window_detect-3]     sys.exit(load_entry_point('drone_testing==0.0.0', 'console_scripts', 'window_detect')())
+[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect", line 25, in importlib_load_entry_point
+[window_detect-3]     return next(matches).load()
+[window_detect-3]   File "/usr/lib/python3.12/importlib/metadata/__init__.py", line 205, in load
+[window_detect-3]     module = import_module(match.group('module'))
+[window_detect-3]   File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+[window_detect-3]     return _bootstrap._gcd_import(name[level:], package, level)
+[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_detect.py", line 66, in <module>
+[window_detect-3]     from cv_bridge import CvBridge
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/cv_bridge/__init__.py", line 6, in <module>
+[window_detect-3]     from cv_bridge.boost.cv_bridge_boost import cvtColorForDisplay, getCvType
+[window_detect-3] Traceback (most recent call last):
+[window_detect-3]   File "/home/ark-jetson-orin/.local/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+[window_detect-3]     raise ImportError(msg)
+[window_detect-3] ImportError: 
+[window_detect-3] A module that was compiled using NumPy 1.x cannot be run in
+[window_detect-3] NumPy 2.5.2 as it may crash. To support both 1.x and 2.x
+[window_detect-3] versions of NumPy, modules must be compiled with NumPy 2.0.
+[window_detect-3] Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+[window_detect-3] 
+[window_detect-3] If you are a user of the module, the easiest solution will be to
+[window_detect-3] downgrade to 'numpy<2' or try to upgrade the affected module.
+[window_detect-3] We expect that some modules will need time to support NumPy 2.
+[window_detect-3] 
+[window_detect-3] 
+[window_detect-3] [INFO] [1788647655.479900805] [window_detect]: Window detection up. image=/zed/zed_node/rgb/color/rect/image depth=/zed/zed_node/depth/depth_registered color=red. Publishing /window_detected, /window_info, /window_detection/image.
+[window_detect-3] 
+[window_detect-3] A module that was compiled using NumPy 1.x cannot be run in
+[window_detect-3] NumPy 2.5.2 as it may crash. To support both 1.x and 2.x
+[window_detect-3] versions of NumPy, modules must be compiled with NumPy 2.0.
+[window_detect-3] Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+[window_detect-3] 
+[window_detect-3] If you are a user of the module, the easiest solution will be to
+[window_detect-3] downgrade to 'numpy<2' or try to upgrade the affected module.
+[window_detect-3] We expect that some modules will need time to support NumPy 2.
+[window_detect-3] 
+[window_detect-3] Traceback (most recent call last):  File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect", line 33, in <module>
+[window_detect-3]     sys.exit(load_entry_point('drone_testing==0.0.0', 'console_scripts', 'window_detect')())
+[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_detect.py", line 499, in main
+[window_detect-3]     rclpy.spin(node)
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/__init__.py", line 247, in spin
+[window_detect-3]     executor.spin_once()
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 926, in spin_once
+[window_detect-3]     self._spin_once_impl(timeout_sec)
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 916, in _spin_once_impl
+[window_detect-3]     handler()
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/task.py", line 270, in __call__
+[window_detect-3]     self._execute_coroutine_step(self._handler)
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/task.py", line 286, in _execute_coroutine_step
+[window_detect-3]     result = coro.send(None)
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 592, in handler
+[window_detect-3]     await call_coroutine()
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 480, in _execute
+[window_detect-3]     await await_or_execute(sub.callback, *msg_tuple)
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 115, in await_or_execute
+[window_detect-3]     return callback(*args)
+[window_detect-3]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_detect.py", line 264, in image_callback
+[window_detect-3]     cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+[window_detect-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/cv_bridge/core.py", line 194, in imgmsg_to_cv2
+[window_detect-3]     res = cvtColor2(im, img_msg.encoding, desired_encoding)
+[window_detect-3] Traceback (most recent call last):
+[window_detect-3]   File "/home/ark-jetson-orin/.local/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+[window_detect-3]     raise ImportError(msg)
+[window_detect-3] ImportError: 
+[window_detect-3] A module that was compiled using NumPy 1.x cannot be run in
+[window_detect-3] NumPy 2.5.2 as it may crash. To support both 1.x and 2.x
+[window_detect-3] versions of NumPy, modules must be compiled with NumPy 2.0.
+[window_detect-3] Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+[window_detect-3] 
+[window_detect-3] If you are a user of the module, the easiest solution will be to
+[window_detect-3] downgrade to 'numpy<2' or try to upgrade the affected module.
+[window_detect-3] We expect that some modules will need time to support NumPy 2.
+[window_detect-3] 
+[window_detect-3] 
+[ERROR] [window_detect-3]: process has died [pid 11752, exit code -11, cmd '/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/window_detect --ros-args -r __node:=window_detect --params-file /tmp/launch_params_g8wy14if'].

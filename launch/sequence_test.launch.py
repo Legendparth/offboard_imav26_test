@@ -63,7 +63,7 @@ def generate_launch_description():
     # Delay so the DDS session is up and PX4 topics exist before the node
     # starts publishing. Without this the first setpoints are dropped.
     sequence_node = TimerAction(
-        period=5.0,
+        period=10.0,
         actions=[
             Node(
                 package='drone_testing',
