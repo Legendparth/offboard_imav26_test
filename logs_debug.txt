@@ -1,195 +1,25 @@
-/fmu/in/actuator_motors
-/fmu/in/actuator_servos
-/fmu/in/arming_check_reply_v1
-/fmu/in/aux_global_position
-/fmu/in/config_control_setpoints
-/fmu/in/config_overrides_request
-/fmu/in/distance_sensor
-/fmu/in/fixed_wing_lateral_setpoint
-/fmu/in/fixed_wing_longitudinal_setpoint
-/fmu/in/goto_setpoint
-/fmu/in/landing_gear
-/fmu/in/lateral_control_configuration
-/fmu/in/longitudinal_control_configuration
-/fmu/in/manual_control_input
-/fmu/in/message_format_request
-/fmu/in/mode_completed
-/fmu/in/obstacle_distance
-/fmu/in/offboard_control_mode
-/fmu/in/onboard_computer_status
-/fmu/in/register_ext_component_request
-/fmu/in/rover_attitude_setpoint
-/fmu/in/rover_position_setpoint
-/fmu/in/rover_rate_setpoint
-/fmu/in/rover_speed_setpoint
-/fmu/in/rover_steering_setpoint
-/fmu/in/rover_throttle_setpoint
-/fmu/in/sensor_optical_flow
-/fmu/in/telemetry_status
-/fmu/in/trajectory_setpoint
-/fmu/in/unregister_ext_component
-/fmu/in/vehicle_attitude_setpoint_v1
-/fmu/in/vehicle_command
-/fmu/in/vehicle_command_mode_executor
-/fmu/in/vehicle_mocap_odometry
-/fmu/in/vehicle_rates_setpoint
-/fmu/in/vehicle_thrust_setpoint
-/fmu/in/vehicle_torque_setpoint
-/fmu/in/vehicle_visual_odometry
-/fmu/out/airspeed_validated_v1
-/fmu/out/arming_check_request_v1
-/fmu/out/battery_status_v1
-/fmu/out/collision_constraints
-/fmu/out/estimator_status_flags
-/fmu/out/failsafe_flags
-/fmu/out/gimbal_device_attitude_status
-/fmu/out/home_position_v1
-/fmu/out/manual_control_setpoint
-/fmu/out/message_format_response
-/fmu/out/mode_completed
-/fmu/out/position_setpoint_triplet
-/fmu/out/register_ext_component_reply
-/fmu/out/sensor_combined
-/fmu/out/timesync_status
-/fmu/out/transponder_report
-/fmu/out/vehicle_attitude
-/fmu/out/vehicle_command_ack
-/fmu/out/vehicle_control_mode
-/fmu/out/vehicle_global_position
-/fmu/out/vehicle_gps_position
-/fmu/out/vehicle_land_detected
-/fmu/out/vehicle_land_detected_v1
-/fmu/out/vehicle_local_position_v1
-/fmu/out/vehicle_odometry
-/fmu/out/vehicle_status_v1
-/fmu/out/vtol_vehicle_status
-/fmu/out/wind
+nsh> ekf2 status
+INFO  [ekf2] available instances: 2
+INFO  [ekf2] 0: ACC: 4259850, GYRO: 4325386, MAG: 396321, healthy, test ratio: 1.0000000 (0.00000) *
+INFO  [ekf2] 1: ACC: 2490378, GYRO: 2490378, MAG: 396321, healthy, test ratio: 1.0000000 (0.00000) 
 
-timestamp: 1788547479911877
-timestamp_sample: 1788547479740212
-control_status_changes: 22
-cs_tilt_align: true
-cs_yaw_align: false
-cs_gnss_pos: false
-cs_opt_flow: true
-cs_mag_hdg: false
-cs_mag_3d: false
-cs_mag_dec: false
-cs_in_air: false
-cs_wind: false
-cs_baro_hgt: true
-cs_rng_hgt: true
-cs_gps_hgt: false
-cs_ev_pos: false
-cs_ev_yaw: false
-cs_ev_hgt: false
-cs_fuse_beta: false
-cs_mag_field_disturbed: false
-cs_fixed_wing: false
-cs_mag_fault: false
-cs_fuse_aspd: false
-cs_gnd_effect: false
-cs_rng_stuck: false
-cs_gnss_yaw: false
-cs_mag_aligned_in_flight: false
-cs_ev_vel: false
-cs_synthetic_mag_z: false
-cs_vehicle_at_rest: true
-cs_gnss_yaw_fault: false
-cs_rng_fault: false
-cs_inertial_dead_reckoning: false
-cs_wind_dead_reckoning: false
-cs_rng_kin_consistent: true
-cs_fake_pos: false
-cs_fake_hgt: false
-cs_gravity_vector: false
-cs_mag: false
-cs_ev_yaw_fault: false
-cs_mag_heading_consistent: false
-cs_aux_gpos: false
-cs_rng_terrain: false
-cs_opt_flow_terrain: false
-cs_valid_fake_pos: false
-cs_constant_pos: false
-cs_baro_fault: false
-cs_gnss_vel: false
-cs_gnss_fault: false
-cs_yaw_manual: false
-cs_gnss_hgt_fault: false
-fault_status_changes: 0
-fs_bad_mag_x: false
-fs_bad_mag_y: false
-fs_bad_mag_z: false
-fs_bad_hdg: false
-fs_bad_mag_decl: false
-fs_bad_airspeed: false
-fs_bad_sideslip: false
-fs_bad_optflow_x: false
-fs_bad_optflow_y: false
-fs_bad_acc_vertical: false
-fs_bad_acc_clipping: false
-innovation_fault_status_changes: 10
-reject_hor_vel: false
-reject_ver_vel: false
-reject_hor_pos: false
-reject_ver_pos: false
-reject_yaw: false
-reject_airspeed: false
-reject_sideslip: false
-reject_hagl: false
-reject_optflow_x: false
-reject_optflow_y: false
----
+ekf2:0 EKF dt: 0.0090s, attitude: 1, local position: 1, global position: 0
+ekf2: EKF update: 26950 events, 7863892us elapsed, 291.80us avg, min 86us max 572us 50.713us rms
+ekf2: IMU message missed: 1 events
 
-nsh> uavcan status
-Pool allocator status:
-    Capacity hard/soft: 500/250 blocks
-    Reserved:  107 blocks
-    Allocated: 14 blocks
-
-UAVCAN node status:
-    Internal failures: 0
-    Transfer errors:   3
-    RX transfers:      272356
-    TX transfers:      27314
-
-CAN1 status:
-    HW errors: 279
-    IO errors: 279
-    RX frames: 998801
-    TX frames: 42326
-CAN2 status:
-    HW errors: 45244
-    IO errors: 45328
-    RX frames: 0
-    TX frames: 42242
-
-Sensor 'flow':
-name: uavcan_flow
-channel 0: node id 125 --> instance 0
-
-Sensor 'mag':
-name: uavcan_mag
-
-Sensor 'rangefinder':
-name: uavcan_rangefinder
-channel 0: node id 125 --> instance 0
-
-Online nodes (Node ID, Health, Mode):
-     125 OK         OPERAT    
-
-uavcan: cycle time: 1425588 events, 49208542us elapsed, 34.52us avg, min 8us max 287138us 246.091us rms
-uavcan: cycle interval: 1425593 events, 1056.96us avg, min 12us max 287142us 1150.820us rms
+ekf2:1 EKF dt: 0.0101s, attitude: 1, local position: 1, global position: 0
+ekf2: EKF update: 23944 events, 7705355us elapsed, 321.81us avg, min 87us max 1579us 138.775us rms
+ekf2: IMU message missed: 0 events
 
 nsh> listener distance_sensor
 
 TOPIC: distance_sensor
  distance_sensor
-    timestamp: 2171378358 (0.018687 seconds ago)
+    timestamp: 270772804 (0.012863 seconds ago)
     device_id: 9010435 (Type: 0x89, UAVCAN:0 (0x7D))
     min_distance: 0.02000
     max_distance: 30.00000
-    current_distance: 0.09198
+    current_distance: 0.09698
     variance: 0.00000
     h_fov: 0.10473
     v_fov: 0.10473
@@ -199,28 +29,3 @@ TOPIC: distance_sensor
     orientation: 25
     mode: 0
 
-nsh> ver all
-HW arch: PX4_FMU_V6C
-HW type: V6C000001
-HW version: 0x000
-HW revision: 0x001
-PX4 git-hash: d6f12ad1c4f70ad3230afd7d86e971421e02fef4
-PX4 version: Release 1.17.0 (17891583)
-PX4 git-branch: stable
-OS: NuttX
-OS version: Release 11.0.0 (184549631)
-OS git-hash: fb2fadf6f599c1406f052db013efd00a2518e72c
-Build datetime: May 13 2026 18:50:30
-Build uri: localhost
-Build variant: default
-Toolchain: GNU GCC, 13.2.1 20231009
-PX4GUID: 0006000000003238363532335110002b0026
-MCU: STM32H7[4|5]xxx, rev. V
-
-EKF2_RNG_CTRL = 2 (Enabled)
-EKF2_HGT_REF = 2 (RANGE SENSOR)
-EKF2_OF_CTRL = 2 (enabled)
-EKF2_MIN_RNG = 0.1m
-UAVCAN_ENABLE = 2 (sensor auto...)
-UAVCAN_SUB_RNG = 1 (enabled)
-UAVCAN_SUB_FLOW = 1 (enabled)
