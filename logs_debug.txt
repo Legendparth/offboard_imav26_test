@@ -1,41 +1,59 @@
-nsh> uavcan status
-Pool allocator status:
-    Capacity hard/soft: 500/250 blocks
-    Reserved:  10 blocks
-    Allocated: 10 blocks
-
-UAVCAN node status:
-    Internal failures: 0
-    Transfer errors:   0
-    RX transfers:      55
-    TX transfers:      775
-
-CAN1 status:
-    HW errors: 0
-    IO errors: 0
-    RX frames: 55
-    TX frames: 1229
-CAN2 status:
-    HW errors: 1331
-    IO errors: 1331
-    RX frames: 0
-    TX frames: 1229
-
-Sensor 'flow':
-name: uavcan_flow
-
-Sensor 'mag':
-name: uavcan_mag
-
-Sensor 'rangefinder':
-name: uavcan_rangefinder
-
-Online nodes (Node ID, Health, Mode):
-
-uavcan: cycle time: 6415 events, 23965211us elapsed, 3735.81us avg, min 9us max 572162us 40553.934us rms
-uavcan: cycle interval: 6417 events, 6662.98us avg, min 23us max 572165us 40281.270us rms
-nsh> listener distance_sensor
-never published
-
-
-## again the same issue it shows after a few seconds of booting the pixhawk.
+uavcan param list 125
+name: CAL_ACC0_ID 0
+name: CAL_ACC0_PRIO -1
+name: CAL_ACC0_ROT -1
+name: CAL_ACC0_XOFF 0.0000
+name: CAL_ACC0_XSCALE 1.0000
+name: CAL_ACC0_YOFF 0.0000
+name: CAL_ACC0_YSCALE 1.0000
+name: CAL_ACC0_ZOFF 0.0000
+name: CAL_ACC0_ZSCALE 1.0000
+name: CAL_ACC1_ID 0
+name: CAL_ACC2_ID 0
+name: CAL_ACC3_ID 0
+name: CAL_GYRO0_ID 2490378
+name: CAL_GYRO0_PRIO 50
+name: CAL_GYRO0_ROT -1
+name: CAL_GYRO0_XOFF -0.0039
+name: CAL_GYRO0_YOFF 0.0101
+name: CAL_GYRO0_ZOFF -0.0073
+name: CAL_GYRO1_ID 0
+name: CAL_GYRO2_ID 0
+name: CAL_GYRO3_ID 0
+name: CANNODE_BITRATE 1000000
+name: CANNODE_PUB_IMU 0
+name: CANNODE_TERM 0
+name: IMU_DGYRO_CUTOFF 30.0000
+name: IMU_GYRO_CAL_EN 1
+name: IMU_GYRO_CUTOFF 40.0000
+name: IMU_GYRO_NF0_BW 20.0000
+name: IMU_GYRO_NF0_FRQ 0.0000
+name: IMU_GYRO_NF1_BW 20.0000
+name: IMU_GYRO_NF1_FRQ 0.0000
+name: IMU_GYRO_RATEMAX 1000
+name: IMU_INTEG_RATE 200
+name: SENS_AFBR_HYSTER 1
+name: SENS_AFBR_L_RATE 25
+name: SENS_AFBR_MODE 0
+name: SENS_AFBR_SNM 3
+name: SENS_AFBR_S_RATE 50
+name: SENS_AFBR_THRESH 4
+name: SENS_BOARD_ROT 0
+name: SENS_BOARD_X_OFF 0.0000
+name: SENS_BOARD_Y_OFF 0.0000
+name: SENS_BOARD_Z_OFF 0.0000
+name: SENS_FLOW_MAXHGT 100.0000
+name: SENS_FLOW_MAXR 8.0000
+name: SENS_FLOW_MINHGT 0.0800
+name: SENS_FLOW_RATE 150.0000
+name: SENS_FLOW_ROT 0
+name: SENS_FLOW_SCALE 1.0000
+name: SENS_IMU_AUTOCAL 1
+name: SENS_IMU_CLPNOTI 0
+name: SENS_IMU_MODE 1
+name: SENS_MAG_RATE 100.0000
+name: SYS_CAL_TDEL 24
+name: SYS_CAL_TMAX 10
+name: SYS_CAL_TMIN 5
+name: SYS_FAC_CAL_MODE 0
+nsh> 
