@@ -271,12 +271,27 @@ def generate_launch_description():
             'direction_frame', default_value='home',
             description="home = forward always means the heading held at arming; "
                         "current = each move follows the yaw commanded at that point."),
-        DeclareLaunchArgument('takeoff_altitude', default_value='1.0'),
-        DeclareLaunchArgument('hold_seconds', default_value='5.0'),
-        DeclareLaunchArgument('step_hold_seconds', default_value='3.0'),
-        DeclareLaunchArgument('post_hold_seconds', default_value='5.0'),
-        DeclareLaunchArgument('ground_wait_seconds', default_value='5.0'),
-        DeclareLaunchArgument('climb_speed', default_value='0.35'),
+        DeclareLaunchArgument(
+            'takeoff_altitude', default_value='1.0',
+            description='Metres above the arming point. Start lower (0.3) on first flights.'),
+        DeclareLaunchArgument(
+            'hold_seconds', default_value='5.0',
+            description='Station-keeping time at altitude before the first step.'),
+        DeclareLaunchArgument(
+            'step_hold_seconds', default_value='3.0',
+            description='Station-keeping time between steps, so each one starts from '
+                        "a settled vehicle instead of compounding the last step's "
+                        'overshoot.'),
+        DeclareLaunchArgument(
+            'post_hold_seconds', default_value='5.0',
+            description='Station-keeping time after the last step, before the descent.'),
+        DeclareLaunchArgument(
+            'ground_wait_seconds', default_value='5.0',
+            description='Time spent armed on the ground before the climb starts. With '
+                        'vision this is also when the x/y hold latches.'),
+        DeclareLaunchArgument(
+            'climb_speed', default_value='0.35',
+            description='m/s the climb setpoint is ramped at.'),
         DeclareLaunchArgument(
             'land_speed', default_value='0.15',
             description='Keep MPC_LAND_SPEED at about 0.2 so PX4 agrees this is a '
@@ -291,18 +306,32 @@ def generate_launch_description():
             description='rad/s. Keep this slow. A fast yaw is the single most '
                         'reliable way to make an IMU-less stereo camera lose '
                         'tracking, and it is worse here than it was with flow.'),
-        DeclareLaunchArgument('min_altitude', default_value='0.4'),
-        DeclareLaunchArgument('max_altitude', default_value='3.0'),
-        DeclareLaunchArgument('request_offboard_from_ros', default_value='true'),
+        DeclareLaunchArgument(
+            'min_altitude', default_value='0.4',
+            description='m above the arming point that a down step may not go below.'),
+        DeclareLaunchArgument(
+            'max_altitude', default_value='3.0',
+            description='m above the arming point that an up step may not exceed.'),
+        DeclareLaunchArgument(
+            'request_offboard_from_ros', default_value='true',
+            description='false = you flip the Offboard switch on the TX yourself.'),
 
         # ---- vision ----
         DeclareLaunchArgument(
             'zed', default_value='true',
             description='Start the ZED wrapper here. false if you already run it '
                         'from another launch file.'),
-        DeclareLaunchArgument('camera_model', default_value='zed'),
-        DeclareLaunchArgument('camera_name', default_value='zed'),
-        DeclareLaunchArgument('odom_topic', default_value='/zed/zed_node/odom'),
+        DeclareLaunchArgument(
+            'camera_model', default_value='zed',
+            description='ZED SDK model name. Leave at zed for the gen-1 camera; note '
+                        'that model has no IMU, so this is visual odometry only.'),
+        DeclareLaunchArgument(
+            'camera_name', default_value='zed',
+            description='Sets the topic prefix and the odom child frame '
+                        '(<camera_name>_camera_link). Change odom_topic to match.'),
+        DeclareLaunchArgument(
+            'odom_topic', default_value='/zed/zed_node/odom',
+            description='ZED odometry the bridge converts into PX4 external vision.'),
         DeclareLaunchArgument(
             'pose_frame', default_value='frd',
             description="frd = the vision heading has an unknown constant offset "
@@ -327,19 +356,34 @@ def generate_launch_description():
         # on the actual airframe -- the defaults are "camera at the CoG,
         # pointing straight forward", which is a no-op and is almost certainly
         # not where yours is. See item 4 in the header.
-        DeclareLaunchArgument('cam_x', default_value='0.0'),
-        DeclareLaunchArgument('cam_y', default_value='0.0'),
-        DeclareLaunchArgument('cam_z', default_value='0.0'),
-        DeclareLaunchArgument('cam_roll', default_value='0.0'),
+        DeclareLaunchArgument(
+            'cam_x', default_value='0.0',
+            description='Metres the camera sits FORWARD of the vehicle CoG.'),
+        DeclareLaunchArgument(
+            'cam_y', default_value='0.0',
+            description='Metres the camera sits to the LEFT of the CoG (ROS sign).'),
+        DeclareLaunchArgument(
+            'cam_z', default_value='0.0',
+            description='Metres the camera sits ABOVE the CoG.'),
+        DeclareLaunchArgument(
+            'cam_roll', default_value='0.0',
+            description='Radians, positive = right side down.'),
         DeclareLaunchArgument(
             'cam_pitch', default_value='0.0',
             description='Radians, POSITIVE = nose down. A camera angled down '
                         '20 deg for window detection is cam_pitch:=0.35.'),
-        DeclareLaunchArgument('cam_yaw', default_value='0.0'),
+        DeclareLaunchArgument(
+            'cam_yaw', default_value='0.0',
+            description='Radians, positive = camera pointed to the LEFT of straight '
+                        'ahead. A sideways-mounted camera MUST have this set.'),
 
         # ---- LCD ----
-        DeclareLaunchArgument('lcd', default_value='true'),
-        DeclareLaunchArgument('lcd_port', default_value=''),
+        DeclareLaunchArgument(
+            'lcd', default_value='true',
+            description='Start the Arduino LCD status node.'),
+        DeclareLaunchArgument(
+            'lcd_port', default_value='',
+            description='Arduino serial port; empty = auto-detect ttyACM*/ttyUSB*.'),
 
         microxrce_node,
         zed_wrapper,
