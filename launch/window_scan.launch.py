@@ -92,6 +92,9 @@ def generate_launch_description():
                     'publish_mask': LaunchConfiguration('publish_mask'),
                     'color': LaunchConfiguration('color'),
                     'min_area': LaunchConfiguration('min_area'),
+                    'stream_port': LaunchConfiguration('stream_port'),
+                    'stream_scale': LaunchConfiguration('stream_scale'),
+                    'jpeg_quality': LaunchConfiguration('jpeg_quality'),
                 }],
             )
         ],
@@ -208,6 +211,17 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'min_area', default_value='1500.0',
             description='px^2 the contour must exceed to count as a window.'),
+        DeclareLaunchArgument(
+            'stream_port', default_value='8080',
+            description='Port for the browser MJPEG stream of the annotated '
+                        'frame: http://<jetson-ip>:8080/. 0 disables it.'),
+        DeclareLaunchArgument(
+            'stream_scale', default_value='0.5',
+            description='Downscale before JPEG encoding. 0.5 quarters the '
+                        'bytes and a window is still easy to judge.'),
+        DeclareLaunchArgument(
+            'jpeg_quality', default_value='60',
+            description='JPEG quality for the stream and the compressed topic.'),
         DeclareLaunchArgument(
             'takeoff_altitude', default_value='1.0',
             description='Metres above the arming point. Start lower (0.5) on '

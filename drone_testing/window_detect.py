@@ -52,12 +52,27 @@ HOW TO SEE IT
     on the LCD lcd_status shows "win YES/no" on row 4 (it subscribes to
                /window_detected itself)
 
+SEEING IT WHILE IT FLIES
+
+    browser   http://<jetson-ip>:8080/  -- an MJPEG stream of the annotated
+              frame, no ROS needed on the viewing machine. stream_port:=0
+              turns it off.
+    ROS       /window_detection/image/compressed is JPEG, small enough for
+              WiFi; rqt_image_view picks it by selecting the 'compressed'
+              transport. The raw topic stays for anything on the Jetson.
+
+Both are fed by one JPEG encode, downscaled by stream_scale (0.5 = quarter
+the pixels) at jpeg_quality. Nothing here ever puts a raw frame on the
+network.
+
 `-p show_windows:=true` brings back the two cv2.imshow windows from the
 original script. That needs a display, so leave it false on the Jetson
 unless you are sitting in front of it with a monitor plugged in.
 """
 
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import cv2
 import numpy as np
@@ -65,7 +80,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Bool, String
 
 
@@ -245,6 +260,98 @@ def array_to_imgmsg(array, encoding, header):
     return msg
 
 
+# ------------------------------------------------------------- mjpeg stream
+#
+# Watching the annotated frame from a laptop needs to work over WiFi, and raw
+# bgr8 at 1280x720x15 fps is ~40 MB/s, which WiFi will not carry -- so nothing
+# below ever ships a raw frame. This server hands out JPEG at whatever rate the
+# viewer can take, and drops frames rather than queueing them, so a slow viewer
+# slows itself down and not the detection loop.
+
+class _MjpegHandler(BaseHTTPRequestHandler):
+    """Serves the newest annotated frame as multipart JPEG, for a browser."""
+
+    node = None     # set by MjpegServer before the server starts
+
+    def do_GET(self):
+        if self.path in ('/', '/index.html'):
+            self._send_page()
+        elif self.path.startswith('/stream'):
+            self._send_stream()
+        elif self.path.startswith('/snapshot'):
+            self._send_snapshot()
+        else:
+            self.send_error(404)
+
+    def _send_page(self):
+        body = (b"<html><head><title>window detection</title>"
+                b"<style>body{background:#111;color:#eee;font-family:sans-serif;"
+                b"margin:0;text-align:center}img{max-width:100%}</style></head>"
+                b"<body><img src='/stream.mjpg'></body></html>")
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_snapshot(self):
+        frame = self.node.latest_jpeg()
+        if frame is None:
+            self.send_error(503, "no frame yet")
+            return
+        self.send_response(200)
+        self.send_header('Content-Type', 'image/jpeg')
+        self.send_header('Content-Length', str(len(frame)))
+        self.end_headers()
+        self.wfile.write(frame)
+
+    def _send_stream(self):
+        self.send_response(200)
+        self.send_header('Cache-Control', 'no-cache, private')
+        self.send_header('Content-Type',
+                         'multipart/x-mixed-replace; boundary=frame')
+        self.end_headers()
+        last = None
+        try:
+            while True:
+                frame = self.node.latest_jpeg()
+                if frame is None or frame is last:
+                    # Nothing new. Sleeping here rather than spinning is what
+                    # keeps this thread off the CPU the detection needs.
+                    time.sleep(0.02)
+                    continue
+                last = frame
+                self.wfile.write(b"--frame\r\n")
+                self.wfile.write(b"Content-Type: image/jpeg\r\n")
+                self.wfile.write(f"Content-Length: {len(frame)}\r\n\r\n".encode())
+                self.wfile.write(frame)
+                self.wfile.write(b"\r\n")
+        except (BrokenPipeError, ConnectionResetError):
+            pass    # the viewer closed the tab; not an error
+
+    def log_message(self, *args):
+        pass        # the default handler logs every frame to stderr
+
+
+class MjpegServer:
+    """Threaded HTTP server that never blocks the ROS callbacks."""
+
+    def __init__(self, node, port):
+        handler = type('_Handler', (_MjpegHandler,), {'node': node})
+        self.server = ThreadingHTTPServer(('0.0.0.0', port), handler)
+        self.server.daemon_threads = True
+        self.thread = threading.Thread(target=self.server.serve_forever,
+                                       daemon=True)
+        self.thread.start()
+
+    def shutdown(self):
+        try:
+            self.server.shutdown()
+            self.server.server_close()
+        except Exception:
+            pass
+
+
 class WindowDetect(Node):
 
     # Topic defaults. These are the standard zed_wrapper (ROS 2) names for the
@@ -267,6 +374,9 @@ class WindowDetect(Node):
                                 # metres; set 100.0 if you want the centimetres
                                 # the standalone script printed.
     LOG_PERIOD = 1.0            # s between the routine status lines
+    JPEG_QUALITY = 60           # good enough to judge a detection by, about a
+                                # tenth the bytes of quality 95
+    STREAM_PORT = 8080          # 0 disables the browser stream
 
     def __init__(self):
         super().__init__('window_detect')
@@ -277,6 +387,15 @@ class WindowDetect(Node):
         self.show_windows = bool(self.declare_parameter('show_windows', False).value)
         self.publish_image = bool(self.declare_parameter('publish_image', True).value)
         self.publish_mask = bool(self.declare_parameter('publish_mask', False).value)
+        self.publish_compressed = bool(self.declare_parameter(
+            'publish_compressed', True).value)
+        self.jpeg_quality = int(self.declare_parameter(
+            'jpeg_quality', self.JPEG_QUALITY).value)
+        self.stream_port = int(self.declare_parameter(
+            'stream_port', self.STREAM_PORT).value)
+        # Downscale before encoding. Halving each side quarters the bytes and
+        # a window is still perfectly judgeable at 640x360.
+        self.stream_scale = float(self.declare_parameter('stream_scale', 0.5).value)
         self.color = str(self.declare_parameter('color', 'green').value).strip().lower()
         self.min_area = float(self.declare_parameter('min_area', float(self.MIN_AREA)).value)
         self.detect_frames = int(self.declare_parameter('detect_frames', self.DETECT_FRAMES).value)
@@ -305,6 +424,16 @@ class WindowDetect(Node):
                           if self.publish_image else None)
         self.mask_pub = (self.create_publisher(Image, 'window_detection/mask', 1)
                          if self.publish_mask else None)
+        # The '/compressed' suffix is image_transport's convention, so
+        # rqt_image_view finds this by picking the 'compressed' transport on
+        # the plain /window_detection/image topic.
+        self.compressed_pub = (self.create_publisher(
+            CompressedImage, 'window_detection/image/compressed', 1)
+            if self.publish_compressed else None)
+
+        self._jpeg = None
+        self._jpeg_lock = threading.Lock()
+        self.stream = None
 
         # Detection state, carried between frames exactly as the loop in the
         # standalone script carried it between iterations.
@@ -326,6 +455,18 @@ class WindowDetect(Node):
         # itself is published from the image callback, at camera rate.
         self.create_timer(1.0, self.watchdog)
         self.last_image_time = None
+
+        if self.stream_port:
+            try:
+                self.stream = MjpegServer(self, self.stream_port)
+                self.get_logger().info(
+                    f"Browser stream on http://<jetson-ip>:{self.stream_port}/ "
+                    f"(single frame at /snapshot.jpg).")
+            except OSError as exc:
+                # Port in use, usually a second copy of this node. Not fatal:
+                # the ROS topics are the primary output.
+                self.get_logger().warning(
+                    f"Could not start the stream on port {self.stream_port}: {exc}")
 
         self.get_logger().info(
             f"Window detection up. image={self.image_topic} "
@@ -542,11 +683,41 @@ class WindowDetect(Node):
             cv2.putText(cv_image, self.describe(), (12, 62),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
+    def latest_jpeg(self):
+        """Newest encoded frame, for the HTTP handler threads."""
+        with self._jpeg_lock:
+            return self._jpeg
+
     def publish_frames(self, cv_image, mask, header):
         if self.image_pub is not None:
             self.image_pub.publish(array_to_imgmsg(cv_image, 'bgr8', header))
         if self.mask_pub is not None:
             self.mask_pub.publish(array_to_imgmsg(mask, 'mono8', header))
+
+        if self.compressed_pub is None and self.stream is None:
+            return
+
+        # One encode feeds both the ROS topic and the browser stream.
+        frame = cv_image
+        if 0.0 < self.stream_scale < 1.0:
+            frame = cv2.resize(frame, None, fx=self.stream_scale,
+                               fy=self.stream_scale, interpolation=cv2.INTER_AREA)
+        ok, buf = cv2.imencode('.jpg', frame,
+                               [int(cv2.IMWRITE_JPEG_QUALITY), self.jpeg_quality])
+        if not ok:
+            return
+        data = buf.tobytes()
+
+        if self.compressed_pub is not None:
+            msg = CompressedImage()
+            msg.header = header
+            msg.format = 'jpeg'
+            msg.data = data
+            self.compressed_pub.publish(msg)
+
+        if self.stream is not None:
+            with self._jpeg_lock:
+                self._jpeg = data
 
     def watchdog(self):
         """Complain if the camera stops, and keep /window_detected fresh.
@@ -575,6 +746,8 @@ class WindowDetect(Node):
             self.detected_pub.publish(msg)
 
     def destroy_node(self):
+        if self.stream is not None:
+            self.stream.shutdown()
         if self.show_windows:
             cv2.destroyAllWindows()
         super().destroy_node()

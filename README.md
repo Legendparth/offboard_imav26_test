@@ -515,8 +515,40 @@ ros2 topic echo /window_info
 ros2 topic hz /window_detection/image      # is the camera actually feeding us?
 ```
 
-As a picture, over the network from your laptop or on the Jetson with a
-monitor:
+### Watching the feed live while it flies
+
+Raw `bgr8` at 1280x720x15 fps is about 40 MB/s. WiFi will not carry that, so
+neither route below ever puts a raw frame on the network — both are fed by
+one JPEG encode, downscaled by `stream_scale` (0.5 = quarter the pixels) at
+`jpeg_quality` (60). That works out around 10 KB a frame, ~150 KB/s.
+
+**A browser — nothing needed on the viewing machine, not even ROS:**
+
+```
+http://<jetson-ip>:8080/
+```
+
+The node serves the annotated frame as MJPEG on that port (`/snapshot.jpg`
+for a single still). If the Jetson is only reachable through ssh, tunnel it
+and open `http://localhost:8080/` on your laptop:
+
+```bash
+ssh -L 8080:localhost:8080 ark-jetson-orin@<jetson-ip>
+```
+
+`stream_port:=0` turns the server off.
+
+**rqt_image_view over the ROS network** (laptop on the same subnet, same
+`ROS_DOMAIN_ID`): open `/window_detection/image` and switch the transport
+dropdown to **compressed** — that selects
+`/window_detection/image/compressed`, which is the JPEG topic. Do not view
+the raw topic over WiFi.
+
+```bash
+ros2 run rqt_image_view rqt_image_view
+```
+
+On the Jetson itself with a monitor, the raw topic is fine:
 
 ```bash
 ros2 run rqt_image_view rqt_image_view /window_detection/image

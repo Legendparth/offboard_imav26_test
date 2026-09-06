@@ -21,6 +21,17 @@ EKF2 already has the rangefinder anchored there is nothing to fix and it
 exits without touching anything, so it is safe to run before every flight --
 which is the point, since the launch file runs it for you.
 
+The wait is in two stages, because "the sensor has not arrived yet" and "the
+sensor is here and EKF2 is ignoring it" want opposite responses:
+
+    stage 1  up to sensor_wait (90 s) for range data to reach EKF2 at all.
+             Rebooting during this window is pointless -- the ARK Flow takes
+             45-50 s to enumerate on DroneCAN either way.
+    stage 2  once data is arriving, fuse_grace (8 s) for EKF2 to fuse it.
+             Fused means there was never a problem. Still not fused means
+             EKF2 anchored on the baro at boot and only a reboot will move
+             it, so we reboot immediately rather than waiting out stage 1.
+
 SAFETY
     It refuses to send anything while the vehicle is armed, whatever the
     parameters say. PX4 refuses the command in that state too; this is the
@@ -52,6 +63,20 @@ class FcReboot(Node):
                              # decide the link is not there at all
     SETTLE_SECONDS = 3.0     # s of flags observed before judging them, so a
                              # half-initialised EKF2 is not misread
+    SENSOR_WAIT = 90.0       # s to wait for the rangefinder to turn up and be
+                             # fused BEFORE deciding a reboot is needed. The
+                             # ARK Flow's DroneCAN node can take the better
+                             # part of a minute to enumerate; rebooting at t=5s
+                             # would just restart that wait with the node no
+                             # earlier than before. Waiting first also means we
+                             # do not reboot at all when EKF2 picks the sensor
+                             # up on its own.
+    FUSE_GRACE = 8.0         # s allowed between range data first reaching EKF2
+                             # and EKF2 actually fusing it. Once data is
+                             # arriving, EKF2 has everything it needs; if it
+                             # still is not fusing after this, it never will on
+                             # this boot, so there is nothing to gain by
+                             # sitting out the rest of SENSOR_WAIT.
     REBOOT_WAIT = 45.0       # s to wait for PX4 to come back afterwards
     RECHECK_SECONDS = 12.0   # s after it is back before the flags are judged
                              # again -- EKF2 needs a moment to start fusing
@@ -62,6 +87,11 @@ class FcReboot(Node):
         self.force = bool(self.declare_parameter('force', False).value)
         self.wait_only = bool(self.declare_parameter('check_only', False).value)
         self.timeout = float(self.declare_parameter('timeout', self.WAIT_FOR_PX4).value)
+        self.sensor_wait = float(self.declare_parameter(
+            'sensor_wait', self.SENSOR_WAIT).value)
+        self.fuse_grace = float(self.declare_parameter(
+            'fuse_grace', self.FUSE_GRACE).value)
+        self.started_at = time.monotonic()
 
         sensor_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -114,6 +144,34 @@ class FcReboot(Node):
                     and not f.cs_rng_fault and not f.cs_rng_stuck
                     and f.cs_rng_kin_consistent)
 
+    def rangefinder_is_present(self):
+        """Is range data reaching EKF2 at all, fused or not?
+
+        PX4 does not publish distance_sensor over uXRCE-DDS -- it is an
+        /fmu/in/ topic only -- so there is no direct way to watch the sensor
+        from here. These two are the earliest evidence available:
+
+          * the terrain estimate being valid AND its sensor bitfield naming a
+            range sensor. dist_bottom_valid on its own is not enough: optical
+            flow alone can raise it, and the ARK Flow publishes both, so
+            without the bitfield check this would report the rangefinder
+            present whenever only flow had arrived;
+          * any cs_rng_* flag being set, including fault and stuck, which EKF2
+            can only judge once samples are arriving.
+        """
+        p = self.local_position
+        if (p is not None and getattr(p, 'dist_bottom_valid', False)
+                and (getattr(p, 'dist_bottom_sensor_bitfield', 0)
+                     & VehicleLocalPosition.DIST_BOTTOM_SENSOR_RANGE)):
+            return True
+
+        f = self.flags
+        if f is not None and (f.cs_rng_hgt or f.cs_rng_terrain
+                              or f.cs_rng_fault or f.cs_rng_stuck):
+            return True
+
+        return False
+
     def flag_summary(self):
         f = self.flags
         if f is None:
@@ -165,16 +223,58 @@ class FcReboot(Node):
             self.get_logger().error("Vehicle is ARMED. Refusing to reboot.")
             return 1
 
-        fused = self.rangefinder_is_fused()
         self.get_logger().info(f"EKF2 flags: {self.flag_summary()}")
         if self.local_position is not None:
             self.get_logger().info(
                 f"dist_bottom={self.local_position.dist_bottom:.3f} m "
                 f"z_valid={self.local_position.z_valid}")
 
-        if fused:
+        # Give the sensor time to turn up before concluding anything. This is
+        # the whole point: the node enumerates tens of seconds after PX4 boots,
+        # and a reboot issued before it is on the bus achieves nothing.
+        if not self.rangefinder_is_fused():
             self.get_logger().info(
-                "Rangefinder is already fused -- nothing to fix, not rebooting.")
+                f"Rangefinder not fused yet. Waiting up to "
+                f"{self.sensor_wait:.0f} s for it to appear -- the DroneCAN "
+                "node enumerates well after PX4 boots.")
+            deadline = time.monotonic() + self.sensor_wait
+            last_log = 0.0
+            appeared_at = None
+            while rclpy.ok() and time.monotonic() < deadline:
+                self.spin_for(0.5)
+                if self.rangefinder_is_fused():
+                    break
+
+                now = time.monotonic()
+
+                # The moment range data reaches EKF2 at all. From here we owe
+                # it fuse_grace and no more: the sensor is on the bus, so if
+                # EKF2 is not fusing it shortly after this it has already
+                # anchored elsewhere and only a reboot will change that.
+                if appeared_at is None and self.rangefinder_is_present():
+                    appeared_at = now
+                    self.get_logger().info(
+                        f"Range data has reached EKF2, "
+                        f"{now - self.started_at:.0f} s after this node started. "
+                        f"Giving EKF2 {self.fuse_grace:.0f} s to fuse it.")
+
+                if (appeared_at is not None
+                        and now - appeared_at >= self.fuse_grace):
+                    self.get_logger().warning(
+                        f"Range data is arriving but EKF2 is not fusing it "
+                        f"after {self.fuse_grace:.0f} s. Not sitting out the "
+                        f"remaining {deadline - now:.0f} s.")
+                    break
+
+                if now - last_log >= 5.0:
+                    last_log = now
+                    self.get_logger().info(
+                        f"  still waiting ({deadline - now:.0f} s left): "
+                        f"{self.flag_summary()}")
+
+        if self.rangefinder_is_fused():
+            self.get_logger().info(
+                "Rangefinder is fused -- nothing to fix, not rebooting.")
             return 0
 
         if self.wait_only:
@@ -189,7 +289,8 @@ class FcReboot(Node):
             return 1
 
         self.get_logger().warning(
-            "Rangefinder is NOT being fused. Rebooting the flight controller "
+            f"Rangefinder still not fused after {self.sensor_wait:.0f} s. "
+            "Rebooting the flight controller "
             "so EKF2 starts with the ARK Flow already on the bus.")
         self.send_reboot()
 
@@ -206,9 +307,10 @@ class FcReboot(Node):
             return 1
 
         self.get_logger().info(
-            f"PX4 is back. Giving EKF2 {self.RECHECK_SECONDS:.0f} s to start "
-            "fusing before judging it.")
+            f"PX4 is back. Waiting up to {self.sensor_wait:.0f} s for EKF2 to "
+            "anchor on the rangefinder.")
         self.spin_for(self.RECHECK_SECONDS)
+        self.spin_for(self.sensor_wait, self.rangefinder_is_fused)
 
         self.get_logger().info(f"EKF2 flags now: {self.flag_summary()}")
         if self.rangefinder_is_fused():
