@@ -36,6 +36,7 @@ setup(
             'lcd_status = drone_testing.lcd_status:main',
             'zed_localization = drone_testing.zed_localization:main',
             'cam = drone_testing.cam:main',
+            'fc_reboot = drone_testing.fc_reboot:main',
             'window_detect = drone_testing.window_detect:main',
             'window_scan = drone_testing.window_scan:main',
         ],

@@ -98,10 +98,30 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('detect')),
     )
 
+    # Reboot the FC if EKF2 came up without the rangefinder. The ARK Flow's
+    # DroneCAN node enumerates after PX4 boots, so EKF2 anchors on the baro and
+    # the flight node then (correctly) refuses to arm. This exits immediately
+    # and touches nothing when the rangefinder is already fused.
+    reboot_node = TimerAction(
+        period=3.0,
+        actions=[
+            Node(
+                package='drone_testing',
+                executable='fc_reboot',
+                name='fc_reboot',
+                output='screen',
+                emulate_tty=True,
+            )
+        ],
+        condition=IfCondition(LaunchConfiguration('reboot_fc')),
+    )
+
     # The flight. Held back until the DDS session is up and PX4's topics
-    # exist, or the first setpoints are dropped.
+    # exist, or the first setpoints are dropped. The delay also covers the
+    # fc_reboot node above: if it does reboot the FC, the link has to come
+    # back before this starts asking for Offboard.
     scan_node = TimerAction(
-        period=8.0,
+        period=LaunchConfiguration('flight_node_delay'),
         actions=[
             Node(
                 package='drone_testing',
@@ -238,6 +258,18 @@ def generate_launch_description():
             'request_offboard_from_ros', default_value='true',
             description='false = you flip the Offboard switch on the TX.'),
         DeclareLaunchArgument(
+            'reboot_fc', default_value='false',
+            description='Run fc_reboot first: reboots the flight controller '
+                        'over the DDS link IF EKF2 is not fusing the '
+                        'rangefinder, so the ARK Flow is on the bus before '
+                        'EKF2 picks its height source. Does nothing when the '
+                        'rangefinder is already fused.'),
+        DeclareLaunchArgument(
+            'flight_node_delay', default_value='8.0',
+            description='s before the flight node starts. Raise it to about '
+                        '75 when reboot_fc is true, so a reboot has time to '
+                        'complete and the DDS session to come back.'),
+        DeclareLaunchArgument(
             'lcd', default_value='true',
             description='Start the Arduino TFT status node.'),
         DeclareLaunchArgument(
@@ -249,7 +281,7 @@ def generate_launch_description():
         # actions are grouped rather than given a condition directly, because
         # two of them already carry one of their own and an action's condition
         # is fixed when it is built.
-        GroupAction([microxrce_node, lcd_node, scan_node],
+        GroupAction([microxrce_node, lcd_node, reboot_node, scan_node],
                     condition=IfCondition(flight)),
         zed_launch,
         detect_node,
