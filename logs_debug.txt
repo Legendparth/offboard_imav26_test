@@ -1,94 +1,25 @@
 nsh> uavcan status
 Pool allocator status:
     Capacity hard/soft: 500/250 blocks
-    Reserved:  22 blocks
-    Allocated: 13 blocks
-
-UAVCAN node status:
-    Internal failures: 0
-    Transfer errors:   5
-    RX transfers:      29172
-    TX transfers:      3779
-
-CAN1 status:
-    HW errors: 105
-    IO errors: 105
-    RX frames: 106615
-    TX frames: 5891
-CAN2 status:
-    HW errors: 6275
-    IO errors: 6275
-    RX frames: 0
-    TX frames: 5891
-
-Sensor 'flow':
-name: uavcan_flow
-channel 0: node id 125 --> instance 0
-
-Sensor 'mag':
-name: uavcan_mag
-
-Sensor 'rangefinder':
-name: uavcan_rangefinder
-channel 0: node id 125 --> instance 0
-
-Online nodes (Node ID, Health, Mode):
-     125 OK         OPERAT    
-
-uavcan: cycle time: 158680 events, 31410528us elapsed, 197.95us avg, min 8us max 573622us 8601.384us rms
-uavcan: cycle interval: 158683 events, 1319.80us avg, min 14us max 573626us 8663.896us rms
-
-TOPIC: distance_sensor
- distance_sensor
-    timestamp: 393454722 (0.012072 seconds ago)
-    device_id: 9010435 (Type: 0x89, UAVCAN:0 (0x7D))
-    min_distance: 0.02000
-    max_distance: 30.00000
-    current_distance: 0.09100
-    variance: 0.00000
-    h_fov: 0.10473
-    v_fov: 0.10473
-    q: [0.00000, 0.00000, 0.00000, 0.00000] (Roll: 0.0 deg, Pitch: 0.0 deg, Yaw: 0.0 deg)
-    signal_quality: 100
-    type: 0
-    orientation: 25
-    mode: 0
-
-## this is what it shows after the pixhawk is running for a long time
-
-nsh> listener distance_sensor
-never published
-nsh> listener distance_sensor
-never published
-nsh> listener distance_sensor
-never published
-nsh> listener distance_sensor
-never published
-
-## this is what it shows just after connecting and waiting for a few seconds to connect with the pixhawk
-
-nsh> uavcan status
-Pool allocator status:
-    Capacity hard/soft: 500/250 blocks
     Reserved:  10 blocks
     Allocated: 10 blocks
 
 UAVCAN node status:
     Internal failures: 0
     Transfer errors:   0
-    RX transfers:      23
-    TX transfers:      327
+    RX transfers:      55
+    TX transfers:      775
 
 CAN1 status:
     HW errors: 0
     IO errors: 0
-    RX frames: 23
-    TX frames: 511
+    RX frames: 55
+    TX frames: 1229
 CAN2 status:
-    HW errors: 535
-    IO errors: 535
+    HW errors: 1331
+    IO errors: 1331
     RX frames: 0
-    TX frames: 511
+    TX frames: 1229
 
 Sensor 'flow':
 name: uavcan_flow
@@ -101,9 +32,10 @@ name: uavcan_rangefinder
 
 Online nodes (Node ID, Health, Mode):
 
-uavcan: cycle time: 2552 events, 9962602us elapsed, 3903.84us avg, min 9us max 573071us 41225.871us rms
-uavcan: cycle interval: 2554 events, 6820.96us avg, min 51us max 573075us 40937.090us rms
+uavcan: cycle time: 6415 events, 23965211us elapsed, 3735.81us avg, min 9us max 572162us 40553.934us rms
+uavcan: cycle interval: 6417 events, 6662.98us avg, min 23us max 572165us 40281.270us rms
 nsh> listener distance_sensor
 never published
 
-## Also this is the uavcan status output when the listener distance_sensor is still neve published
+
+## again the same issue it shows after a few seconds of booting the pixhawk.
