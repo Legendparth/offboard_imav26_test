@@ -93,3 +93,7 @@ TOPIC: distance_sensor
     orientation: 25
     mode: 0
 nsh> 
+
+"APM  dataman  log  parameters_backup.bson  param_import_fail.bson  param_import_fail.txt  uavcan.db  ufw  ufw_staging"
+
+## this are the files and folders present in the root directory of the sd card
