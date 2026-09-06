@@ -1,97 +1,95 @@
 nsh> uavcan status
 Pool allocator status:
     Capacity hard/soft: 500/250 blocks
-    Reserved:  10 blocks
-    Allocated: 10 blocks
+    Reserved:  14 blocks
+    Allocated: 12 blocks
 
 UAVCAN node status:
     Internal failures: 0
     Transfer errors:   0
-    RX transfers:      47
-    TX transfers:      668
+    RX transfers:      175
+    TX transfers:      851
 
 CAN1 status:
     HW errors: 0
     IO errors: 0
-    RX frames: 47
-    TX frames: 1050
+    RX frames: 487
+    TX frames: 1349
 CAN2 status:
-    HW errors: 1151
-    IO errors: 1151
+    HW errors: 1443
+    IO errors: 1443
     RX frames: 0
-    TX frames: 1050
+    TX frames: 1349
 
 Sensor 'flow':
 name: uavcan_flow
+channel 0: node id 125 --> instance 0
 
 Sensor 'mag':
 name: uavcan_mag
 
 Sensor 'rangefinder':
 name: uavcan_rangefinder
+channel 0: node id 125 --> instance 0
 
 Online nodes (Node ID, Health, Mode):
 
-uavcan: cycle time: 5448 events, 20806755us elapsed, 3819.15us avg, min 9us max 569303us 41217.652us rms
-uavcan: cycle interval: 5450 events, 6744.91us avg, min 26us max 569306us 40943.613us rms
+uavcan: cycle time: 7247 events, 26274490us elapsed, 3625.57us avg, min 9us max 572089us 40027.551us rms
+uavcan: cycle interval: 7252 events, 6387.40us avg, min 21us max 572093us 39771.918us rms
+nsh> uavcan status
+Pool allocator status:
+    Capacity hard/soft: 500/250 blocks
+    Reserved:  21 blocks
+    Allocated: 17 blocks
+
+UAVCAN node status:
+    Internal failures: 0
+    Transfer errors:   2
+    RX transfers:      658
+    TX transfers:      908
+
+CAN1 status:
+    HW errors: 104
+    IO errors: 104
+    RX frames: 2259
+    TX frames: 1433
+CAN2 status:
+    HW errors: 1533
+    IO errors: 1533
+    RX frames: 0
+    TX frames: 1433
+
+Sensor 'flow':
+name: uavcan_flow
+channel 0: node id 125 --> instance 0
+
+Sensor 'mag':
+name: uavcan_mag
+
+Sensor 'rangefinder':
+name: uavcan_rangefinder
+channel 0: node id 125 --> instance 0
+
+Online nodes (Node ID, Health, Mode):
+     125 OK         OPERAT    
+
+uavcan: cycle time: 9742 events, 26548593us elapsed, 2725.17us avg, min 8us max 572089us 34611.957us rms
+uavcan: cycle interval: 9743 events, 5052.23us avg, min 15us max 572093us 34447.492us rms
 nsh> listener distance_sensor
-never published
-nsh> uavcan param list 125
-name: CAL_ACC0_ID 0
-name: CAL_ACC0_PRIO -1
-name: CAL_ACC0_ROT -1
-name: CAL_ACC0_XOFF 0.0000
-name: CAL_ACC0_XSCALE 1.0000
-name: CAL_ACC0_YOFF 0.0000
-name: CAL_ACC0_YSCALE 1.0000
-name: CAL_ACC0_ZOFF 0.0000
-name: CAL_ACC0_ZSCALE 1.0000
-name: CAL_ACC1_ID 0
-name: CAL_ACC2_ID 0
-name: CAL_ACC3_ID 0
-name: CAL_GYRO0_ID 2490378
-name: CAL_GYRO0_PRIO 50
-name: CAL_GYRO0_ROT -1
-name: CAL_GYRO0_XOFF -0.0039
-name: CAL_GYRO0_YOFF 0.0101
-name: CAL_GYRO0_ZOFF -0.0073
-name: CAL_GYRO1_ID 0
-name: CAL_GYRO2_ID 0
-name: CAL_GYRO3_ID 0
-name: CANNODE_BITRATE 1000000
-name: CANNODE_PUB_IMU 0
-name: CANNODE_TERM 1
-name: IMU_DGYRO_CUTOFF 30.0000
-name: IMU_GYRO_CAL_EN 1
-name: IMU_GYRO_CUTOFF 40.0000
-name: IMU_GYRO_NF0_BW 20.0000
-name: IMU_GYRO_NF0_FRQ 0.0000
-name: IMU_GYRO_NF1_BW 20.0000
-name: IMU_GYRO_NF1_FRQ 0.0000
-name: IMU_GYRO_RATEMAX 1000
-name: IMU_INTEG_RATE 200
-name: SENS_AFBR_HYSTER 1
-name: SENS_AFBR_L_RATE 25
-name: SENS_AFBR_MODE 0
-name: SENS_AFBR_SNM 3
-name: SENS_AFBR_S_RATE 50
-name: SENS_AFBR_THRESH 4
-name: SENS_BOARD_ROT 0
-name: SENS_BOARD_X_OFF 0.0000
-name: SENS_BOARD_Y_OFF 0.0000
-name: SENS_BOARD_Z_OFF 0.0000
-name: SENS_FLOW_MAXHGT 100.0000
-name: SENS_FLOW_MAXR 8.0000
-name: SENS_FLOW_MINHGT 0.0800
-name: SENS_FLOW_RATE 150.0000
-name: SENS_FLOW_ROT 0
-name: SENS_FLOW_SCALE 1.0000
-name: SENS_IMU_AUTOCAL 1
-name: SENS_IMU_CLPNOTI 0
-name: SENS_IMU_MODE 1
-name: SENS_MAG_RATE 100.0000
-name: SYS_CAL_TDEL 24
-name: SYS_CAL_TMAX 10
-name: SYS_CAL_TMIN 5
-name: SYS_FAC_CAL_MODE 0
+
+TOPIC: distance_sensor
+ distance_sensor
+    timestamp: 51722892 (0.017796 seconds ago)
+    device_id: 9010435 (Type: 0x89, UAVCAN:0 (0x7D))
+    min_distance: 0.02000
+    max_distance: 30.00000
+    current_distance: 0.09301
+    variance: 0.00000
+    h_fov: 0.10473
+    v_fov: 0.10473
+    q: [0.00000, 0.00000, 0.00000, 0.00000] (Roll: 0.0 deg, Pitch: 0.0 deg, Yaw: 0.0 deg)
+    signal_quality: 100
+    type: 0
+    orientation: 25
+    mode: 0
 nsh> 
