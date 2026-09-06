@@ -1,24 +1,27 @@
-[offboard_sequence_vio-5] [WARN] [1788737543.616644842] [offboard_sequence_vio]: Sequence test on ZED VISION: climb 1.20 m, hold 5 s, then 4 steps: forward 1.00 m -> yaw +30 deg -> up 0.50 m -> right 1.00 m, hold 5 s, land. Directions are in the 'home' yaw frame. x/y hold starts on the ground. Press q to abort into a descent, k to force-disarm.
-[offboard_sequence_vio-5] [WARN] [1788737543.621088958] [offboard_sequence_vio]: stdin is not a tty; q/k abort is unavailable.
-[offboard_sequence_vio-5] [INFO] [1788737543.621483850] [offboard_sequence_vio]: Waiting for VehicleStatus from PX4...
-[offboard_sequence_vio-5] [INFO] [1788737543.633250292] [offboard_sequence_vio]: nav_state -> OFFBOARD(14)
-[offboard_sequence_vio-5] [INFO] [1788737543.634793921] [offboard_sequence_vio]: PX4 failsafe (expected on this airframe, harmless): home_position_invalid
-[offboard_sequence_vio-5] [ERROR] [1788737543.635478286] [offboard_sequence_vio]: PX4 failsafe SET: manual_control_signal_lost
-[offboard_sequence_vio-5] [INFO] [1788737543.661181334] [offboard_sequence_vio]: alt=n/a airborne=True xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=True vxy=(-0.00,+0.00) | hdg=-176 deg yaw_sp=+0 deg
-[offboard_sequence_vio-5] [INFO] [1788737543.661848545] [offboard_sequence_vio]: vio: bridge=ok ekf_fusing=True healthy=True xy=VEL-HOLD
-[offboard_sequence_vio-5] [INFO] [1788737544.616268896] [offboard_sequence_vio]: Setpoint stream established, position estimate healthy.
-[offboard_sequence_vio-5] [INFO] [1788737544.662529789] [offboard_sequence_vio]: Offboard mode active.
-[offboard_sequence_vio-5] [INFO] [1788737544.762215256] [offboard_sequence_vio]: Arming point captured: x=0.21 y=-0.01 z=-0.15 yaw=-176 deg. 'forward' means this heading for the whole flight.
-[offboard_sequence_vio-5] [WARN] [1788737544.763535084] [offboard_sequence_vio]: ARMED. Holding on the ground for 5 s.
-[offboard_sequence_vio-5] [INFO] [1788737544.812300641] [offboard_sequence_vio]: Armed on the ground, 5.0 s to takeoff...
-[offboard_sequence_vio-5] [INFO] [1788737544.813968540] [offboard_sequence_vio]: alt=+0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=True vxy=(-0.01,-0.00) | hdg=-176 deg yaw_sp=-176 deg
-[offboard_sequence_vio-5] [INFO] [1788737544.815341813] [offboard_sequence_vio]: vio: bridge=ok ekf_fusing=True healthy=True xy=VEL-HOLD
-[offboard_sequence_vio-5] [ERROR] [1788737545.632046194] [offboard_sequence_vio]: PX4 failsafe SET: local_position_invalid, offboard_control_signal_lost
-[offboard_sequence_vio-5] [INFO] [1788737545.640683350] [offboard_sequence_vio]: nav_state -> AUTO_LAND(18)
-[offboard_sequence_vio-5] [ERROR] [1788737545.662718193] [offboard_sequence_vio]: Offboard lost; PX4 has control now (nav_state AUTO_LAND(18)). Standing down. PX4 failsafe: local_position_invalid, offboard_control_signal_lost, manual_control_signal_lost, home_position_invalid.
-[offboard_sequence_vio-5] [INFO] [1788737545.711316193] [offboard_sequence_vio]: Idle. Ctrl-C to exit.
-[offboard_sequence_vio-5] [INFO] [1788737546.782742731] [offboard_sequence_vio]: PX4 failsafe cleared: local_position_invalid
-[offboard_sequence_vio-5] [ERROR] [1788737548.658663104] [offboard_sequence_vio]: PX4 failsafe SET: local_position_invalid, local_velocity_invalid
+[offboard_sequence_vio-5] [WARN] [1788738493.578164405] [offboard_sequence_vio]: ARMED. Holding on the ground for 5 s.
+[offboard_sequence_vio-5] [INFO] [1788738493.627258466] [offboard_sequence_vio]: Armed on the ground, 5.0 s to takeoff...
+[offboard_sequence_vio-5] [INFO] [1788738493.628964573] [offboard_sequence_vio]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=True vxy=(+0.00,+0.00) | hdg=+2 deg yaw_sp=+2 deg
+[offboard_sequence_vio-5] [INFO] [1788738493.630286090] [offboard_sequence_vio]: vio: bridge=ok ekf_fusing=True healthy=True xy=VEL-HOLD
+[offboard_sequence_vio-5] [INFO] [1788738494.336965683] [offboard_sequence_vio]: nav_state -> POSCTL(2)
+[offboard_sequence_vio-5] [ERROR] [1788738494.338844787] [offboard_sequence_vio]: PX4 failsafe SET: local_position_invalid, local_velocity_invalid, offboard_control_signal_lost
+[offboard_sequence_vio-5] [ERROR] [1788738494.377579774] [offboard_sequence_vio]: Offboard lost; PX4 has control now (nav_state POSCTL(2)). Standing down. PX4 failsafe: local_position_invalid, local_velocity_invalid, offboard_control_signal_lost, home_position_invalid.
+[offboard_sequence_vio-5] [INFO] [1788738494.426937555] [offboard_sequence_vio]: Idle. Ctrl-C to exit.
+[offboard_sequence_vio-5] [INFO] [1788738495.438010942] [offboard_sequence_vio]: PX4 failsafe cleared: local_position_invalid, local_velocity_invalid
+[offboard_sequence_vio-5] [ERROR] [1788738496.100482594] [offboard_sequence_vio]: PX4 failsafe SET: local_position_invalid, local_velocity_invalid
+[offboard_sequence_vio-5] [WARN] [1788738496.112738660] [offboard_sequence_vio]: EKF2 height reset: delta_z=+0.00 m, shifted altitude reference to match.
+[offboard_sequence_vio-5] [INFO] [1788738497.308846495] [offboard_sequence_vio]: PX4 failsafe cleared: local_position_invalid, local_velocity_invalid
+[offboard_sequence_vio-5] [ERROR] [1788738498.519745322] [offboard_sequence_vio]: PX4 failsafe SET: local_position_invalid
+[offboard_sequence_vio-5] [INFO] [1788738499.476078591] [offboard_sequence_vio]: Idle. Ctrl-C to exit.
+[offboard_sequence_vio-5] [INFO] [1788738499.628452092] [offboard_sequence_vio]: PX4 failsafe cleared: local_position_invalid
+[offboard_sequence_vio-5] [ERROR] [1788738500.059899146] [offboard_sequence_vio]: PX4 failsafe SET: local_position_invalid, local_velocity_invalid
+[offboard_sequence_vio-5] [INFO] [1788738501.162075726] [offboard_sequence_vio]: PX4 failsafe cleared: local_velocity_invalid
+[offboard_sequence_vio-5] [INFO] [1788738501.820752521] [offboard_sequence_vio]: PX4 failsafe cleared: local_position_invalid
+[offboard_sequence_vio-5] [ERROR] [1788738502.696720321] [offboard_sequence_vio]: PX4 failsafe SET: local_position_invalid, local_velocity_invalid
+[offboard_sequence_vio-5] [INFO] [1788738503.790373944] [offboard_sequence_vio]: PX4 failsafe cleared: local_velocity_invalid
+[offboard_sequence_vio-5] [INFO] [1788738503.900737972] [offboard_sequence_vio]: PX4 failsafe cleared: local_position_invalid
+[offboard_sequence_vio-5] [ERROR] [1788738504.337108851] [offboard_sequence_vio]: PX4 failsafe SET: local_position_invalid
+[offboard_sequence_vio-5] [INFO] [1788738504.526194615] [offboard_sequence_vio]: Idle. Ctrl-C to exit.
+[offboard_sequence_vio-5] [INFO] [1788738505.441674666] [offboard_sequence_vio]: PX4 failsafe cleared: local_position_invalid
+[offboard_sequence_vio-5] [INFO] [1788738505.570398734] [offboard_sequence_vio]: nav_state -> OFFBOARD(14)
+[offboard_sequence_vio-5] [ERROR] [1788738505.680819847] [offboard_sequence_vio]: PX4 failsafe SET: local_position_invalid, local_velocity_invalid
 
-
-## this issue comes up always, how to avoid this??
