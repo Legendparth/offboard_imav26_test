@@ -1,4 +1,42 @@
-uavcan param list 125
+nsh> uavcan status
+Pool allocator status:
+    Capacity hard/soft: 500/250 blocks
+    Reserved:  10 blocks
+    Allocated: 10 blocks
+
+UAVCAN node status:
+    Internal failures: 0
+    Transfer errors:   0
+    RX transfers:      47
+    TX transfers:      668
+
+CAN1 status:
+    HW errors: 0
+    IO errors: 0
+    RX frames: 47
+    TX frames: 1050
+CAN2 status:
+    HW errors: 1151
+    IO errors: 1151
+    RX frames: 0
+    TX frames: 1050
+
+Sensor 'flow':
+name: uavcan_flow
+
+Sensor 'mag':
+name: uavcan_mag
+
+Sensor 'rangefinder':
+name: uavcan_rangefinder
+
+Online nodes (Node ID, Health, Mode):
+
+uavcan: cycle time: 5448 events, 20806755us elapsed, 3819.15us avg, min 9us max 569303us 41217.652us rms
+uavcan: cycle interval: 5450 events, 6744.91us avg, min 26us max 569306us 40943.613us rms
+nsh> listener distance_sensor
+never published
+nsh> uavcan param list 125
 name: CAL_ACC0_ID 0
 name: CAL_ACC0_PRIO -1
 name: CAL_ACC0_ROT -1
@@ -22,7 +60,7 @@ name: CAL_GYRO2_ID 0
 name: CAL_GYRO3_ID 0
 name: CANNODE_BITRATE 1000000
 name: CANNODE_PUB_IMU 0
-name: CANNODE_TERM 0
+name: CANNODE_TERM 1
 name: IMU_DGYRO_CUTOFF 30.0000
 name: IMU_GYRO_CAL_EN 1
 name: IMU_GYRO_CUTOFF 40.0000
