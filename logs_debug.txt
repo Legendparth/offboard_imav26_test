@@ -57,3 +57,44 @@ name: SYS_CAL_TMAX 10
 name: SYS_CAL_TMIN 5
 name: SYS_FAC_CAL_MODE 0
 nsh>
+
+nsh> uavcan status
+Pool allocator status:
+    Capacity hard/soft: 500/250 blocks
+    Reserved:  71 blocks
+    Allocated: 13 blocks
+
+UAVCAN node status:
+    Internal failures: 0
+    Transfer errors:   5
+    RX transfers:      406648
+    TX transfers:      42658
+
+CAN1 status:
+    HW errors: 105
+    IO errors: 105
+    RX frames: 1485329
+    TX frames: 66339
+CAN2 status:
+    HW errors: 70481
+    IO errors: 70498
+    RX frames: 0
+    TX frames: 66322
+
+Sensor 'flow':
+name: uavcan_flow
+channel 0: node id 125 --> instance 0
+
+Sensor 'mag':
+name: uavcan_mag
+
+Sensor 'rangefinder':
+name: uavcan_rangefinder
+channel 0: node id 125 --> instance 0
+
+Online nodes (Node ID, Health, Mode):
+     125 OK         OPERAT    
+
+uavcan: cycle time: 2139375 events, 98695694us elapsed, 46.13us avg, min 8us max 574799us 2345.082us rms
+uavcan: cycle interval: 2139376 events, 1109.36us avg, min 11us max 574803us 2608.281us rms
+nsh> 
