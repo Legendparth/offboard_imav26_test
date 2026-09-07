@@ -17,11 +17,28 @@ USAGE
        /dev/ttyACM0 -- not the telemetry UART the DDS agent uses).
     2. CLOSE QGROUNDCONTROL and stop the uXRCE-DDS agent. Both will fight for
        the port and you will get a partial log.
-    3. Start this script with the Pixhawk POWERED OFF:
+    3. Set SYS_USB_AUTO = 1 (Auto-detect) in QGC and reboot the board. The
+       default is 2 (MAVLink), which makes the USB port speak MAVLink binary
+       and there is no console to capture.
+    4. Start this script with the Pixhawk POWERED OFF:
 
            python3 tools/px4_boot_capture.py -o boot.log
 
-    4. Power the Pixhawk on. Let it run for 90 s. Ctrl-C.
+    5. Power the Pixhawk on. Let it run for 90 s. Ctrl-C.
+
+WAKING THE CONSOLE
+------------------
+With SYS_USB_AUTO=1 the port starts out undecided and only becomes an nsh
+console once PX4 sees THREE CONSECUTIVE CARRIAGE RETURNS:
+
+    cdcacm_autostart.cpp:465
+        if (_buffer[i - 1] == 0xD && _buffer[i] == 0xD && _buffer[i + 1] == 0xD) {
+            PX4_INFO("%s: launching nshterm", USB_DEVICE_PATH);
+
+Note 0xD, not 0xA -- sending "cmd\r\n" has a single CR in it and will never
+match, which looks exactly like a dead port. So this script sends a bare
+"\r\r\r" every --wake-interval seconds until the board answers with
+something, and only then starts polling the command.
 
 Every line is stamped with seconds since the script started, so "when did the
 node appear" is answered by reading the timestamp column. `uavcan status` is
@@ -57,8 +74,14 @@ def main():
     ap.add_argument('-i', '--interval', type=float, default=2.0,
                     help='seconds between repeats of that command')
     ap.add_argument('--start-after', type=float, default=3.0,
-                    help='seconds to wait after the port opens before the first '
+                    help='seconds to wait after the console wakes before the first '
                          'command, so the boot messages are not interleaved with it')
+    ap.add_argument('--wake-interval', type=float, default=1.0,
+                    help='seconds between the \\r\\r\\r bursts that make '
+                         'SYS_USB_AUTO=1 hand over an nsh console')
+    ap.add_argument('--no-wake', action='store_true',
+                    help='skip the wake bursts (use on a real debug UART, where '
+                         'the console is already there)')
     args = ap.parse_args()
 
     print(f"Waiting for {args.port} -- power the Pixhawk on now. Ctrl-C to stop.")
@@ -76,7 +99,12 @@ def main():
     t0 = time.monotonic()
     print(f"Port opened at t=0.0 s. Logging to {args.output}.")
 
-    next_cmd = t0 + args.start_after
+    # Undecided until the board says something back. Until then we send CR
+    # bursts rather than commands: a command sent into a port that is still
+    # in MAVLink mode is silently discarded.
+    woken = args.no_wake
+    next_wake = t0
+    next_cmd = t0 + args.start_after if woken else None
     buf = b''
     with open(args.output, 'w') as out:
         def emit(text):
@@ -90,6 +118,10 @@ def main():
             while True:
                 data = ser.read(4096)
                 if data:
+                    if not woken:
+                        woken = True
+                        next_cmd = time.monotonic() + args.start_after
+                        emit("=== console responded; nsh is up ===")
                     buf += data
                     # Split on either newline convention; NuttX uses \r\n.
                     while b'\n' in buf:
@@ -97,6 +129,14 @@ def main():
                         emit(raw.decode('utf-8', errors='replace').rstrip('\r'))
 
                 now = time.monotonic()
+
+                if not woken:
+                    if now >= next_wake:
+                        next_wake = now + args.wake_interval
+                        emit("--> waking console (3x CR)")
+                        ser.write(b'\r\r\r')
+                    continue
+
                 if now >= next_cmd:
                     next_cmd = now + args.interval
                     emit(f"--> sending: {args.command}")
