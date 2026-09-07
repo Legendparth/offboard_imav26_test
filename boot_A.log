@@ -1,0 +1,2523 @@
+[   0.000] === capture started ===
+[   0.100] --> waking console (3x CR)
+[   0.701] === console responded; nsh is up ===
+[   0.701] 
+[   0.701] NuttShell (NSH) NuttX-11.0.0
+[   3.708] --> sending: uavcan status
+[   3.808] nsh> [Kuavcan status
+[   3.808] Pool allocator status:
+[   3.808] 	Capacity hard/soft: 500/250 blocks
+[   3.808] 	Reserved:  53 blocks
+[   3.808] 	Allocated: 10 blocks
+[   3.808] 
+[   3.808] UAVCAN node status:
+[   3.808] 	Internal failures: 0
+[   3.808] 	Transfer errors:   0
+[   3.808] 	RX transfers:      15
+[   3.808] 	TX transfers:      181
+[   3.808] 
+[   3.808] CAN1 status:
+[   3.808] 	HW errors: 0
+[   3.809] 	IO errors: 0
+[   3.809] 	RX frames: 15
+[   3.809] 	TX frames: 273
+[   3.809] CAN2 status:
+[   3.809] 	HW errors: 228
+[   3.809] 	IO errors: 264
+[   3.809] 	RX frames: 0
+[   3.809] 	TX frames: 237
+[   3.809] 
+[   3.809] Sensor 'flow':
+[   3.809] name: uavcan_flow
+[   3.809] 
+[   3.809] Sensor 'mag':
+[   3.809] name: uavcan_mag
+[   3.809] 
+[   3.809] Sensor 'rangefinder':
+[   3.809] name: uavcan_rangefinder
+[   3.809] 
+[   3.809] Online nodes (Node ID, Health, Mode):
+[   3.809] 
+[   3.809] uavcan: cycle time: 1205 events, 6040088us elapsed, 5012.52us avg, min 10us max 2794113us 87890.961us rms
+[   3.809] uavcan: cycle interval: 1206 events, 7947.24us avg, min 265us max 2794116us 87688.445us rms
+[   3.809] nsh> [K
+[   5.712] --> sending: uavcan status
+[   5.812] nsh> [Kuavcan status
+[   5.812] Pool allocator status:
+[   5.812] 	Capacity hard/soft: 500/250 blocks
+[   5.812] 	Reserved:  53 blocks
+[   5.812] 	Allocated: 10 blocks
+[   5.812] 
+[   5.812] UAVCAN node status:
+[   5.812] 	Internal failures: 0
+[   5.812] 	Transfer errors:   0
+[   5.812] 	RX transfers:      18
+[   5.812] 	TX transfers:      217
+[   5.812] 
+[   5.812] CAN1 status:
+[   5.812] 	HW errors: 0
+[   5.812] 	IO errors: 0
+[   5.812] 	RX frames: 18
+[   5.812] 	TX frames: 330
+[   5.812] CAN2 status:
+[   5.812] 	HW errors: 305
+[   5.812] 	IO errors: 341
+[   5.812] 	RX frames: 0
+[   5.812] 	TX frames: 294
+[   5.812] 
+[   5.812] Sensor 'flow':
+[   5.812] name: uavcan_flow
+[   5.812] 
+[   5.812] Sensor 'mag':
+[   5.812] name: uavcan_mag
+[   5.812] 
+[   5.812] Sensor 'rangefinder':
+[   5.812] name: uavcan_rangefinder
+[   5.812] 
+[   5.812] Online nodes (Node ID, Health, Mode):
+[   5.812] 
+[   5.812] uavcan: cycle time: 1472 events, 7287335us elapsed, 4950.64us avg, min 10us max 2794113us 81681.922us rms
+[   5.812] uavcan: cycle interval: 1473 events, 7882.03us avg, min 265us max 2794116us 81478.055us rms
+[   5.812] nsh> [K
+[   7.716] --> sending: uavcan status
+[   7.817] nsh> [Kuavcan status
+[   7.817] Pool allocator status:
+[   7.817] 	Capacity hard/soft: 500/250 blocks
+[   7.817] 	Reserved:  53 blocks
+[   7.817] 	Allocated: 10 blocks
+[   7.817] 
+[   7.817] UAVCAN node status:
+[   7.817] 	Internal failures: 0
+[   7.817] 	Transfer errors:   0
+[   7.817] 	RX transfers:      20
+[   7.817] 	TX transfers:      255
+[   7.817] 
+[   7.817] CAN1 status:
+[   7.817] 	HW errors: 0
+[   7.817] 	IO errors: 0
+[   7.817] 	RX frames: 20
+[   7.817] 	TX frames: 389
+[   7.817] CAN2 status:
+[   7.817] 	HW errors: 366
+[   7.817] 	IO errors: 402
+[   7.817] 	RX frames: 0
+[   7.817] 	TX frames: 353
+[   7.817] 
+[   7.817] Sensor 'flow':
+[   7.817] name: uavcan_flow
+[   7.817] 
+[   7.817] Sensor 'mag':
+[   7.817] name: uavcan_mag
+[   7.817] 
+[   7.817] Sensor 'rangefinder':
+[   7.817] name: uavcan_rangefinder
+[   7.817] 
+[   7.817] Online nodes (Node ID, Health, Mode):
+[   7.817] 
+[   7.817] uavcan: cycle time: 1686 events, 8713246us elapsed, 5168.00us avg, min 10us max 2794113us 78921.914us rms
+[   7.817] uavcan: cycle interval: 1686 events, 8100.45us avg, min 265us max 2794116us 78731.578us rms
+[   7.817] nsh> [K
+[   9.720] --> sending: uavcan status
+[   9.821] nsh> [Kuavcan status
+[   9.821] Pool allocator status:
+[   9.821] 	Capacity hard/soft: 500/250 blocks
+[   9.821] 	Reserved:  53 blocks
+[   9.821] 	Allocated: 10 blocks
+[   9.821] 
+[   9.821] UAVCAN node status:
+[   9.821] 	Internal failures: 0
+[   9.821] 	Transfer errors:   0
+[   9.821] 	RX transfers:      23
+[   9.821] 	TX transfers:      287
+[   9.821] 
+[   9.821] CAN1 status:
+[   9.821] 	HW errors: 0
+[   9.821] 	IO errors: 0
+[   9.821] 	RX frames: 23
+[   9.821] 	TX frames: 440
+[   9.821] CAN2 status:
+[   9.821] 	HW errors: 425
+[   9.821] 	IO errors: 461
+[   9.821] 	RX frames: 0
+[   9.821] 	TX frames: 404
+[   9.821] 
+[   9.821] Sensor 'flow':
+[   9.821] name: uavcan_flow
+[   9.821] 
+[   9.821] Sensor 'mag':
+[   9.821] name: uavcan_mag
+[   9.821] 
+[   9.821] Sensor 'rangefinder':
+[   9.821] name: uavcan_rangefinder
+[   9.821] 
+[   9.821] Online nodes (Node ID, Health, Mode):
+[   9.821] 
+[   9.821] uavcan: cycle time: 1977 events, 9577167us elapsed, 4844.29us avg, min 10us max 2794113us 74158.367us rms
+[   9.821] uavcan: cycle interval: 1978 events, 7774.89us avg, min 265us max 2794116us 73950.055us rms
+[   9.821] nsh> [K
+[  11.726] --> sending: uavcan status
+[  11.826] nsh> [Kuavcan status
+[  11.826] Pool allocator status:
+[  11.826] 	Capacity hard/soft: 500/250 blocks
+[  11.826] 	Reserved:  53 blocks
+[  11.826] 	Allocated: 10 blocks
+[  11.826] 
+[  11.826] UAVCAN node status:
+[  11.826] 	Internal failures: 0
+[  11.826] 	Transfer errors:   0
+[  11.826] 	RX transfers:      25
+[  11.826] 	TX transfers:      326
+[  11.826] 
+[  11.826] CAN1 status:
+[  11.826] 	HW errors: 0
+[  11.826] 	IO errors: 0
+[  11.826] 	RX frames: 25
+[  11.826] 	TX frames: 503
+[  11.826] CAN2 status:
+[  11.826] 	HW errors: 491
+[  11.826] 	IO errors: 527
+[  11.827] 	RX frames: 0
+[  11.827] 	TX frames: 467
+[  11.827] 
+[  11.827] Sensor 'flow':
+[  11.827] name: uavcan_flow
+[  11.827] 
+[  11.827] Sensor 'mag':
+[  11.827] name: uavcan_mag
+[  11.827] 
+[  11.827] Sensor 'rangefinder':
+[  11.827] name: uavcan_rangefinder
+[  11.827] 
+[  11.827] Online nodes (Node ID, Health, Mode):
+[  11.827] 
+[  11.827] uavcan: cycle time: 2335 events, 10817028us elapsed, 4632.56us avg, min 10us max 2794113us 69813.523us rms
+[  11.827] uavcan: cycle interval: 2335 events, 7566.75us avg, min 265us max 2794116us 69620.805us rms
+[  11.827] nsh> [K
+[  13.731] --> sending: uavcan status
+[  13.831] nsh> [Kuavcan status
+[  13.831] Pool allocator status:
+[  13.831] 	Capacity hard/soft: 500/250 blocks
+[  13.832] 	Reserved:  53 blocks
+[  13.832] 	Allocated: 10 blocks
+[  13.832] 
+[  13.832] UAVCAN node status:
+[  13.832] 	Internal failures: 0
+[  13.832] 	Transfer errors:   0
+[  13.832] 	RX transfers:      28
+[  13.832] 	TX transfers:      363
+[  13.832] 
+[  13.832] CAN1 status:
+[  13.832] 	HW errors: 0
+[  13.832] 	IO errors: 0
+[  13.832] 	RX frames: 28
+[  13.832] 	TX frames: 559
+[  13.832] CAN2 status:
+[  13.832] 	HW errors: 552
+[  13.832] 	IO errors: 588
+[  13.832] 	RX frames: 0
+[  13.832] 	TX frames: 523
+[  13.832] 
+[  13.832] Sensor 'flow':
+[  13.832] name: uavcan_flow
+[  13.832] 
+[  13.832] Sensor 'mag':
+[  13.832] name: uavcan_mag
+[  13.832] 
+[  13.832] Sensor 'rangefinder':
+[  13.832] name: uavcan_rangefinder
+[  13.832] 
+[  13.832] Online nodes (Node ID, Health, Mode):
+[  13.832] 
+[  13.832] uavcan: cycle time: 2668 events, 11772364us elapsed, 4412.43us avg, min 10us max 2794113us 66628.023us rms
+[  13.832] uavcan: cycle interval: 2669 events, 7345.30us avg, min 265us max 2794116us 66423.328us rms
+[  13.832] nsh> [K
+[  15.737] --> sending: uavcan status
+[  15.837] nsh> [Kuavcan status
+[  15.837] Pool allocator status:
+[  15.837] 	Capacity hard/soft: 500/250 blocks
+[  15.837] 	Reserved:  53 blocks
+[  15.837] 	Allocated: 10 blocks
+[  15.837] 
+[  15.837] UAVCAN node status:
+[  15.837] 	Internal failures: 0
+[  15.837] 	Transfer errors:   0
+[  15.837] 	RX transfers:      30
+[  15.837] 	TX transfers:      401
+[  15.837] 
+[  15.837] CAN1 status:
+[  15.837] 	HW errors: 0
+[  15.837] 	IO errors: 0
+[  15.837] 	RX frames: 30
+[  15.837] 	TX frames: 618
+[  15.837] CAN2 status:
+[  15.837] 	HW errors: 625
+[  15.837] 	IO errors: 661
+[  15.837] 	RX frames: 0
+[  15.837] 	TX frames: 582
+[  15.837] 
+[  15.838] Sensor 'flow':
+[  15.838] name: uavcan_flow
+[  15.838] 
+[  15.838] Sensor 'mag':
+[  15.838] name: uavcan_mag
+[  15.838] 
+[  15.838] Sensor 'rangefinder':
+[  15.838] name: uavcan_rangefinder
+[  15.838] 
+[  15.838] Online nodes (Node ID, Health, Mode):
+[  15.838] 
+[  15.838] uavcan: cycle time: 2922 events, 13107996us elapsed, 4485.97us avg, min 10us max 2794113us 65228.797us rms
+[  15.838] uavcan: cycle interval: 2922 events, 7419.36us avg, min 88us max 2794116us 65029.145us rms
+[  15.838] nsh> [K
+[  17.742] --> sending: uavcan status
+[  17.843] nsh> [Kuavcan status
+[  17.843] Pool allocator status:
+[  17.843] 	Capacity hard/soft: 500/250 blocks
+[  17.843] 	Reserved:  53 blocks
+[  17.843] 	Allocated: 10 blocks
+[  17.843] 
+[  17.843] UAVCAN node status:
+[  17.843] 	Internal failures: 0
+[  17.843] 	Transfer errors:   0
+[  17.843] 	RX transfers:      34
+[  17.843] 	TX transfers:      434
+[  17.843] 
+[  17.843] CAN1 status:
+[  17.843] 	HW errors: 0
+[  17.843] 	IO errors: 0
+[  17.843] 	RX frames: 34
+[  17.843] 	TX frames: 671
+[  17.843] CAN2 status:
+[  17.843] 	HW errors: 687
+[  17.843] 	IO errors: 723
+[  17.843] 	RX frames: 0
+[  17.843] 	TX frames: 635
+[  17.843] 
+[  17.843] Sensor 'flow':
+[  17.843] name: uavcan_flow
+[  17.843] 
+[  17.843] Sensor 'mag':
+[  17.843] name: uavcan_mag
+[  17.843] 
+[  17.843] Sensor 'rangefinder':
+[  17.843] name: uavcan_rangefinder
+[  17.843] 
+[  17.843] Online nodes (Node ID, Health, Mode):
+[  17.843] 
+[  17.843] uavcan: cycle time: 3135 events, 14438329us elapsed, 4605.53us avg, min 10us max 2794113us 64477.273us rms
+[  17.843] uavcan: cycle interval: 3136 events, 7534.16us avg, min 88us max 2794116us 64260.102us rms
+[  17.843] nsh> [K
+[  19.748] --> sending: uavcan status
+[  19.848] nsh> [Kuavcan status
+[  19.848] Pool allocator status:
+[  19.848] 	Capacity hard/soft: 500/250 blocks
+[  19.848] 	Reserved:  53 blocks
+[  19.848] 	Allocated: 10 blocks
+[  19.848] 
+[  19.848] UAVCAN node status:
+[  19.848] 	Internal failures: 0
+[  19.849] 	Transfer errors:   0
+[  19.849] 	RX transfers:      36
+[  19.849] 	TX transfers:      473
+[  19.849] 
+[  19.849] CAN1 status:
+[  19.849] 	HW errors: 0
+[  19.849] 	IO errors: 0
+[  19.849] 	RX frames: 36
+[  19.849] 	TX frames: 733
+[  19.849] CAN2 status:
+[  19.849] 	HW errors: 739
+[  19.849] 	IO errors: 775
+[  19.849] 	RX frames: 0
+[  19.849] 	TX frames: 697
+[  19.849] 
+[  19.849] Sensor 'flow':
+[  19.849] name: uavcan_flow
+[  19.849] 
+[  19.849] Sensor 'mag':
+[  19.849] name: uavcan_mag
+[  19.849] 
+[  19.849] Sensor 'rangefinder':
+[  19.849] name: uavcan_rangefinder
+[  19.849] 
+[  19.849] Online nodes (Node ID, Health, Mode):
+[  19.849] 
+[  19.849] uavcan: cycle time: 3384 events, 15773044us elapsed, 4661.07us avg, min 10us max 2794113us 63442.656us rms
+[  19.849] uavcan: cycle interval: 3384 events, 7591.81us avg, min 88us max 2794116us 63229.664us rms
+[  19.849] nsh> [K
+[  21.752] --> sending: uavcan status
+[  21.853] nsh> [Kuavcan status
+[  21.853] Pool allocator status:
+[  21.853] 	Capacity hard/soft: 500/250 blocks
+[  21.853] 	Reserved:  53 blocks
+[  21.853] 	Allocated: 10 blocks
+[  21.853] 
+[  21.853] UAVCAN node status:
+[  21.853] 	Internal failures: 0
+[  21.853] 	Transfer errors:   0
+[  21.853] 	RX transfers:      39
+[  21.853] 	TX transfers:      506
+[  21.853] 
+[  21.853] CAN1 status:
+[  21.853] 	HW errors: 0
+[  21.853] 	IO errors: 0
+[  21.853] 	RX frames: 39
+[  21.853] 	TX frames: 783
+[  21.853] CAN2 status:
+[  21.853] 	HW errors: 801
+[  21.853] 	IO errors: 837
+[  21.853] 	RX frames: 0
+[  21.853] 	TX frames: 747
+[  21.853] 
+[  21.853] Sensor 'flow':
+[  21.853] name: uavcan_flow
+[  21.853] 
+[  21.853] Sensor 'mag':
+[  21.853] name: uavcan_mag
+[  21.853] 
+[  21.853] Sensor 'rangefinder':
+[  21.853] name: uavcan_rangefinder
+[  21.853] 
+[  21.853] Online nodes (Node ID, Health, Mode):
+[  21.853] 
+[  21.853] uavcan: cycle time: 3697 events, 16729535us elapsed, 4525.16us avg, min 10us max 2794113us 61729.797us rms
+[  21.853] uavcan: cycle interval: 3698 events, 7455.53us avg, min 88us max 2794116us 61508.961us rms
+[  21.853] nsh> [K
+[  23.757] --> sending: uavcan status
+[  23.857] nsh> [Kuavcan status
+[  23.857] Pool allocator status:
+[  23.857] 	Capacity hard/soft: 500/250 blocks
+[  23.857] 	Reserved:  53 blocks
+[  23.857] 	Allocated: 10 blocks
+[  23.857] 
+[  23.857] UAVCAN node status:
+[  23.857] 	Internal failures: 0
+[  23.857] 	Transfer errors:   0
+[  23.857] 	RX transfers:      41
+[  23.857] 	TX transfers:      542
+[  23.857] 
+[  23.857] CAN1 status:
+[  23.857] 	HW errors: 0
+[  23.857] 	IO errors: 0
+[  23.857] 	RX frames: 41
+[  23.857] 	TX frames: 841
+[  23.857] CAN2 status:
+[  23.857] 	HW errors: 860
+[  23.857] 	IO errors: 896
+[  23.857] 	RX frames: 0
+[  23.857] 	TX frames: 805
+[  23.857] 
+[  23.857] Sensor 'flow':
+[  23.857] name: uavcan_flow
+[  23.857] 
+[  23.857] Sensor 'mag':
+[  23.857] name: uavcan_mag
+[  23.857] 
+[  23.857] Sensor 'rangefinder':
+[  23.857] name: uavcan_rangefinder
+[  23.857] 
+[  23.857] Online nodes (Node ID, Health, Mode):
+[  23.857] 
+[  23.857] uavcan: cycle time: 4001 events, 17972614us elapsed, 4492.03us avg, min 10us max 2794113us 60405.332us rms
+[  23.857] uavcan: cycle interval: 4001 events, 7423.52us avg, min 88us max 2794116us 60189.723us rms
+[  23.857] nsh> [K
+[  25.763] --> sending: uavcan status
+[  25.863] nsh> [Kuavcan status
+[  25.863] Pool allocator status:
+[  25.863] 	Capacity hard/soft: 500/250 blocks
+[  25.863] 	Reserved:  53 blocks
+[  25.863] 	Allocated: 10 blocks
+[  25.863] 
+[  25.863] UAVCAN node status:
+[  25.863] 	Internal failures: 0
+[  25.863] 	Transfer errors:   0
+[  25.863] 	RX transfers:      45
+[  25.863] 	TX transfers:      578
+[  25.863] 
+[  25.863] CAN1 status:
+[  25.863] 	HW errors: 0
+[  25.863] 	IO errors: 0
+[  25.863] 	RX frames: 45
+[  25.863] 	TX frames: 898
+[  25.863] CAN2 status:
+[  25.863] 	HW errors: 908
+[  25.863] 	IO errors: 944
+[  25.863] 	RX frames: 0
+[  25.863] 	TX frames: 862
+[  25.863] 
+[  25.863] Sensor 'flow':
+[  25.863] name: uavcan_flow
+[  25.863] 
+[  25.863] Sensor 'mag':
+[  25.863] name: uavcan_mag
+[  25.863] 
+[  25.863] Sensor 'rangefinder':
+[  25.863] name: uavcan_rangefinder
+[  25.863] 
+[  25.863] Online nodes (Node ID, Health, Mode):
+[  25.863] 
+[  25.863] uavcan: cycle time: 4203 events, 19387341us elapsed, 4612.74us avg, min 10us max 2794113us 60274.504us rms
+[  25.863] uavcan: cycle interval: 4204 events, 7541.45us avg, min 88us max 2794116us 60045.594us rms
+[  25.863] nsh> [K
+[  27.768] --> sending: uavcan status
+[  27.869] nsh> [Kuavcan status
+[  27.869] Pool allocator status:
+[  27.869] 	Capacity hard/soft: 500/250 blocks
+[  27.869] 	Reserved:  53 blocks
+[  27.869] 	Allocated: 10 blocks
+[  27.869] 
+[  27.869] UAVCAN node status:
+[  27.869] 	Internal failures: 0
+[  27.869] 	Transfer errors:   0
+[  27.869] 	RX transfers:      47
+[  27.869] 	TX transfers:      612
+[  27.869] 
+[  27.869] CAN1 status:
+[  27.869] 	HW errors: 0
+[  27.869] 	IO errors: 0
+[  27.869] 	RX frames: 47
+[  27.869] 	TX frames: 952
+[  27.869] CAN2 status:
+[  27.869] 	HW errors: 974
+[  27.869] 	IO errors: 1010
+[  27.869] 	RX frames: 0
+[  27.869] 	TX frames: 916
+[  27.869] 
+[  27.869] Sensor 'flow':
+[  27.869] name: uavcan_flow
+[  27.869] 
+[  27.869] Sensor 'mag':
+[  27.869] name: uavcan_mag
+[  27.869] 
+[  27.869] Sensor 'rangefinder':
+[  27.869] name: uavcan_rangefinder
+[  27.869] 
+[  27.869] Online nodes (Node ID, Health, Mode):
+[  27.869] 
+[  27.869] uavcan: cycle time: 4479 events, 20249141us elapsed, 4520.91us avg, min 10us max 2794113us 59090.824us rms
+[  27.869] uavcan: cycle interval: 4480 events, 7450.84us avg, min 88us max 2794116us 58862.480us rms
+[  27.869] nsh> [K
+[  29.774] --> sending: uavcan status
+[  29.874] nsh> [Kuavcan status
+[  29.874] Pool allocator status:
+[  29.874] 	Capacity hard/soft: 500/250 blocks
+[  29.874] 	Reserved:  53 blocks
+[  29.874] 	Allocated: 10 blocks
+[  29.874] 
+[  29.874] UAVCAN node status:
+[  29.874] 	Internal failures: 0
+[  29.874] 	Transfer errors:   0
+[  29.874] 	RX transfers:      49
+[  29.874] 	TX transfers:      651
+[  29.874] 
+[  29.874] CAN1 status:
+[  29.874] 	HW errors: 0
+[  29.874] 	IO errors: 0
+[  29.874] 	RX frames: 49
+[  29.874] 	TX frames: 1012
+[  29.874] CAN2 status:
+[  29.874] 	HW errors: 1042
+[  29.874] 	IO errors: 1078
+[  29.874] 	RX frames: 0
+[  29.874] 	TX frames: 976
+[  29.874] 
+[  29.874] Sensor 'flow':
+[  29.874] name: uavcan_flow
+[  29.874] 
+[  29.874] Sensor 'mag':
+[  29.874] name: uavcan_mag
+[  29.874] 
+[  29.874] Sensor 'rangefinder':
+[  29.874] name: uavcan_rangefinder
+[  29.874] 
+[  29.874] Online nodes (Node ID, Health, Mode):
+[  29.874] 
+[  29.874] uavcan: cycle time: 4884 events, 21398713us elapsed, 4381.39us avg, min 10us max 2794113us 57392.516us rms
+[  29.874] uavcan: cycle interval: 4884 events, 7313.04us avg, min 88us max 2794116us 57171.238us rms
+[  29.874] nsh> [K
+[  31.778] --> sending: uavcan status
+[  31.878] nsh> [Kuavcan status
+[  31.878] Pool allocator status:
+[  31.878] 	Capacity hard/soft: 500/250 blocks
+[  31.878] 	Reserved:  53 blocks
+[  31.878] 	Allocated: 10 blocks
+[  31.878] 
+[  31.878] UAVCAN node status:
+[  31.878] 	Internal failures: 0
+[  31.878] 	Transfer errors:   0
+[  31.878] 	RX transfers:      52
+[  31.878] 	TX transfers:      682
+[  31.878] 
+[  31.878] CAN1 status:
+[  31.878] 	HW errors: 0
+[  31.878] 	IO errors: 0
+[  31.878] 	RX frames: 52
+[  31.878] 	TX frames: 1062
+[  31.878] CAN2 status:
+[  31.878] 	HW errors: 1096
+[  31.878] 	IO errors: 1132
+[  31.878] 	RX frames: 0
+[  31.878] 	TX frames: 1026
+[  31.878] 
+[  31.878] Sensor 'flow':
+[  31.878] name: uavcan_flow
+[  31.878] 
+[  31.878] Sensor 'mag':
+[  31.878] name: uavcan_mag
+[  31.878] 
+[  31.878] Sensor 'rangefinder':
+[  31.878] name: uavcan_rangefinder
+[  31.878] 
+[  31.878] Online nodes (Node ID, Health, Mode):
+[  31.878] 
+[  31.878] uavcan: cycle time: 5119 events, 22253999us elapsed, 4347.33us avg, min 10us max 2794113us 56688.031us rms
+[  31.878] uavcan: cycle interval: 5120 events, 7278.16us avg, min 88us max 2794116us 56460.484us rms
+[  31.878] nsh> [K
+[  33.783] --> sending: uavcan status
+[  33.884] nsh> [Kuavcan status
+[  33.884] Pool allocator status:
+[  33.884] 	Capacity hard/soft: 500/250 blocks
+[  33.884] 	Reserved:  53 blocks
+[  33.884] 	Allocated: 10 blocks
+[  33.884] 
+[  33.884] UAVCAN node status:
+[  33.884] 	Internal failures: 0
+[  33.884] 	Transfer errors:   0
+[  33.884] 	RX transfers:      55
+[  33.884] 	TX transfers:      723
+[  33.884] 
+[  33.884] CAN1 status:
+[  33.884] 	HW errors: 0
+[  33.884] 	IO errors: 0
+[  33.884] 	RX frames: 55
+[  33.884] 	TX frames: 1124
+[  33.884] CAN2 status:
+[  33.884] 	HW errors: 1159
+[  33.884] 	IO errors: 1195
+[  33.884] 	RX frames: 0
+[  33.884] 	TX frames: 1088
+[  33.884] 
+[  33.884] Sensor 'flow':
+[  33.884] name: uavcan_flow
+[  33.884] 
+[  33.884] Sensor 'mag':
+[  33.884] name: uavcan_mag
+[  33.884] 
+[  33.884] Sensor 'rangefinder':
+[  33.884] name: uavcan_rangefinder
+[  33.884] 
+[  33.884] Online nodes (Node ID, Health, Mode):
+[  33.884] 
+[  33.884] uavcan: cycle time: 5367 events, 23682437us elapsed, 4412.60us avg, min 10us max 2794113us 56503.688us rms
+[  33.884] uavcan: cycle interval: 5368 events, 7342.43us avg, min 88us max 2794116us 56272.555us rms
+[  33.884] nsh> [K
+[  35.789] --> sending: uavcan status
+[  35.889] nsh> [Kuavcan status
+[  35.889] Pool allocator status:
+[  35.889] 	Capacity hard/soft: 500/250 blocks
+[  35.889] 	Reserved:  53 blocks
+[  35.889] 	Allocated: 10 blocks
+[  35.889] 
+[  35.889] UAVCAN node status:
+[  35.889] 	Internal failures: 0
+[  35.889] 	Transfer errors:   0
+[  35.889] 	RX transfers:      58
+[  35.889] 	TX transfers:      763
+[  35.889] 
+[  35.889] CAN1 status:
+[  35.889] 	HW errors: 0
+[  35.889] 	IO errors: 0
+[  35.889] 	RX frames: 58
+[  35.889] 	TX frames: 1184
+[  35.889] CAN2 status:
+[  35.889] 	HW errors: 1223
+[  35.889] 	IO errors: 1259
+[  35.889] 	RX frames: 0
+[  35.889] 	TX frames: 1148
+[  35.889] 
+[  35.889] Sensor 'flow':
+[  35.889] name: uavcan_flow
+[  35.889] 
+[  35.889] Sensor 'mag':
+[  35.889] name: uavcan_mag
+[  35.889] 
+[  35.889] Sensor 'rangefinder':
+[  35.889] name: uavcan_rangefinder
+[  35.889] 
+[  35.889] Online nodes (Node ID, Health, Mode):
+[  35.889] 
+[  35.889] uavcan: cycle time: 5722 events, 24922455us elapsed, 4355.55us avg, min 10us max 2794113us 55528.508us rms
+[  35.889] uavcan: cycle interval: 5723 events, 7285.00us avg, min 88us max 2794116us 55297.047us rms
+[  35.889] nsh> [K
+[  37.795] --> sending: uavcan status
+[  37.896] nsh> [Kuavcan status
+[  37.896] Pool allocator status:
+[  37.896] 	Capacity hard/soft: 500/250 blocks
+[  37.896] 	Reserved:  53 blocks
+[  37.896] 	Allocated: 10 blocks
+[  37.896] 
+[  37.896] UAVCAN node status:
+[  37.896] 	Internal failures: 0
+[  37.896] 	Transfer errors:   0
+[  37.896] 	RX transfers:      60
+[  37.896] 	TX transfers:      800
+[  37.896] 
+[  37.896] CAN1 status:
+[  37.896] 	HW errors: 0
+[  37.896] 	IO errors: 0
+[  37.896] 	RX frames: 60
+[  37.896] 	TX frames: 1243
+[  37.896] CAN2 status:
+[  37.896] 	HW errors: 1288
+[  37.896] 	IO errors: 1324
+[  37.896] 	RX frames: 0
+[  37.896] 	TX frames: 1207
+[  37.896] 
+[  37.896] Sensor 'flow':
+[  37.896] name: uavcan_flow
+[  37.896] 
+[  37.896] Sensor 'mag':
+[  37.896] name: uavcan_mag
+[  37.896] 
+[  37.896] Sensor 'rangefinder':
+[  37.896] name: uavcan_rangefinder
+[  37.896] 
+[  37.896] Online nodes (Node ID, Health, Mode):
+[  37.896] 
+[  37.896] uavcan: cycle time: 5936 events, 26351114us elapsed, 4439.20us avg, min 10us max 2794113us 55568.535us rms
+[  37.896] uavcan: cycle interval: 5936 events, 7368.84us avg, min 88us max 2794116us 55337.773us rms
+[  37.896] nsh> [K
+[  39.800] --> sending: uavcan status
+[  39.901] nsh> [Kuavcan status
+[  39.901] Pool allocator status:
+[  39.901] 	Capacity hard/soft: 500/250 blocks
+[  39.901] 	Reserved:  53 blocks
+[  39.901] 	Allocated: 10 blocks
+[  39.901] 
+[  39.901] UAVCAN node status:
+[  39.901] 	Internal failures: 0
+[  39.901] 	Transfer errors:   0
+[  39.901] 	RX transfers:      63
+[  39.901] 	TX transfers:      832
+[  39.901] 
+[  39.901] CAN1 status:
+[  39.901] 	HW errors: 0
+[  39.901] 	IO errors: 0
+[  39.901] 	RX frames: 63
+[  39.901] 	TX frames: 1294
+[  39.901] CAN2 status:
+[  39.901] 	HW errors: 1341
+[  39.901] 	IO errors: 1377
+[  39.901] 	RX frames: 0
+[  39.901] 	TX frames: 1258
+[  39.901] 
+[  39.901] Sensor 'flow':
+[  39.901] name: uavcan_flow
+[  39.901] 
+[  39.901] Sensor 'mag':
+[  39.901] name: uavcan_mag
+[  39.901] 
+[  39.901] Sensor 'rangefinder':
+[  39.901] name: uavcan_rangefinder
+[  39.901] 
+[  39.901] Online nodes (Node ID, Health, Mode):
+[  39.901] 
+[  39.901] uavcan: cycle time: 6223 events, 27205620us elapsed, 4371.79us avg, min 10us max 2794113us 54805.254us rms
+[  39.901] uavcan: cycle interval: 6224 events, 7301.05us avg, min 88us max 2794116us 54570.609us rms
+[  39.901] nsh> [K
+[  41.806] --> sending: uavcan status
+[  41.906] nsh> [Kuavcan status
+[  41.906] Pool allocator status:
+[  41.906] 	Capacity hard/soft: 500/250 blocks
+[  41.906] 	Reserved:  53 blocks
+[  41.906] 	Allocated: 10 blocks
+[  41.906] 
+[  41.906] UAVCAN node status:
+[  41.906] 	Internal failures: 0
+[  41.906] 	Transfer errors:   0
+[  41.906] 	RX transfers:      65
+[  41.906] 	TX transfers:      874
+[  41.906] 
+[  41.906] CAN1 status:
+[  41.906] 	HW errors: 0
+[  41.906] 	IO errors: 0
+[  41.906] 	RX frames: 65
+[  41.906] 	TX frames: 1357
+[  41.906] CAN2 status:
+[  41.906] 	HW errors: 1411
+[  41.906] 	IO errors: 1447
+[  41.906] 	RX frames: 0
+[  41.906] 	TX frames: 1321
+[  41.906] 
+[  41.906] Sensor 'flow':
+[  41.906] name: uavcan_flow
+[  41.906] 
+[  41.906] Sensor 'mag':
+[  41.906] name: uavcan_mag
+[  41.906] 
+[  41.906] Sensor 'rangefinder':
+[  41.906] name: uavcan_rangefinder
+[  41.906] 
+[  41.906] Online nodes (Node ID, Health, Mode):
+[  41.906] 
+[  41.906] uavcan: cycle time: 6558 events, 28534607us elapsed, 4351.11us avg, min 10us max 2794113us 54237.070us rms
+[  41.906] uavcan: cycle interval: 6558 events, 7281.09us avg, min 88us max 2794116us 54005.488us rms
+[  41.906] nsh> [K
+[  43.811] --> sending: uavcan status
+[  43.911] nsh> [Kuavcan status
+[  43.911] Pool allocator status:
+[  43.911] 	Capacity hard/soft: 500/250 blocks
+[  43.911] 	Reserved:  53 blocks
+[  43.911] 	Allocated: 10 blocks
+[  43.911] 
+[  43.911] UAVCAN node status:
+[  43.911] 	Internal failures: 0
+[  43.911] 	Transfer errors:   0
+[  43.911] 	RX transfers:      68
+[  43.911] 	TX transfers:      910
+[  43.911] 
+[  43.911] CAN1 status:
+[  43.911] 	HW errors: 0
+[  43.911] 	IO errors: 0
+[  43.911] 	RX frames: 68
+[  43.911] 	TX frames: 1415
+[  43.911] CAN2 status:
+[  43.911] 	HW errors: 1468
+[  43.911] 	IO errors: 1504
+[  43.911] 	RX frames: 0
+[  43.911] 	TX frames: 1379
+[  43.911] 
+[  43.911] Sensor 'flow':
+[  43.911] name: uavcan_flow
+[  43.911] 
+[  43.911] Sensor 'mag':
+[  43.911] name: uavcan_mag
+[  43.911] 
+[  43.911] Sensor 'rangefinder':
+[  43.911] name: uavcan_rangefinder
+[  43.911] 
+[  43.911] Online nodes (Node ID, Health, Mode):
+[  43.911] 
+[  43.911] uavcan: cycle time: 6790 events, 29866773us elapsed, 4398.64us avg, min 10us max 2794113us 54107.191us rms
+[  43.911] uavcan: cycle interval: 6790 events, 7327.89us avg, min 88us max 2794116us 53872.566us rms
+[  43.911] nsh> [K
+[  45.816] --> sending: uavcan status
+[  45.917] nsh> [Kuavcan status
+[  45.917] Pool allocator status:
+[  45.917] 	Capacity hard/soft: 500/250 blocks
+[  45.917] 	Reserved:  53 blocks
+[  45.917] 	Allocated: 10 blocks
+[  45.917] 
+[  45.917] UAVCAN node status:
+[  45.917] 	Internal failures: 0
+[  45.917] 	Transfer errors:   0
+[  45.917] 	RX transfers:      71
+[  45.917] 	TX transfers:      940
+[  45.917] 
+[  45.917] CAN1 status:
+[  45.917] 	HW errors: 0
+[  45.917] 	IO errors: 0
+[  45.917] 	RX frames: 71
+[  45.917] 	TX frames: 1465
+[  45.917] CAN2 status:
+[  45.917] 	HW errors: 1501
+[  45.917] 	IO errors: 1537
+[  45.917] 	RX frames: 0
+[  45.917] 	TX frames: 1429
+[  45.917] 
+[  45.917] Sensor 'flow':
+[  45.917] name: uavcan_flow
+[  45.917] 
+[  45.917] Sensor 'mag':
+[  45.917] name: uavcan_mag
+[  45.917] 
+[  45.917] Sensor 'rangefinder':
+[  45.917] name: uavcan_rangefinder
+[  45.917] 
+[  45.917] Online nodes (Node ID, Health, Mode):
+[  45.917] 
+[  45.917] uavcan: cycle time: 7033 events, 30820552us elapsed, 4382.28us avg, min 10us max 2794113us 53780.813us rms
+[  45.917] uavcan: cycle interval: 7034 events, 7310.69us avg, min 88us max 2794116us 53541.949us rms
+[  45.917] nsh> [K
+[  47.821] --> sending: uavcan status
+[  47.922] nsh> [Kuavcan status
+[  47.922] Pool allocator status:
+[  47.922] 	Capacity hard/soft: 500/250 blocks
+[  47.922] 	Reserved:  53 blocks
+[  47.922] 	Allocated: 10 blocks
+[  47.922] 
+[  47.922] UAVCAN node status:
+[  47.922] 	Internal failures: 0
+[  47.922] 	Transfer errors:   0
+[  47.922] 	RX transfers:      74
+[  47.922] 	TX transfers:      976
+[  47.922] 
+[  47.922] CAN1 status:
+[  47.922] 	HW errors: 0
+[  47.922] 	IO errors: 0
+[  47.922] 	RX frames: 74
+[  47.922] 	TX frames: 1522
+[  47.922] CAN2 status:
+[  47.922] 	HW errors: 1587
+[  47.922] 	IO errors: 1623
+[  47.922] 	RX frames: 0
+[  47.922] 	TX frames: 1486
+[  47.922] 
+[  47.922] Sensor 'flow':
+[  47.922] name: uavcan_flow
+[  47.922] 
+[  47.922] Sensor 'mag':
+[  47.922] name: uavcan_mag
+[  47.922] 
+[  47.922] Sensor 'rangefinder':
+[  47.922] name: uavcan_rangefinder
+[  47.922] 
+[  47.922] Online nodes (Node ID, Health, Mode):
+[  47.922] 
+[  47.922] uavcan: cycle time: 7271 events, 32061400us elapsed, 4409.49us avg, min 10us max 2794113us 53550.633us rms
+[  47.922] uavcan: cycle interval: 7272 events, 7336.89us avg, min 88us max 2794116us 53309.621us rms
+[  47.922] nsh> [K
+[  49.827] --> sending: uavcan status
+[  49.927] nsh> [Kuavcan status
+[  49.927] Pool allocator status:
+[  49.927] 	Capacity hard/soft: 500/250 blocks
+[  49.927] 	Reserved:  53 blocks
+[  49.927] 	Allocated: 10 blocks
+[  49.927] 
+[  49.927] UAVCAN node status:
+[  49.927] 	Internal failures: 0
+[  49.927] 	Transfer errors:   0
+[  49.927] 	RX transfers:      77
+[  49.927] 	TX transfers:      1017
+[  49.927] 
+[  49.927] CAN1 status:
+[  49.927] 	HW errors: 0
+[  49.927] 	IO errors: 0
+[  49.927] 	RX frames: 77
+[  49.927] 	TX frames: 1587
+[  49.927] CAN2 status:
+[  49.927] 	HW errors: 1657
+[  49.927] 	IO errors: 1693
+[  49.927] 	RX frames: 0
+[  49.927] 	TX frames: 1551
+[  49.927] 
+[  49.927] Sensor 'flow':
+[  49.927] name: uavcan_flow
+[  49.927] 
+[  49.927] Sensor 'mag':
+[  49.927] name: uavcan_mag
+[  49.927] 
+[  49.927] Sensor 'rangefinder':
+[  49.927] name: uavcan_rangefinder
+[  49.927] 
+[  49.927] Online nodes (Node ID, Health, Mode):
+[  49.927] 
+[  49.927] uavcan: cycle time: 7488 events, 33860219us elapsed, 4521.93us avg, min 10us max 2794113us 53792.949us rms
+[  49.927] uavcan: cycle interval: 7489 events, 7447.50us avg, min 88us max 2794116us 53547.219us rms
+[  49.927] nsh> [K
+[  51.831] --> sending: uavcan status
+[  51.931] nsh> [Kuavcan status
+[  51.931] Pool allocator status:
+[  51.931] 	Capacity hard/soft: 500/250 blocks
+[  51.931] 	Reserved:  53 blocks
+[  51.931] 	Allocated: 10 blocks
+[  51.931] 
+[  51.931] UAVCAN node status:
+[  51.931] 	Internal failures: 0
+[  51.931] 	Transfer errors:   0
+[  51.931] 	RX transfers:      79
+[  51.931] 	TX transfers:      1053
+[  51.931] 
+[  51.931] CAN1 status:
+[  51.931] 	HW errors: 0
+[  51.931] 	IO errors: 0
+[  51.931] 	RX frames: 79
+[  51.931] 	TX frames: 1644
+[  51.931] CAN2 status:
+[  51.931] 	HW errors: 1718
+[  51.931] 	IO errors: 1754
+[  51.931] 	RX frames: 0
+[  51.931] 	TX frames: 1608
+[  51.931] 
+[  51.931] Sensor 'flow':
+[  51.931] name: uavcan_flow
+[  51.931] 
+[  51.931] Sensor 'mag':
+[  51.931] name: uavcan_mag
+[  51.931] 
+[  51.931] Sensor 'rangefinder':
+[  51.931] name: uavcan_rangefinder
+[  51.931] 
+[  51.931] Online nodes (Node ID, Health, Mode):
+[  51.931] 
+[  51.931] uavcan: cycle time: 7875 events, 34723567us elapsed, 4409.34us avg, min 10us max 2794113us 52901.309us rms
+[  51.931] uavcan: cycle interval: 7875 events, 7336.93us avg, min 88us max 2794116us 52661.207us rms
+[  51.931] nsh> [K
+[  53.835] --> sending: uavcan status
+[  53.935] nsh> [Kuavcan status
+[  53.935] Pool allocator status:
+[  53.935] 	Capacity hard/soft: 500/250 blocks
+[  53.935] 	Reserved:  53 blocks
+[  53.935] 	Allocated: 10 blocks
+[  53.935] 
+[  53.935] UAVCAN node status:
+[  53.935] 	Internal failures: 0
+[  53.935] 	Transfer errors:   0
+[  53.935] 	RX transfers:      82
+[  53.935] 	TX transfers:      1084
+[  53.935] 
+[  53.935] CAN1 status:
+[  53.935] 	HW errors: 0
+[  53.935] 	IO errors: 0
+[  53.935] 	RX frames: 82
+[  53.935] 	TX frames: 1694
+[  53.935] CAN2 status:
+[  53.935] 	HW errors: 1781
+[  53.935] 	IO errors: 1817
+[  53.935] 	RX frames: 0
+[  53.935] 	TX frames: 1658
+[  53.935] 
+[  53.935] Sensor 'flow':
+[  53.935] name: uavcan_flow
+[  53.935] 
+[  53.935] Sensor 'mag':
+[  53.935] name: uavcan_mag
+[  53.935] 
+[  53.935] Sensor 'rangefinder':
+[  53.935] name: uavcan_rangefinder
+[  53.935] 
+[  53.935] Online nodes (Node ID, Health, Mode):
+[  53.935] 
+[  53.935] uavcan: cycle time: 8135 events, 35581564us elapsed, 4373.89us avg, min 10us max 2794113us 52476.270us rms
+[  53.935] uavcan: cycle interval: 8136 events, 7301.04us avg, min 88us max 2794116us 52233.090us rms
+[  53.935] nsh> [K
+[  55.838] --> sending: uavcan status
+[  55.939] nsh> [Kuavcan status
+[  55.939] Pool allocator status:
+[  55.939] 	Capacity hard/soft: 500/250 blocks
+[  55.939] 	Reserved:  53 blocks
+[  55.939] 	Allocated: 10 blocks
+[  55.939] 
+[  55.939] UAVCAN node status:
+[  55.939] 	Internal failures: 0
+[  55.939] 	Transfer errors:   0
+[  55.939] 	RX transfers:      85
+[  55.939] 	TX transfers:      1121
+[  55.939] 
+[  55.939] CAN1 status:
+[  55.939] 	HW errors: 0
+[  55.939] 	IO errors: 0
+[  55.939] 	RX frames: 85
+[  55.939] 	TX frames: 1752
+[  55.939] CAN2 status:
+[  55.939] 	HW errors: 1828
+[  55.939] 	IO errors: 1864
+[  55.939] 	RX frames: 0
+[  55.939] 	TX frames: 1716
+[  55.939] 
+[  55.939] Sensor 'flow':
+[  55.939] name: uavcan_flow
+[  55.939] 
+[  55.939] Sensor 'mag':
+[  55.939] name: uavcan_mag
+[  55.939] 
+[  55.939] Sensor 'rangefinder':
+[  55.939] name: uavcan_rangefinder
+[  55.939] 
+[  55.939] Online nodes (Node ID, Health, Mode):
+[  55.939] 
+[  55.939] uavcan: cycle time: 8338 events, 37015346us elapsed, 4439.36us avg, min 10us max 2794113us 52624.895us rms
+[  55.939] uavcan: cycle interval: 8339 events, 7365.60us avg, min 88us max 2794116us 52378.977us rms
+[  55.939] nsh> [K
+[  57.842] --> sending: uavcan status
+[  57.943] nsh> [Kuavcan status
+[  57.943] Pool allocator status:
+[  57.943] 	Capacity hard/soft: 500/250 blocks
+[  57.943] 	Reserved:  53 blocks
+[  57.943] 	Allocated: 10 blocks
+[  57.943] 
+[  57.943] UAVCAN node status:
+[  57.943] 	Internal failures: 0
+[  57.943] 	Transfer errors:   0
+[  57.943] 	RX transfers:      87
+[  57.943] 	TX transfers:      1160
+[  57.943] 
+[  57.943] CAN1 status:
+[  57.943] 	HW errors: 0
+[  57.943] 	IO errors: 0
+[  57.943] 	RX frames: 87
+[  57.943] 	TX frames: 1815
+[  57.943] CAN2 status:
+[  57.943] 	HW errors: 1916
+[  57.943] 	IO errors: 1952
+[  57.943] 	RX frames: 0
+[  57.943] 	TX frames: 1779
+[  57.943] 
+[  57.943] Sensor 'flow':
+[  57.943] name: uavcan_flow
+[  57.943] 
+[  57.943] Sensor 'mag':
+[  57.943] name: uavcan_mag
+[  57.943] 
+[  57.943] Sensor 'rangefinder':
+[  57.943] name: uavcan_rangefinder
+[  57.943] 
+[  57.943] Online nodes (Node ID, Health, Mode):
+[  57.943] 
+[  57.943] uavcan: cycle time: 8724 events, 38252874us elapsed, 4384.79us avg, min 10us max 2794113us 52008.164us rms
+[  57.943] uavcan: cycle interval: 8724 events, 7312.10us avg, min 88us max 2794116us 51765.629us rms
+[  57.943] nsh> [K
+[  59.847] --> sending: uavcan status
+[  59.948] nsh> [Kuavcan status
+[  59.948] Pool allocator status:
+[  59.948] 	Capacity hard/soft: 500/250 blocks
+[  59.948] 	Reserved:  53 blocks
+[  59.948] 	Allocated: 10 blocks
+[  59.948] 
+[  59.948] UAVCAN node status:
+[  59.948] 	Internal failures: 0
+[  59.948] 	Transfer errors:   0
+[  59.948] 	RX transfers:      90
+[  59.948] 	TX transfers:      1192
+[  59.948] 
+[  59.948] CAN1 status:
+[  59.948] 	HW errors: 0
+[  59.948] 	IO errors: 0
+[  59.948] 	RX frames: 90
+[  59.948] 	TX frames: 1866
+[  59.948] CAN2 status:
+[  59.948] 	HW errors: 1973
+[  59.948] 	IO errors: 2009
+[  59.948] 	RX frames: 0
+[  59.948] 	TX frames: 1830
+[  59.948] 
+[  59.948] Sensor 'flow':
+[  59.948] name: uavcan_flow
+[  59.948] 
+[  59.948] Sensor 'mag':
+[  59.948] name: uavcan_mag
+[  59.948] 
+[  59.948] Sensor 'rangefinder':
+[  59.948] name: uavcan_rangefinder
+[  59.948] 
+[  59.948] Online nodes (Node ID, Health, Mode):
+[  59.948] 
+[  59.948] uavcan: cycle time: 8993 events, 39203870us elapsed, 4359.38us avg, min 10us max 2794113us 51722.199us rms
+[  59.948] uavcan: cycle interval: 8994 events, 7286.25us avg, min 88us max 2794116us 51476.965us rms
+[  59.948] nsh> [K
+[  61.852] --> sending: uavcan status
+[  61.952] nsh> [Kuavcan status
+[  61.952] Pool allocator status:
+[  61.952] 	Capacity hard/soft: 500/250 blocks
+[  61.952] 	Reserved:  53 blocks
+[  61.953] 	Allocated: 10 blocks
+[  61.953] 
+[  61.953] UAVCAN node status:
+[  61.953] 	Internal failures: 0
+[  61.953] 	Transfer errors:   0
+[  61.953] 	RX transfers:      92
+[  61.953] 	TX transfers:      1233
+[  61.953] 
+[  61.953] CAN1 status:
+[  61.953] 	HW errors: 0
+[  61.953] 	IO errors: 0
+[  61.953] 	RX frames: 92
+[  61.953] 	TX frames: 1927
+[  61.953] CAN2 status:
+[  61.953] 	HW errors: 2039
+[  61.953] 	IO errors: 2075
+[  61.953] 	RX frames: 0
+[  61.953] 	TX frames: 1891
+[  61.953] 
+[  61.953] Sensor 'flow':
+[  61.953] name: uavcan_flow
+[  61.953] 
+[  61.953] Sensor 'mag':
+[  61.953] name: uavcan_mag
+[  61.953] 
+[  61.953] Sensor 'rangefinder':
+[  61.953] name: uavcan_rangefinder
+[  61.953] 
+[  61.953] Online nodes (Node ID, Health, Mode):
+[  61.953] 
+[  61.953] uavcan: cycle time: 9311 events, 40542915us elapsed, 4354.30us avg, min 10us max 2794113us 51453.711us rms
+[  61.953] uavcan: cycle interval: 9311 events, 7281.54us avg, min 44us max 2794116us 51210.363us rms
+[  61.953] nsh> [K
+[  63.858] --> sending: uavcan status
+[  63.959] nsh> [Kuavcan status
+[  63.959] Pool allocator status:
+[  63.959] 	Capacity hard/soft: 500/250 blocks
+[  63.959] 	Reserved:  53 blocks
+[  63.959] 	Allocated: 10 blocks
+[  63.959] 
+[  63.959] UAVCAN node status:
+[  63.959] 	Internal failures: 0
+[  63.959] 	Transfer errors:   0
+[  63.959] 	RX transfers:      95
+[  63.959] 	TX transfers:      1265
+[  63.959] 
+[  63.959] CAN1 status:
+[  63.959] 	HW errors: 0
+[  63.959] 	IO errors: 0
+[  63.959] 	RX frames: 95
+[  63.959] 	TX frames: 1978
+[  63.959] CAN2 status:
+[  63.959] 	HW errors: 2090
+[  63.959] 	IO errors: 2126
+[  63.959] 	RX frames: 0
+[  63.959] 	TX frames: 1942
+[  63.959] 
+[  63.959] Sensor 'flow':
+[  63.959] name: uavcan_flow
+[  63.959] 
+[  63.959] Sensor 'mag':
+[  63.959] name: uavcan_mag
+[  63.959] 
+[  63.959] Sensor 'rangefinder':
+[  63.959] name: uavcan_rangefinder
+[  63.959] 
+[  63.959] Online nodes (Node ID, Health, Mode):
+[  63.959] 
+[  63.959] uavcan: cycle time: 9569 events, 41490871us elapsed, 4335.97us avg, min 10us max 2794113us 51226.066us rms
+[  63.959] uavcan: cycle interval: 9570 events, 7263.04us avg, min 44us max 2794116us 50979.895us rms
+[  63.959] nsh> [K
+[  65.864] --> sending: uavcan status
+[  65.964] nsh> [Kuavcan status
+[  65.964] Pool allocator status:
+[  65.964] 	Capacity hard/soft: 500/250 blocks
+[  65.964] 	Reserved:  53 blocks
+[  65.964] 	Allocated: 10 blocks
+[  65.964] 
+[  65.964] UAVCAN node status:
+[  65.964] 	Internal failures: 0
+[  65.964] 	Transfer errors:   0
+[  65.964] 	RX transfers:      97
+[  65.964] 	TX transfers:      1304
+[  65.964] 
+[  65.964] CAN1 status:
+[  65.964] 	HW errors: 0
+[  65.964] 	IO errors: 0
+[  65.964] 	RX frames: 97
+[  65.964] 	TX frames: 2038
+[  65.964] CAN2 status:
+[  65.964] 	HW errors: 2158
+[  65.964] 	IO errors: 2194
+[  65.964] 	RX frames: 0
+[  65.964] 	TX frames: 2002
+[  65.964] 
+[  65.964] Sensor 'flow':
+[  65.964] name: uavcan_flow
+[  65.964] 
+[  65.964] Sensor 'mag':
+[  65.964] name: uavcan_mag
+[  65.964] 
+[  65.964] Sensor 'rangefinder':
+[  65.964] name: uavcan_rangefinder
+[  65.964] 
+[  65.964] Online nodes (Node ID, Health, Mode):
+[  65.964] 
+[  65.964] uavcan: cycle time: 9931 events, 42733716us elapsed, 4303.06us avg, min 10us max 2794113us 50791.879us rms
+[  65.964] uavcan: cycle interval: 9932 events, 7230.40us avg, min 44us max 2794116us 50545.383us rms
+[  65.964] nsh> [K
+[  67.869] --> sending: uavcan status
+[  67.969] nsh> [Kuavcan status
+[  67.969] Pool allocator status:
+[  67.969] 	Capacity hard/soft: 500/250 blocks
+[  67.969] 	Reserved:  53 blocks
+[  67.969] 	Allocated: 10 blocks
+[  67.969] 
+[  67.969] UAVCAN node status:
+[  67.969] 	Internal failures: 0
+[  67.969] 	Transfer errors:   0
+[  67.969] 	RX transfers:      100
+[  67.969] 	TX transfers:      1338
+[  67.969] 
+[  67.969] CAN1 status:
+[  67.969] 	HW errors: 0
+[  67.969] 	IO errors: 0
+[  67.969] 	RX frames: 100
+[  67.969] 	TX frames: 2094
+[  67.969] CAN2 status:
+[  67.969] 	HW errors: 2220
+[  67.969] 	IO errors: 2256
+[  67.969] 	RX frames: 0
+[  67.969] 	TX frames: 2058
+[  67.969] 
+[  67.969] Sensor 'flow':
+[  67.969] name: uavcan_flow
+[  67.969] 
+[  67.969] Sensor 'mag':
+[  67.969] name: uavcan_mag
+[  67.969] 
+[  67.969] Sensor 'rangefinder':
+[  67.969] name: uavcan_rangefinder
+[  67.969] 
+[  67.969] Online nodes (Node ID, Health, Mode):
+[  67.969] 
+[  67.969] uavcan: cycle time: 10292 events, 43594165us elapsed, 4235.73us avg, min 10us max 2794113us 50248.629us rms
+[  67.969] uavcan: cycle interval: 10293 events, 7163.65us avg, min 44us max 2794116us 50003.273us rms
+[  67.969] nsh> [K
+[  69.874] --> sending: uavcan status
+[  69.974] nsh> [Kuavcan status
+[  69.975] Pool allocator status:
+[  69.975] 	Capacity hard/soft: 500/250 blocks
+[  69.975] 	Reserved:  53 blocks
+[  69.975] 	Allocated: 10 blocks
+[  69.975] 
+[  69.975] UAVCAN node status:
+[  69.975] 	Internal failures: 0
+[  69.975] 	Transfer errors:   0
+[  69.975] 	RX transfers:      102
+[  69.975] 	TX transfers:      1369
+[  69.975] 
+[  69.975] CAN1 status:
+[  69.975] 	HW errors: 0
+[  69.975] 	IO errors: 0
+[  69.975] 	RX frames: 102
+[  69.975] 	TX frames: 2144
+[  69.975] CAN2 status:
+[  69.975] 	HW errors: 2272
+[  69.975] 	IO errors: 2308
+[  69.975] 	RX frames: 0
+[  69.975] 	TX frames: 2108
+[  69.975] 
+[  69.975] Sensor 'flow':
+[  69.975] name: uavcan_flow
+[  69.975] 
+[  69.975] Sensor 'mag':
+[  69.975] name: uavcan_mag
+[  69.975] 
+[  69.975] Sensor 'rangefinder':
+[  69.975] name: uavcan_rangefinder
+[  69.975] 
+[  69.975] Online nodes (Node ID, Health, Mode):
+[  69.975] 
+[  69.975] uavcan: cycle time: 10521 events, 44548782us elapsed, 4234.27us avg, min 10us max 2794113us 50141.672us rms
+[  69.975] uavcan: cycle interval: 10522 events, 7162.19us avg, min 44us max 2794116us 49895.906us rms
+[  69.975] nsh> [K
+[  71.880] --> sending: uavcan status
+[  71.980] nsh> [Kuavcan status
+[  71.980] Pool allocator status:
+[  71.980] 	Capacity hard/soft: 500/250 blocks
+[  71.980] 	Reserved:  53 blocks
+[  71.980] 	Allocated: 10 blocks
+[  71.980] 
+[  71.980] UAVCAN node status:
+[  71.980] 	Internal failures: 0
+[  71.980] 	Transfer errors:   0
+[  71.980] 	RX transfers:      105
+[  71.980] 	TX transfers:      1412
+[  71.980] 
+[  71.980] CAN1 status:
+[  71.980] 	HW errors: 0
+[  71.980] 	IO errors: 0
+[  71.980] 	RX frames: 105
+[  71.980] 	TX frames: 2210
+[  71.980] CAN2 status:
+[  71.980] 	HW errors: 2338
+[  71.980] 	IO errors: 2374
+[  71.980] 	RX frames: 0
+[  71.980] 	TX frames: 2174
+[  71.980] 
+[  71.980] Sensor 'flow':
+[  71.980] name: uavcan_flow
+[  71.980] 
+[  71.980] Sensor 'mag':
+[  71.980] name: uavcan_mag
+[  71.980] 
+[  71.980] Sensor 'rangefinder':
+[  71.980] name: uavcan_rangefinder
+[  71.980] 
+[  71.980] Online nodes (Node ID, Health, Mode):
+[  71.980] 
+[  71.980] uavcan: cycle time: 10780 events, 46267314us elapsed, 4291.96us avg, min 9us max 2794113us 50217.676us rms
+[  71.980] uavcan: cycle interval: 10780 events, 7219.65us avg, min 44us max 2794116us 49971.117us rms
+[  71.980] nsh> [K
+[  73.885] --> sending: uavcan status
+[  73.986] nsh> [Kuavcan status
+[  73.986] Pool allocator status:
+[  73.986] 	Capacity hard/soft: 500/250 blocks
+[  73.986] 	Reserved:  53 blocks
+[  73.986] 	Allocated: 10 blocks
+[  73.986] 
+[  73.986] UAVCAN node status:
+[  73.986] 	Internal failures: 0
+[  73.986] 	Transfer errors:   0
+[  73.986] 	RX transfers:      107
+[  73.986] 	TX transfers:      1447
+[  73.986] 
+[  73.986] CAN1 status:
+[  73.986] 	HW errors: 0
+[  73.986] 	IO errors: 0
+[  73.986] 	RX frames: 107
+[  73.986] 	TX frames: 2267
+[  73.986] CAN2 status:
+[  73.986] 	HW errors: 2399
+[  73.986] 	IO errors: 2435
+[  73.986] 	RX frames: 0
+[  73.986] 	TX frames: 2231
+[  73.986] 
+[  73.986] Sensor 'flow':
+[  73.986] name: uavcan_flow
+[  73.986] 
+[  73.986] Sensor 'mag':
+[  73.986] name: uavcan_mag
+[  73.986] 
+[  73.986] Sensor 'rangefinder':
+[  73.986] name: uavcan_rangefinder
+[  73.986] 
+[  73.986] Online nodes (Node ID, Health, Mode):
+[  73.986] 
+[  73.986] uavcan: cycle time: 11138 events, 47217931us elapsed, 4239.35us avg, min 9us max 2794113us 49821.855us rms
+[  73.986] uavcan: cycle interval: 11138 events, 7167.75us avg, min 44us max 2794116us 49576.367us rms
+[  73.986] nsh> [K
+[  75.891] --> sending: uavcan status
+[  75.992] nsh> [Kuavcan status
+[  75.992] Pool allocator status:
+[  75.992] 	Capacity hard/soft: 500/250 blocks
+[  75.992] 	Reserved:  53 blocks
+[  75.992] 	Allocated: 10 blocks
+[  75.992] 
+[  75.992] UAVCAN node status:
+[  75.992] 	Internal failures: 0
+[  75.992] 	Transfer errors:   0
+[  75.992] 	RX transfers:      111
+[  75.992] 	TX transfers:      1484
+[  75.992] 
+[  75.992] CAN1 status:
+[  75.992] 	HW errors: 0
+[  75.992] 	IO errors: 0
+[  75.992] 	RX frames: 111
+[  75.992] 	TX frames: 2325
+[  75.992] CAN2 status:
+[  75.992] 	HW errors: 2451
+[  75.992] 	IO errors: 2487
+[  75.992] 	RX frames: 0
+[  75.992] 	TX frames: 2289
+[  75.992] 
+[  75.992] Sensor 'flow':
+[  75.992] name: uavcan_flow
+[  75.992] 
+[  75.992] Sensor 'mag':
+[  75.992] name: uavcan_mag
+[  75.992] 
+[  75.992] Sensor 'rangefinder':
+[  75.992] name: uavcan_rangefinder
+[  75.992] 
+[  75.992] Online nodes (Node ID, Health, Mode):
+[  75.992] 
+[  75.992] uavcan: cycle time: 11358 events, 48561416us elapsed, 4275.53us avg, min 9us max 2794113us 49865.789us rms
+[  75.992] uavcan: cycle interval: 11359 events, 7202.51us avg, min 44us max 2794116us 49616.285us rms
+[  75.992] nsh> [K
+[  77.897] --> sending: uavcan status
+[  77.997] nsh> [Kuavcan status
+[  77.997] Pool allocator status:
+[  77.997] 	Capacity hard/soft: 500/250 blocks
+[  77.997] 	Reserved:  53 blocks
+[  77.997] 	Allocated: 10 blocks
+[  77.997] 
+[  77.997] UAVCAN node status:
+[  77.997] 	Internal failures: 0
+[  77.997] 	Transfer errors:   0
+[  77.997] 	RX transfers:      113
+[  77.997] 	TX transfers:      1520
+[  77.997] 
+[  77.997] CAN1 status:
+[  77.997] 	HW errors: 0
+[  77.997] 	IO errors: 0
+[  77.997] 	RX frames: 113
+[  77.997] 	TX frames: 2382
+[  77.997] CAN2 status:
+[  77.997] 	HW errors: 2518
+[  77.997] 	IO errors: 2554
+[  77.997] 	RX frames: 0
+[  77.997] 	TX frames: 2346
+[  77.997] 
+[  77.997] Sensor 'flow':
+[  77.997] name: uavcan_flow
+[  77.997] 
+[  77.997] Sensor 'mag':
+[  77.997] name: uavcan_mag
+[  77.997] 
+[  77.997] Sensor 'rangefinder':
+[  77.997] name: uavcan_rangefinder
+[  77.997] 
+[  77.997] Online nodes (Node ID, Health, Mode):
+[  77.997] 
+[  77.997] uavcan: cycle time: 11600 events, 49895318us elapsed, 4301.32us avg, min 9us max 2794113us 49869.316us rms
+[  77.997] uavcan: cycle interval: 11600 events, 7228.05us avg, min 43us max 2794116us 49620.371us rms
+[  77.997] nsh> [K
+[  79.902] --> sending: uavcan status
+[  80.002] nsh> [Kuavcan status
+[  80.003] Pool allocator status:
+[  80.003] 	Capacity hard/soft: 500/250 blocks
+[  80.003] 	Reserved:  53 blocks
+[  80.003] 	Allocated: 10 blocks
+[  80.003] 
+[  80.003] UAVCAN node status:
+[  80.003] 	Internal failures: 0
+[  80.003] 	Transfer errors:   0
+[  80.003] 	RX transfers:      116
+[  80.003] 	TX transfers:      1556
+[  80.003] 
+[  80.003] CAN1 status:
+[  80.003] 	HW errors: 0
+[  80.003] 	IO errors: 0
+[  80.003] 	RX frames: 116
+[  80.003] 	TX frames: 2442
+[  80.003] CAN2 status:
+[  80.003] 	HW errors: 2590
+[  80.003] 	IO errors: 2626
+[  80.003] 	RX frames: 0
+[  80.003] 	TX frames: 2406
+[  80.003] 
+[  80.003] Sensor 'flow':
+[  80.003] name: uavcan_flow
+[  80.003] 
+[  80.003] Sensor 'mag':
+[  80.003] name: uavcan_mag
+[  80.003] 
+[  80.003] Sensor 'rangefinder':
+[  80.003] name: uavcan_rangefinder
+[  80.003] 
+[  80.003] Online nodes (Node ID, Health, Mode):
+[  80.003] 
+[  80.003] uavcan: cycle time: 11955 events, 50856575us elapsed, 4254.00us avg, min 9us max 2794113us 49397.785us rms
+[  80.003] uavcan: cycle interval: 11956 events, 7180.72us avg, min 43us max 2794116us 49147.215us rms
+[  80.003] nsh> [K
+[  81.907] --> sending: uavcan status
+[  82.008] nsh> [Kuavcan status
+[  82.008] Pool allocator status:
+[  82.008] 	Capacity hard/soft: 500/250 blocks
+[  82.008] 	Reserved:  53 blocks
+[  82.008] 	Allocated: 10 blocks
+[  82.008] 
+[  82.008] UAVCAN node status:
+[  82.008] 	Internal failures: 0
+[  82.008] 	Transfer errors:   0
+[  82.008] 	RX transfers:      119
+[  82.008] 	TX transfers:      1588
+[  82.008] 
+[  82.008] CAN1 status:
+[  82.008] 	HW errors: 0
+[  82.008] 	IO errors: 0
+[  82.008] 	RX frames: 119
+[  82.008] 	TX frames: 2494
+[  82.008] CAN2 status:
+[  82.008] 	HW errors: 2651
+[  82.008] 	IO errors: 2687
+[  82.008] 	RX frames: 0
+[  82.008] 	TX frames: 2458
+[  82.008] 
+[  82.008] Sensor 'flow':
+[  82.008] name: uavcan_flow
+[  82.008] 
+[  82.008] Sensor 'mag':
+[  82.008] name: uavcan_mag
+[  82.008] 
+[  82.008] Sensor 'rangefinder':
+[  82.008] name: uavcan_rangefinder
+[  82.008] 
+[  82.008] Online nodes (Node ID, Health, Mode):
+[  82.008] 
+[  82.008] uavcan: cycle time: 12234 events, 51810589us elapsed, 4234.97us avg, min 9us max 2794113us 49217.145us rms
+[  82.008] uavcan: cycle interval: 12235 events, 7161.80us avg, min 43us max 2794116us 48966.863us rms
+[  82.008] nsh> [K
+[  83.913] --> sending: uavcan status
+[  84.013] nsh> [Kuavcan status
+[  84.013] Pool allocator status:
+[  84.013] 	Capacity hard/soft: 500/250 blocks
+[  84.013] 	Reserved:  53 blocks
+[  84.013] 	Allocated: 10 blocks
+[  84.013] 
+[  84.013] UAVCAN node status:
+[  84.013] 	Internal failures: 0
+[  84.013] 	Transfer errors:   0
+[  84.013] 	RX transfers:      122
+[  84.014] 	TX transfers:      1630
+[  84.014] 
+[  84.014] CAN1 status:
+[  84.014] 	HW errors: 0
+[  84.014] 	IO errors: 0
+[  84.014] 	RX frames: 122
+[  84.014] 	TX frames: 2557
+[  84.014] CAN2 status:
+[  84.014] 	HW errors: 2717
+[  84.014] 	IO errors: 2753
+[  84.014] 	RX frames: 0
+[  84.014] 	TX frames: 2521
+[  84.014] 
+[  84.014] Sensor 'flow':
+[  84.014] name: uavcan_flow
+[  84.014] 
+[  84.014] Sensor 'mag':
+[  84.014] name: uavcan_mag
+[  84.014] 
+[  84.014] Sensor 'rangefinder':
+[  84.014] name: uavcan_rangefinder
+[  84.014] 
+[  84.014] Online nodes (Node ID, Health, Mode):
+[  84.014] 
+[  84.014] uavcan: cycle time: 12518 events, 53147865us elapsed, 4245.72us avg, min 9us max 2794113us 49138.695us rms
+[  84.014] uavcan: cycle interval: 12519 events, 7172.57us avg, min 43us max 2794116us 48887.352us rms
+[  84.014] nsh> [K
+[  85.918] --> sending: uavcan status
+[  86.018] nsh> [Kuavcan status
+[  86.018] Pool allocator status:
+[  86.018] 	Capacity hard/soft: 500/250 blocks
+[  86.018] 	Reserved:  53 blocks
+[  86.018] 	Allocated: 10 blocks
+[  86.018] 
+[  86.018] UAVCAN node status:
+[  86.018] 	Internal failures: 0
+[  86.018] 	Transfer errors:   0
+[  86.018] 	RX transfers:      124
+[  86.018] 	TX transfers:      1665
+[  86.018] 
+[  86.018] CAN1 status:
+[  86.018] 	HW errors: 0
+[  86.018] 	IO errors: 0
+[  86.018] 	RX frames: 124
+[  86.018] 	TX frames: 2614
+[  86.018] CAN2 status:
+[  86.018] 	HW errors: 2775
+[  86.018] 	IO errors: 2811
+[  86.018] 	RX frames: 0
+[  86.018] 	TX frames: 2578
+[  86.018] 
+[  86.018] Sensor 'flow':
+[  86.018] name: uavcan_flow
+[  86.018] 
+[  86.018] Sensor 'mag':
+[  86.018] name: uavcan_mag
+[  86.018] 
+[  86.018] Sensor 'rangefinder':
+[  86.018] name: uavcan_rangefinder
+[  86.018] 
+[  86.018] Online nodes (Node ID, Health, Mode):
+[  86.018] 
+[  86.018] uavcan: cycle time: 12773 events, 54483131us elapsed, 4265.49us avg, min 9us max 2794113us 49129.230us rms
+[  86.018] uavcan: cycle interval: 12773 events, 7192.31us avg, min 43us max 2794116us 48878.598us rms
+[  86.018] nsh> [K
+[  87.921] --> sending: uavcan status
+[  88.021] nsh> [Kuavcan status
+[  88.021] Pool allocator status:
+[  88.021] 	Capacity hard/soft: 500/250 blocks
+[  88.021] 	Reserved:  53 blocks
+[  88.021] 	Allocated: 10 blocks
+[  88.021] 
+[  88.021] UAVCAN node status:
+[  88.021] 	Internal failures: 0
+[  88.021] 	Transfer errors:   0
+[  88.021] 	RX transfers:      127
+[  88.021] 	TX transfers:      1695
+[  88.021] 
+[  88.021] CAN1 status:
+[  88.021] 	HW errors: 0
+[  88.021] 	IO errors: 0
+[  88.021] 	RX frames: 127
+[  88.021] 	TX frames: 2664
+[  88.021] CAN2 status:
+[  88.021] 	HW errors: 2830
+[  88.021] 	IO errors: 2866
+[  88.021] 	RX frames: 0
+[  88.021] 	TX frames: 2628
+[  88.021] 
+[  88.021] Sensor 'flow':
+[  88.021] name: uavcan_flow
+[  88.021] 
+[  88.021] Sensor 'mag':
+[  88.021] name: uavcan_mag
+[  88.021] 
+[  88.021] Sensor 'rangefinder':
+[  88.021] name: uavcan_rangefinder
+[  88.021] 
+[  88.021] Online nodes (Node ID, Health, Mode):
+[  88.021] 
+[  88.021] uavcan: cycle time: 13015 events, 55349807us elapsed, 4252.77us avg, min 9us max 2794113us 48963.828us rms
+[  88.021] uavcan: cycle interval: 13016 events, 7179.09us avg, min 43us max 2794116us 48711.148us rms
+[  88.021] nsh> [K
+[  89.925] --> sending: uavcan status
+[  90.026] nsh> [Kuavcan status
+[  90.026] Pool allocator status:
+[  90.026] 	Capacity hard/soft: 500/250 blocks
+[  90.026] 	Reserved:  53 blocks
+[  90.026] 	Allocated: 10 blocks
+[  90.026] 
+[  90.026] UAVCAN node status:
+[  90.026] 	Internal failures: 0
+[  90.026] 	Transfer errors:   0
+[  90.026] 	RX transfers:      129
+[  90.026] 	TX transfers:      1736
+[  90.026] 
+[  90.026] CAN1 status:
+[  90.026] 	HW errors: 0
+[  90.026] 	IO errors: 0
+[  90.026] 	RX frames: 129
+[  90.026] 	TX frames: 2726
+[  90.026] CAN2 status:
+[  90.026] 	HW errors: 2897
+[  90.026] 	IO errors: 2933
+[  90.026] 	RX frames: 0
+[  90.026] 	TX frames: 2690
+[  90.026] 
+[  90.026] Sensor 'flow':
+[  90.026] name: uavcan_flow
+[  90.026] 
+[  90.026] Sensor 'mag':
+[  90.026] name: uavcan_mag
+[  90.026] 
+[  90.026] Sensor 'rangefinder':
+[  90.026] name: uavcan_rangefinder
+[  90.026] 
+[  90.026] Online nodes (Node ID, Health, Mode):
+[  90.026] 
+[  90.026] uavcan: cycle time: 13358 events, 56775815us elapsed, 4250.32us avg, min 9us max 2794113us 48857.402us rms
+[  90.026] uavcan: cycle interval: 13358 events, 7177.38us avg, min 43us max 2794116us 48606.148us rms
+[  90.026] nsh> [K
+[  91.931] --> sending: uavcan status
+[  92.031] nsh> [Kuavcan status
+[  92.031] Pool allocator status:
+[  92.031] 	Capacity hard/soft: 500/250 blocks
+[  92.031] 	Reserved:  53 blocks
+[  92.031] 	Allocated: 10 blocks
+[  92.031] 
+[  92.031] UAVCAN node status:
+[  92.031] 	Internal failures: 0
+[  92.031] 	Transfer errors:   0
+[  92.031] 	RX transfers:      132
+[  92.031] 	TX transfers:      1772
+[  92.031] 
+[  92.031] CAN1 status:
+[  92.031] 	HW errors: 0
+[  92.031] 	IO errors: 0
+[  92.031] 	RX frames: 132
+[  92.031] 	TX frames: 2784
+[  92.031] CAN2 status:
+[  92.031] 	HW errors: 2956
+[  92.031] 	IO errors: 2992
+[  92.031] 	RX frames: 0
+[  92.031] 	TX frames: 2748
+[  92.031] 
+[  92.031] Sensor 'flow':
+[  92.031] name: uavcan_flow
+[  92.031] 
+[  92.031] Sensor 'mag':
+[  92.031] name: uavcan_mag
+[  92.031] 
+[  92.031] Sensor 'rangefinder':
+[  92.031] name: uavcan_rangefinder
+[  92.031] 
+[  92.031] Online nodes (Node ID, Health, Mode):
+[  92.031] 
+[  92.031] uavcan: cycle time: 13620 events, 58017597us elapsed, 4259.74us avg, min 9us max 2794113us 48771.160us rms
+[  92.031] uavcan: cycle interval: 13620 events, 7186.44us avg, min 43us max 2794116us 48518.695us rms
+[  92.031] nsh> [K
+[  93.936] --> sending: uavcan status
+[  94.037] nsh> [Kuavcan status
+[  94.037] Pool allocator status:
+[  94.037] 	Capacity hard/soft: 500/250 blocks
+[  94.037] 	Reserved:  53 blocks
+[  94.037] 	Allocated: 10 blocks
+[  94.037] 
+[  94.037] UAVCAN node status:
+[  94.037] 	Internal failures: 0
+[  94.037] 	Transfer errors:   0
+[  94.037] 	RX transfers:      135
+[  94.037] 	TX transfers:      1806
+[  94.037] 
+[  94.037] CAN1 status:
+[  94.037] 	HW errors: 0
+[  94.037] 	IO errors: 0
+[  94.037] 	RX frames: 135
+[  94.037] 	TX frames: 2840
+[  94.037] CAN2 status:
+[  94.037] 	HW errors: 3015
+[  94.037] 	IO errors: 3051
+[  94.037] 	RX frames: 0
+[  94.037] 	TX frames: 2804
+[  94.037] 
+[  94.037] Sensor 'flow':
+[  94.037] name: uavcan_flow
+[  94.037] 
+[  94.037] Sensor 'mag':
+[  94.037] name: uavcan_mag
+[  94.037] 
+[  94.037] Sensor 'rangefinder':
+[  94.037] name: uavcan_rangefinder
+[  94.037] 
+[  94.037] Online nodes (Node ID, Health, Mode):
+[  94.037] 
+[  94.037] uavcan: cycle time: 13986 events, 58871802us elapsed, 4209.34us avg, min 9us max 2794113us 48396.445us rms
+[  94.037] uavcan: cycle interval: 13987 events, 7136.13us avg, min 43us max 2794116us 48143.188us rms
+[  94.037] nsh> [K
+[  95.941] --> sending: uavcan status
+[  96.042] nsh> [Kuavcan status
+[  96.042] Pool allocator status:
+[  96.042] 	Capacity hard/soft: 500/250 blocks
+[  96.042] 	Reserved:  53 blocks
+[  96.042] 	Allocated: 10 blocks
+[  96.042] 
+[  96.042] UAVCAN node status:
+[  96.042] 	Internal failures: 0
+[  96.042] 	Transfer errors:   0
+[  96.042] 	RX transfers:      137
+[  96.042] 	TX transfers:      1844
+[  96.042] 
+[  96.042] CAN1 status:
+[  96.042] 	HW errors: 0
+[  96.042] 	IO errors: 0
+[  96.042] 	RX frames: 137
+[  96.042] 	TX frames: 2899
+[  96.042] CAN2 status:
+[  96.042] 	HW errors: 3066
+[  96.042] 	IO errors: 3102
+[  96.042] 	RX frames: 0
+[  96.042] 	TX frames: 2863
+[  96.042] 
+[  96.042] Sensor 'flow':
+[  96.042] name: uavcan_flow
+[  96.042] 
+[  96.042] Sensor 'mag':
+[  96.042] name: uavcan_mag
+[  96.042] 
+[  96.042] Sensor 'rangefinder':
+[  96.042] name: uavcan_rangefinder
+[  96.042] 
+[  96.042] Online nodes (Node ID, Health, Mode):
+[  96.042] 
+[  96.042] uavcan: cycle time: 14210 events, 60305928us elapsed, 4243.91us avg, min 9us max 2794113us 48517.480us rms
+[  96.042] uavcan: cycle interval: 14210 events, 7170.54us avg, min 43us max 2794116us 48264.445us rms
+[  96.042] nsh> [K
+[  97.946] --> sending: uavcan status
+[  98.047] nsh> [Kuavcan status
+[  98.047] Pool allocator status:
+[  98.047] 	Capacity hard/soft: 500/250 blocks
+[  98.047] 	Reserved:  53 blocks
+[  98.047] 	Allocated: 10 blocks
+[  98.047] 
+[  98.047] UAVCAN node status:
+[  98.047] 	Internal failures: 0
+[  98.047] 	Transfer errors:   0
+[  98.047] 	RX transfers:      140
+[  98.047] 	TX transfers:      1875
+[  98.047] 
+[  98.047] CAN1 status:
+[  98.047] 	HW errors: 0
+[  98.047] 	IO errors: 0
+[  98.047] 	RX frames: 140
+[  98.047] 	TX frames: 2949
+[  98.047] CAN2 status:
+[  98.047] 	HW errors: 3134
+[  98.047] 	IO errors: 3170
+[  98.047] 	RX frames: 0
+[  98.047] 	TX frames: 2913
+[  98.047] 
+[  98.047] Sensor 'flow':
+[  98.047] name: uavcan_flow
+[  98.047] 
+[  98.047] Sensor 'mag':
+[  98.047] name: uavcan_mag
+[  98.047] 
+[  98.047] Sensor 'rangefinder':
+[  98.047] name: uavcan_rangefinder
+[  98.047] 
+[  98.047] Online nodes (Node ID, Health, Mode):
+[  98.047] 
+[  98.047] uavcan: cycle time: 14494 events, 61164038us elapsed, 4219.96us avg, min 9us max 2794113us 48302.074us rms
+[  98.047] uavcan: cycle interval: 14495 events, 7146.14us avg, min 43us max 2794116us 48047.547us rms
+[  98.047] nsh> [K
+[  99.951] --> sending: uavcan status
+[ 100.052] nsh> [Kuavcan status
+[ 100.052] Pool allocator status:
+[ 100.052] 	Capacity hard/soft: 500/250 blocks
+[ 100.052] 	Reserved:  53 blocks
+[ 100.052] 	Allocated: 10 blocks
+[ 100.052] 
+[ 100.052] UAVCAN node status:
+[ 100.052] 	Internal failures: 0
+[ 100.052] 	Transfer errors:   0
+[ 100.052] 	RX transfers:      142
+[ 100.052] 	TX transfers:      1915
+[ 100.052] 
+[ 100.052] CAN1 status:
+[ 100.052] 	HW errors: 0
+[ 100.052] 	IO errors: 0
+[ 100.052] 	RX frames: 142
+[ 100.052] 	TX frames: 3013
+[ 100.052] CAN2 status:
+[ 100.052] 	HW errors: 3206
+[ 100.052] 	IO errors: 3242
+[ 100.052] 	RX frames: 0
+[ 100.052] 	TX frames: 2977
+[ 100.052] 
+[ 100.052] Sensor 'flow':
+[ 100.052] name: uavcan_flow
+[ 100.052] 
+[ 100.052] Sensor 'mag':
+[ 100.052] name: uavcan_mag
+[ 100.052] 
+[ 100.052] Sensor 'rangefinder':
+[ 100.052] name: uavcan_rangefinder
+[ 100.052] 
+[ 100.052] Online nodes (Node ID, Health, Mode):
+[ 100.052] 
+[ 100.052] uavcan: cycle time: 14834 events, 62487808us elapsed, 4212.47us avg, min 9us max 2794113us 48165.168us rms
+[ 100.052] uavcan: cycle interval: 14834 events, 7139.10us avg, min 43us max 2794116us 47911.789us rms
+[ 100.052] nsh> [K
+[ 101.956] --> sending: uavcan status
+[ 102.056] nsh> [Kuavcan status
+[ 102.057] Pool allocator status:
+[ 102.057] 	Capacity hard/soft: 500/250 blocks
+[ 102.057] 	Reserved:  53 blocks
+[ 102.057] 	Allocated: 10 blocks
+[ 102.057] 
+[ 102.057] UAVCAN node status:
+[ 102.057] 	Internal failures: 0
+[ 102.057] 	Transfer errors:   0
+[ 102.057] 	RX transfers:      146
+[ 102.057] 	TX transfers:      1949
+[ 102.057] 
+[ 102.057] CAN1 status:
+[ 102.057] 	HW errors: 0
+[ 102.057] 	IO errors: 0
+[ 102.057] 	RX frames: 146
+[ 102.057] 	TX frames: 3067
+[ 102.057] CAN2 status:
+[ 102.057] 	HW errors: 3269
+[ 102.057] 	IO errors: 3305
+[ 102.057] 	RX frames: 0
+[ 102.057] 	TX frames: 3031
+[ 102.057] 
+[ 102.057] Sensor 'flow':
+[ 102.057] name: uavcan_flow
+[ 102.057] 
+[ 102.057] Sensor 'mag':
+[ 102.057] name: uavcan_mag
+[ 102.057] 
+[ 102.057] Sensor 'rangefinder':
+[ 102.057] name: uavcan_rangefinder
+[ 102.057] 
+[ 102.057] Online nodes (Node ID, Health, Mode):
+[ 102.057] 
+[ 102.057] uavcan: cycle time: 14988 events, 64008899us elapsed, 4270.68us avg, min 9us max 2794113us 48443.793us rms
+[ 102.057] uavcan: cycle interval: 14989 events, 7196.56us avg, min 43us max 2794116us 48186.785us rms
+[ 102.057] nsh> [K
+[ 103.960] --> sending: uavcan status
+[ 104.061] nsh> [Kuavcan status
+[ 104.061] Pool allocator status:
+[ 104.061] 	Capacity hard/soft: 500/250 blocks
+[ 104.061] 	Reserved:  53 blocks
+[ 104.061] 	Allocated: 10 blocks
+[ 104.061] 
+[ 104.061] UAVCAN node status:
+[ 104.061] 	Internal failures: 0
+[ 104.061] 	Transfer errors:   0
+[ 104.061] 	RX transfers:      148
+[ 104.061] 	TX transfers:      1986
+[ 104.061] 
+[ 104.061] CAN1 status:
+[ 104.061] 	HW errors: 0
+[ 104.061] 	IO errors: 0
+[ 104.061] 	RX frames: 148
+[ 104.061] 	TX frames: 3125
+[ 104.061] CAN2 status:
+[ 104.061] 	HW errors: 3330
+[ 104.061] 	IO errors: 3366
+[ 104.061] 	RX frames: 0
+[ 104.061] 	TX frames: 3089
+[ 104.061] 
+[ 104.061] Sensor 'flow':
+[ 104.061] name: uavcan_flow
+[ 104.061] 
+[ 104.061] Sensor 'mag':
+[ 104.061] name: uavcan_mag
+[ 104.061] 
+[ 104.061] Sensor 'rangefinder':
+[ 104.061] name: uavcan_rangefinder
+[ 104.061] 
+[ 104.061] Online nodes (Node ID, Health, Mode):
+[ 104.061] 
+[ 104.061] uavcan: cycle time: 15265 events, 65243509us elapsed, 4274.06us avg, min 9us max 2794113us 48344.969us rms
+[ 104.061] uavcan: cycle interval: 15265 events, 7200.29us avg, min 43us max 2794116us 48088.809us rms
+[ 104.061] nsh> [K
+[ 105.966] --> sending: uavcan status
+[ 106.067] nsh> [Kuavcan status
+[ 106.067] Pool allocator status:
+[ 106.067] 	Capacity hard/soft: 500/250 blocks
+[ 106.067] 	Reserved:  53 blocks
+[ 106.067] 	Allocated: 10 blocks
+[ 106.067] 
+[ 106.067] UAVCAN node status:
+[ 106.067] 	Internal failures: 0
+[ 106.067] 	Transfer errors:   0
+[ 106.067] 	RX transfers:      151
+[ 106.067] 	TX transfers:      2014
+[ 106.067] 
+[ 106.067] CAN1 status:
+[ 106.067] 	HW errors: 0
+[ 106.067] 	IO errors: 0
+[ 106.067] 	RX frames: 151
+[ 106.067] 	TX frames: 3171
+[ 106.067] CAN2 status:
+[ 106.067] 	HW errors: 3379
+[ 106.067] 	IO errors: 3415
+[ 106.067] 	RX frames: 0
+[ 106.067] 	TX frames: 3135
+[ 106.067] 
+[ 106.067] Sensor 'flow':
+[ 106.067] name: uavcan_flow
+[ 106.067] 
+[ 106.067] Sensor 'mag':
+[ 106.067] name: uavcan_mag
+[ 106.067] 
+[ 106.067] Sensor 'rangefinder':
+[ 106.067] name: uavcan_rangefinder
+[ 106.067] 
+[ 106.067] Online nodes (Node ID, Health, Mode):
+[ 106.067] 
+[ 106.067] uavcan: cycle time: 15517 events, 66006696us elapsed, 4253.83us avg, min 9us max 2794113us 48186.828us rms
+[ 106.067] uavcan: cycle interval: 15518 events, 7179.85us avg, min 43us max 2794116us 47929.527us rms
+[ 106.067] nsh> [K
+[ 107.971] --> sending: uavcan status
+[ 108.071] nsh> [Kuavcan status
+[ 108.071] Pool allocator status:
+[ 108.071] 	Capacity hard/soft: 500/250 blocks
+[ 108.071] 	Reserved:  53 blocks
+[ 108.071] 	Allocated: 10 blocks
+[ 108.071] 
+[ 108.071] UAVCAN node status:
+[ 108.071] 	Internal failures: 0
+[ 108.071] 	Transfer errors:   0
+[ 108.071] 	RX transfers:      154
+[ 108.071] 	TX transfers:      2054
+[ 108.071] 
+[ 108.071] CAN1 status:
+[ 108.071] 	HW errors: 0
+[ 108.071] 	IO errors: 0
+[ 108.071] 	RX frames: 154
+[ 108.071] 	TX frames: 3233
+[ 108.071] CAN2 status:
+[ 108.071] 	HW errors: 3446
+[ 108.071] 	IO errors: 3482
+[ 108.071] 	RX frames: 0
+[ 108.071] 	TX frames: 3197
+[ 108.071] 
+[ 108.071] Sensor 'flow':
+[ 108.071] name: uavcan_flow
+[ 108.071] 
+[ 108.071] Sensor 'mag':
+[ 108.071] name: uavcan_mag
+[ 108.071] 
+[ 108.071] Sensor 'rangefinder':
+[ 108.071] name: uavcan_rangefinder
+[ 108.071] 
+[ 108.071] Online nodes (Node ID, Health, Mode):
+[ 108.071] 
+[ 108.071] uavcan: cycle time: 15865 events, 67440403us elapsed, 4250.89us avg, min 9us max 2794113us 48110.227us rms
+[ 108.071] uavcan: cycle interval: 15866 events, 7176.90us avg, min 43us max 2794116us 47852.762us rms
+[ 108.071] nsh> [K
+[ 109.976] --> sending: uavcan status
+[ 110.076] nsh> [Kuavcan status
+[ 110.076] Pool allocator status:
+[ 110.076] 	Capacity hard/soft: 500/250 blocks
+[ 110.076] 	Reserved:  53 blocks
+[ 110.076] 	Allocated: 10 blocks
+[ 110.076] 
+[ 110.076] UAVCAN node status:
+[ 110.076] 	Internal failures: 0
+[ 110.077] 	Transfer errors:   0
+[ 110.077] 	RX transfers:      156
+[ 110.077] 	TX transfers:      2091
+[ 110.077] 
+[ 110.077] CAN1 status:
+[ 110.077] 	HW errors: 0
+[ 110.077] 	IO errors: 0
+[ 110.077] 	RX frames: 156
+[ 110.077] 	TX frames: 3291
+[ 110.077] CAN2 status:
+[ 110.077] 	HW errors: 3506
+[ 110.077] 	IO errors: 3542
+[ 110.077] 	RX frames: 0
+[ 110.077] 	TX frames: 3255
+[ 110.077] 
+[ 110.077] Sensor 'flow':
+[ 110.077] name: uavcan_flow
+[ 110.077] 
+[ 110.077] Sensor 'mag':
+[ 110.077] name: uavcan_mag
+[ 110.077] 
+[ 110.077] Sensor 'rangefinder':
+[ 110.077] name: uavcan_rangefinder
+[ 110.077] 
+[ 110.077] Online nodes (Node ID, Health, Mode):
+[ 110.077] 
+[ 110.077] uavcan: cycle time: 16146 events, 68678117us elapsed, 4253.57us avg, min 9us max 2794113us 48017.352us rms
+[ 110.077] uavcan: cycle interval: 16146 events, 7179.94us avg, min 43us max 2794116us 47760.668us rms
+[ 110.077] nsh> [K
+[ 111.981] --> sending: uavcan status
+[ 112.081] nsh> [Kuavcan status
+[ 112.081] Pool allocator status:
+[ 112.081] 	Capacity hard/soft: 500/250 blocks
+[ 112.081] 	Reserved:  53 blocks
+[ 112.081] 	Allocated: 10 blocks
+[ 112.081] 
+[ 112.081] UAVCAN node status:
+[ 112.081] 	Internal failures: 0
+[ 112.081] 	Transfer errors:   0
+[ 112.081] 	RX transfers:      159
+[ 112.081] 	TX transfers:      2126
+[ 112.081] 
+[ 112.081] CAN1 status:
+[ 112.081] 	HW errors: 0
+[ 112.081] 	IO errors: 0
+[ 112.081] 	RX frames: 159
+[ 112.081] 	TX frames: 3347
+[ 112.081] CAN2 status:
+[ 112.081] 	HW errors: 3564
+[ 112.081] 	IO errors: 3600
+[ 112.081] 	RX frames: 0
+[ 112.081] 	TX frames: 3311
+[ 112.081] 
+[ 112.081] Sensor 'flow':
+[ 112.081] name: uavcan_flow
+[ 112.081] 
+[ 112.081] Sensor 'mag':
+[ 112.081] name: uavcan_mag
+[ 112.081] 
+[ 112.081] Sensor 'rangefinder':
+[ 112.081] name: uavcan_rangefinder
+[ 112.081] 
+[ 112.081] Online nodes (Node ID, Health, Mode):
+[ 112.081] 
+[ 112.081] uavcan: cycle time: 16476 events, 69625236us elapsed, 4225.86us avg, min 9us max 2794113us 47825.523us rms
+[ 112.081] uavcan: cycle interval: 16477 events, 7152.39us avg, min 43us max 2794116us 47567.977us rms
+[ 112.081] nsh> [K
+[ 113.986] --> sending: uavcan status
+[ 114.086] nsh> [Kuavcan status
+[ 114.086] Pool allocator status:
+[ 114.086] 	Capacity hard/soft: 500/250 blocks
+[ 114.086] 	Reserved:  53 blocks
+[ 114.086] 	Allocated: 10 blocks
+[ 114.086] 
+[ 114.086] UAVCAN node status:
+[ 114.086] 	Internal failures: 0
+[ 114.086] 	Transfer errors:   0
+[ 114.086] 	RX transfers:      161
+[ 114.086] 	TX transfers:      2163
+[ 114.086] 
+[ 114.086] CAN1 status:
+[ 114.086] 	HW errors: 0
+[ 114.086] 	IO errors: 0
+[ 114.086] 	RX frames: 161
+[ 114.086] 	TX frames: 3406
+[ 114.086] CAN2 status:
+[ 114.086] 	HW errors: 3619
+[ 114.086] 	IO errors: 3655
+[ 114.086] 	RX frames: 0
+[ 114.086] 	TX frames: 3370
+[ 114.086] 
+[ 114.086] Sensor 'flow':
+[ 114.086] name: uavcan_flow
+[ 114.086] 
+[ 114.086] Sensor 'mag':
+[ 114.086] name: uavcan_mag
+[ 114.086] 
+[ 114.086] Sensor 'rangefinder':
+[ 114.086] name: uavcan_rangefinder
+[ 114.086] 
+[ 114.086] Online nodes (Node ID, Health, Mode):
+[ 114.086] 
+[ 114.086] uavcan: cycle time: 16737 events, 70959929us elapsed, 4239.70us avg, min 9us max 2794113us 47820.563us rms
+[ 114.086] uavcan: cycle interval: 16737 events, 7166.06us avg, min 43us max 2794116us 47563.586us rms
+[ 114.086] nsh> [K
+[ 115.991] --> sending: uavcan status
+[ 116.092] nsh> [Kuavcan status
+[ 116.092] Pool allocator status:
+[ 116.092] 	Capacity hard/soft: 500/250 blocks
+[ 116.092] 	Reserved:  53 blocks
+[ 116.092] 	Allocated: 9 blocks
+[ 116.092] 
+[ 116.092] UAVCAN node status:
+[ 116.092] 	Internal failures: 0
+[ 116.092] 	Transfer errors:   0
+[ 116.092] 	RX transfers:      164
+[ 116.092] 	TX transfers:      2195
+[ 116.092] 
+[ 116.092] CAN1 status:
+[ 116.092] 	HW errors: 0
+[ 116.092] 	IO errors: 0
+[ 116.092] 	RX frames: 164
+[ 116.092] 	TX frames: 3457
+[ 116.092] CAN2 status:
+[ 116.092] 	HW errors: 3679
+[ 116.092] 	IO errors: 3715
+[ 116.092] 	RX frames: 0
+[ 116.092] 	TX frames: 3421
+[ 116.092] 
+[ 116.092] Sensor 'flow':
+[ 116.092] name: uavcan_flow
+[ 116.092] 
+[ 116.092] Sensor 'mag':
+[ 116.092] name: uavcan_mag
+[ 116.092] 
+[ 116.092] Sensor 'rangefinder':
+[ 116.092] name: uavcan_rangefinder
+[ 116.092] 
+[ 116.092] Online nodes (Node ID, Health, Mode):
+[ 116.092] 
+[ 116.092] uavcan: cycle time: 16980 events, 71914529us elapsed, 4235.25us avg, min 9us max 2794113us 47762.281us rms
+[ 116.092] uavcan: cycle interval: 16981 events, 7161.10us avg, min 43us max 2794116us 47503.883us rms
+[ 116.092] nsh> [K
+[ 117.996] --> sending: uavcan status
+[ 118.096] nsh> [Kuavcan status
+[ 118.096] Pool allocator status:
+[ 118.096] 	Capacity hard/soft: 500/250 blocks
+[ 118.096] 	Reserved:  53 blocks
+[ 118.096] 	Allocated: 9 blocks
+[ 118.096] 
+[ 118.096] UAVCAN node status:
+[ 118.096] 	Internal failures: 0
+[ 118.096] 	Transfer errors:   0
+[ 118.096] 	RX transfers:      167
+[ 118.096] 	TX transfers:      2231
+[ 118.096] 
+[ 118.096] CAN1 status:
+[ 118.096] 	HW errors: 0
+[ 118.096] 	IO errors: 0
+[ 118.096] 	RX frames: 167
+[ 118.096] 	TX frames: 3514
+[ 118.096] CAN2 status:
+[ 118.096] 	HW errors: 3740
+[ 118.096] 	IO errors: 3776
+[ 118.096] 	RX frames: 0
+[ 118.096] 	TX frames: 3478
+[ 118.096] 
+[ 118.096] Sensor 'flow':
+[ 118.096] name: uavcan_flow
+[ 118.096] 
+[ 118.096] Sensor 'mag':
+[ 118.096] name: uavcan_mag
+[ 118.096] 
+[ 118.096] Sensor 'rangefinder':
+[ 118.096] name: uavcan_rangefinder
+[ 118.096] 
+[ 118.096] Online nodes (Node ID, Health, Mode):
+[ 118.096] 
+[ 118.096] uavcan: cycle time: 17247 events, 73159984us elapsed, 4241.90us avg, min 9us max 2794113us 47703.313us rms
+[ 118.096] uavcan: cycle interval: 17248 events, 7167.40us avg, min 43us max 2794116us 47444.195us rms
+[ 118.096] nsh> [K
+[ 120.001] --> sending: uavcan status
+[ 120.102] nsh> [Kuavcan status
+[ 120.102] Pool allocator status:
+[ 120.102] 	Capacity hard/soft: 500/250 blocks
+[ 120.102] 	Reserved:  53 blocks
+[ 120.102] 	Allocated: 8 blocks
+[ 120.102] 
+[ 120.102] UAVCAN node status:
+[ 120.102] 	Internal failures: 0
+[ 120.102] 	Transfer errors:   0
+[ 120.102] 	RX transfers:      169
+[ 120.102] 	TX transfers:      2271
+[ 120.102] 
+[ 120.102] CAN1 status:
+[ 120.102] 	HW errors: 0
+[ 120.102] 	IO errors: 0
+[ 120.102] 	RX frames: 169
+[ 120.102] 	TX frames: 3578
+[ 120.102] CAN2 status:
+[ 120.102] 	HW errors: 3812
+[ 120.102] 	IO errors: 3848
+[ 120.102] 	RX frames: 0
+[ 120.102] 	TX frames: 3542
+[ 120.102] 
+[ 120.102] Sensor 'flow':
+[ 120.102] name: uavcan_flow
+[ 120.102] 
+[ 120.102] Sensor 'mag':
+[ 120.102] name: uavcan_mag
+[ 120.102] 
+[ 120.102] Sensor 'rangefinder':
+[ 120.102] name: uavcan_rangefinder
+[ 120.102] 
+[ 120.102] Online nodes (Node ID, Health, Mode):
+[ 120.102] 
+[ 120.102] uavcan: cycle time: 17558 events, 74583425us elapsed, 4247.83us avg, min 9us max 2794113us 47688.086us rms
+[ 120.102] uavcan: cycle interval: 17558 events, 7173.57us avg, min 43us max 2794116us 47429.844us rms
+[ 120.102] nsh> [K
+[ 122.005] --> sending: uavcan status
+[ 122.106] nsh> [Kuavcan status
+[ 122.106] Pool allocator status:
+[ 122.106] 	Capacity hard/soft: 500/250 blocks
+[ 122.106] 	Reserved:  53 blocks
+[ 122.106] 	Allocated: 8 blocks
+[ 122.106] 
+[ 122.106] UAVCAN node status:
+[ 122.106] 	Internal failures: 0
+[ 122.106] 	Transfer errors:   0
+[ 122.106] 	RX transfers:      172
+[ 122.106] 	TX transfers:      2307
+[ 122.106] 
+[ 122.106] CAN1 status:
+[ 122.106] 	HW errors: 0
+[ 122.106] 	IO errors: 0
+[ 122.106] 	RX frames: 172
+[ 122.106] 	TX frames: 3635
+[ 122.106] CAN2 status:
+[ 122.106] 	HW errors: 3871
+[ 122.106] 	IO errors: 3907
+[ 122.106] 	RX frames: 0
+[ 122.106] 	TX frames: 3599
+[ 122.106] 
+[ 122.106] Sensor 'flow':
+[ 122.106] name: uavcan_flow
+[ 122.106] 
+[ 122.106] Sensor 'mag':
+[ 122.106] name: uavcan_mag
+[ 122.106] 
+[ 122.106] Sensor 'rangefinder':
+[ 122.106] name: uavcan_rangefinder
+[ 122.106] 
+[ 122.106] Online nodes (Node ID, Health, Mode):
+[ 122.106] 
+[ 122.106] uavcan: cycle time: 17820 events, 75825200us elapsed, 4255.06us avg, min 9us max 2794113us 47637.773us rms
+[ 122.106] uavcan: cycle interval: 17820 events, 7180.55us avg, min 43us max 2794116us 47378.789us rms
+[ 122.106] nsh> [K
+[ 124.009] --> sending: uavcan status
+[ 124.110] nsh> [Kuavcan status
+[ 124.110] Pool allocator status:
+[ 124.110] 	Capacity hard/soft: 500/250 blocks
+[ 124.110] 	Reserved:  53 blocks
+[ 124.110] 	Allocated: 8 blocks
+[ 124.110] 
+[ 124.110] UAVCAN node status:
+[ 124.110] 	Internal failures: 0
+[ 124.110] 	Transfer errors:   0
+[ 124.110] 	RX transfers:      174
+[ 124.110] 	TX transfers:      2343
+[ 124.110] 
+[ 124.110] CAN1 status:
+[ 124.110] 	HW errors: 0
+[ 124.110] 	IO errors: 0
+[ 124.110] 	RX frames: 174
+[ 124.110] 	TX frames: 3692
+[ 124.110] CAN2 status:
+[ 124.110] 	HW errors: 3939
+[ 124.110] 	IO errors: 3975
+[ 124.110] 	RX frames: 0
+[ 124.110] 	TX frames: 3656
+[ 124.110] 
+[ 124.110] Sensor 'flow':
+[ 124.110] name: uavcan_flow
+[ 124.110] 
+[ 124.110] Sensor 'mag':
+[ 124.110] name: uavcan_mag
+[ 124.110] 
+[ 124.110] Sensor 'rangefinder':
+[ 124.110] name: uavcan_rangefinder
+[ 124.110] 
+[ 124.110] Online nodes (Node ID, Health, Mode):
+[ 124.110] 
+[ 124.110] uavcan: cycle time: 18209 events, 76683206us elapsed, 4211.28us avg, min 9us max 2794113us 47338.137us rms
+[ 124.110] uavcan: cycle interval: 18209 events, 7137.21us avg, min 34us max 2794116us 47080.055us rms
+[ 124.110] nsh> [K
+[ 126.013] --> sending: uavcan status
+[ 126.114] nsh> [Kuavcan status
+[ 126.114] Pool allocator status:
+[ 126.114] 	Capacity hard/soft: 500/250 blocks
+[ 126.114] 	Reserved:  53 blocks
+[ 126.114] 	Allocated: 8 blocks
+[ 126.114] 
+[ 126.114] UAVCAN node status:
+[ 126.114] 	Internal failures: 0
+[ 126.114] 	Transfer errors:   0
+[ 126.114] 	RX transfers:      177
+[ 126.114] 	TX transfers:      2374
+[ 126.114] 
+[ 126.114] CAN1 status:
+[ 126.114] 	HW errors: 0
+[ 126.114] 	IO errors: 0
+[ 126.114] 	RX frames: 177
+[ 126.114] 	TX frames: 3743
+[ 126.114] CAN2 status:
+[ 126.114] 	HW errors: 3995
+[ 126.114] 	IO errors: 4031
+[ 126.114] 	RX frames: 0
+[ 126.114] 	TX frames: 3707
+[ 126.114] 
+[ 126.114] Sensor 'flow':
+[ 126.114] name: uavcan_flow
+[ 126.114] 
+[ 126.114] Sensor 'mag':
+[ 126.114] name: uavcan_mag
+[ 126.114] 
+[ 126.114] Sensor 'rangefinder':
+[ 126.114] name: uavcan_rangefinder
+[ 126.114] 
+[ 126.114] Online nodes (Node ID, Health, Mode):
+[ 126.114] 
+[ 126.114] uavcan: cycle time: 18469 events, 77632881us elapsed, 4203.42us avg, min 9us max 2794113us 47268.406us rms
+[ 126.114] uavcan: cycle interval: 18470 events, 7129.19us avg, min 34us max 2794116us 47008.988us rms
+[ 126.114] nsh> [K
+[ 128.017] --> sending: uavcan status
+[ 128.118] nsh> [Kuavcan status
+[ 128.118] Pool allocator status:
+[ 128.118] 	Capacity hard/soft: 500/250 blocks
+[ 128.118] 	Reserved:  53 blocks
+[ 128.118] 	Allocated: 8 blocks
+[ 128.118] 
+[ 128.118] UAVCAN node status:
+[ 128.118] 	Internal failures: 0
+[ 128.118] 	Transfer errors:   0
+[ 128.118] 	RX transfers:      181
+[ 128.118] 	TX transfers:      2415
+[ 128.118] 
+[ 128.118] CAN1 status:
+[ 128.118] 	HW errors: 0
+[ 128.118] 	IO errors: 0
+[ 128.118] 	RX frames: 181
+[ 128.118] 	TX frames: 3808
+[ 128.118] CAN2 status:
+[ 128.118] 	HW errors: 4054
+[ 128.118] 	IO errors: 4090
+[ 128.118] 	RX frames: 0
+[ 128.118] 	TX frames: 3772
+[ 128.118] 
+[ 128.118] Sensor 'flow':
+[ 128.118] name: uavcan_flow
+[ 128.118] 
+[ 128.118] Sensor 'mag':
+[ 128.118] name: uavcan_mag
+[ 128.118] 
+[ 128.118] Sensor 'rangefinder':
+[ 128.118] name: uavcan_rangefinder
+[ 128.118] 
+[ 128.118] Online nodes (Node ID, Health, Mode):
+[ 128.118] 
+[ 128.118] uavcan: cycle time: 18627 events, 79347902us elapsed, 4259.83us avg, min 9us max 2794113us 47482.656us rms
+[ 128.118] uavcan: cycle interval: 18628 events, 7184.82us avg, min 34us max 2794116us 47221.000us rms
+[ 128.118] nsh> [K
+[ 130.022] --> sending: uavcan status
+[ 130.122] nsh> [Kuavcan status
+[ 130.122] Pool allocator status:
+[ 130.122] 	Capacity hard/soft: 500/250 blocks
+[ 130.122] 	Reserved:  53 blocks
+[ 130.122] 	Allocated: 15 blocks
+[ 130.122] 
+[ 130.122] UAVCAN node status:
+[ 130.122] 	Internal failures: 0
+[ 130.122] 	Transfer errors:   4
+[ 130.122] 	RX transfers:      431
+[ 130.122] 	TX transfers:      2452
+[ 130.122] 
+[ 130.122] CAN1 status:
+[ 130.122] 	HW errors: 109
+[ 130.122] 	IO errors: 109
+[ 130.122] 	RX frames: 1097
+[ 130.122] 	TX frames: 3869
+[ 130.122] CAN2 status:
+[ 130.122] 	HW errors: 4125
+[ 130.122] 	IO errors: 4161
+[ 130.122] 	RX frames: 0
+[ 130.122] 	TX frames: 3833
+[ 130.122] 
+[ 130.122] Sensor 'flow':
+[ 130.122] name: uavcan_flow
+[ 130.122] channel 0: node id 125 --> instance 0
+[ 130.122] 
+[ 130.122] Sensor 'mag':
+[ 130.122] name: uavcan_mag
+[ 130.122] 
+[ 130.122] Sensor 'rangefinder':
+[ 130.122] name: uavcan_rangefinder
+[ 130.122] channel 0: node id 125 --> instance 0
+[ 130.122] 
+[ 130.122] Online nodes (Node ID, Health, Mode):
+[ 130.122] 	 125 OK         OPERAT    
+[ 130.122] 
+[ 130.122] uavcan: cycle time: 19888 events, 80155708us elapsed, 4030.36us avg, min 9us max 2794113us 46159.211us rms
+[ 130.122] uavcan: cycle interval: 19889 events, 6836.76us avg, min 15us max 2794116us 45918.320us rms
+[ 130.122] nsh> [K
+[ 132.026] --> sending: uavcan status
+[ 132.126] nsh> [Kuavcan status
+[ 132.126] Pool allocator status:
+[ 132.126] 	Capacity hard/soft: 500/250 blocks
+[ 132.126] 	Reserved:  53 blocks
+[ 132.126] 	Allocated: 15 blocks
+[ 132.126] 
+[ 132.126] UAVCAN node status:
+[ 132.126] 	Internal failures: 0
+[ 132.126] 	Transfer errors:   4
+[ 132.126] 	RX transfers:      784
+[ 132.126] 	TX transfers:      2490
+[ 132.126] 
+[ 132.126] CAN1 status:
+[ 132.126] 	HW errors: 109
+[ 132.126] 	IO errors: 109
+[ 132.126] 	RX frames: 2387
+[ 132.126] 	TX frames: 3925
+[ 132.126] CAN2 status:
+[ 132.126] 	HW errors: 4180
+[ 132.126] 	IO errors: 4216
+[ 132.126] 	RX frames: 0
+[ 132.126] 	TX frames: 3889
+[ 132.126] 
+[ 132.126] Sensor 'flow':
+[ 132.126] name: uavcan_flow
+[ 132.126] channel 0: node id 125 --> instance 0
+[ 132.126] 
+[ 132.126] Sensor 'mag':
+[ 132.126] name: uavcan_mag
+[ 132.126] 
+[ 132.126] Sensor 'rangefinder':
+[ 132.126] name: uavcan_rangefinder
+[ 132.126] channel 0: node id 125 --> instance 0
+[ 132.126] 
+[ 132.126] Online nodes (Node ID, Health, Mode):
+[ 132.126] 	 125 OK         OPERAT    
+[ 132.126] 
+[ 132.126] uavcan: cycle time: 21687 events, 80216894us elapsed, 3698.85us avg, min 9us max 2794113us 44217.383us rms
+[ 132.126] uavcan: cycle interval: 21689 events, 6361.81us avg, min 14us max 2794116us 44001.109us rms
+[ 132.126] nsh> [K
+[ 134.030] --> sending: uavcan status
+[ 134.130] nsh> [Kuavcan status
+[ 134.130] Pool allocator status:
+[ 134.130] 	Capacity hard/soft: 500/250 blocks
+[ 134.130] 	Reserved:  53 blocks
+[ 134.130] 	Allocated: 15 blocks
+[ 134.130] 
+[ 134.130] UAVCAN node status:
+[ 134.130] 	Internal failures: 0
+[ 134.130] 	Transfer errors:   4
+[ 134.130] 	RX transfers:      1138
+[ 134.130] 	TX transfers:      2525
+[ 134.130] 
+[ 134.130] CAN1 status:
+[ 134.130] 	HW errors: 109
+[ 134.130] 	IO errors: 109
+[ 134.130] 	RX frames: 3681
+[ 134.130] 	TX frames: 3980
+[ 134.130] CAN2 status:
+[ 134.130] 	HW errors: 4244
+[ 134.130] 	IO errors: 4280
+[ 134.130] 	RX frames: 0
+[ 134.130] 	TX frames: 3944
+[ 134.130] 
+[ 134.130] Sensor 'flow':
+[ 134.130] name: uavcan_flow
+[ 134.130] channel 0: node id 125 --> instance 0
+[ 134.130] 
+[ 134.130] Sensor 'mag':
+[ 134.130] name: uavcan_mag
+[ 134.130] 
+[ 134.130] Sensor 'rangefinder':
+[ 134.130] name: uavcan_rangefinder
+[ 134.130] channel 0: node id 125 --> instance 0
+[ 134.130] 
+[ 134.130] Online nodes (Node ID, Health, Mode):
+[ 134.130] 	 125 OK         OPERAT    
+[ 134.130] 
+[ 134.130] uavcan: cycle time: 23491 events, 80280068us elapsed, 3417.48us avg, min 8us max 2794113us 42496.090us rms
+[ 134.130] uavcan: cycle interval: 23491 events, 5959.08us avg, min 14us max 2794116us 42303.992us rms
+[ 134.130] nsh> [K
+[ 135.576] === capture stopped ===
