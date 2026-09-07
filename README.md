@@ -14,7 +14,9 @@ set altitude → hold → descend → disarm, entirely on its own. `offboard_tra
 adds a horizontal leg to that — climb, then move a set distance forward,
 backward, left or right, then land (see section 6). `offboard_sequence` goes one
 further: climb, then a list of motions — translations, altitude changes and yaws
-— flown one at a time, then land (see section 6b).
+— flown one at a time, then land (see section 6b). `precision_land` lands the
+vehicle on an ArUco marker seen by a downward camera, to within 15 cm (see
+section 6d).
 
 ---
 
@@ -642,6 +644,347 @@ the landing), `lock-30 14s` (locked on a heading of -30 deg).
 
 ---
 
+## 6d. Precision landing on an ArUco marker (`aruco_pose` + `precision_land`)
+
+Takeoff, look straight down for an ArUco marker, fly over it until the vehicle
+is centred to within 15 cm, hold there, and land on it.
+
+Two nodes:
+
+| node             | what it does |
+|------------------|--------------|
+| `aruco_pose`     | opens the USB down-facing camera directly (no `zed_wrapper`, no `cv_bridge`), detects one known-size ArUco marker, solves its pose with `solvePnP` / `IPPE_SQUARE`, publishes `/aruco/detected` and `/aruco/point`. Knows nothing about PX4 |
+| `precision_land` | the flight. Arming, the climb, the health gates, the descent and the touchdown detection are inherited unchanged from `offboard_sequence`; only the middle of the flight is new |
+
+This flies on the same **ARK Flow + lidar + IMU** stack as everything else in
+this README. The camera provides the lateral *target*; it is not a position
+source, and PX4's estimator is untouched by it.
+
+---
+
+### Run it in this order. Do not skip a rung.
+
+Each step is one strictly larger commitment than the last, and each one can
+fail safely on its own.
+
+| # | what | risk |
+|---|---|---|
+| 1 | `mode:=bench` — axis sign check on the ground | none: nothing is armed, nothing is published |
+| 2 | `mode:=inspect` — fly and report the target | flies, but never commands a lateral move |
+| 3 | `mode:=align land_after_align:=false` — close the loop at altitude | commands lateral moves, stays up, `q` available |
+| 4 | `mode:=align` — the real thing | lands itself |
+
+---
+
+### 1. The bench sign check (`mode:=bench`) — DO THIS FIRST
+
+**Propellers off. No flight controller needed.** This is the single most
+important test in this section, and `bench` is the default mode precisely so
+that a launch you forgot to configure does nothing at all.
+
+```bash
+ros2 launch drone_testing precision_land.launch.py flight:=false
+ros2 run drone_testing precision_land --ros-args -p mode:=bench
+```
+
+In bench mode `precision_land` never arms, never requests Offboard, and never
+publishes a single setpoint or vehicle command. It only reads the detector and
+prints where the marker is, in vehicle terms:
+
+```
+BENCH: marker is FORWARD 0.20 m, RIGHT 0.30 m, 1.85 m below
+       ->  the drone would move FORWARD 0.20 m, RIGHT 0.30 m
+```
+
+Put the marker on the floor, hold the airframe over it, and check both axes
+against reality:
+
+- move the marker to the drone's **RIGHT** → it must say **RIGHT**
+- move the marker towards the **NOSE** → it must say **FORWARD**
+
+**If either axis is inverted or the two are swapped, STOP.** Fix `image_rotate`
+(or the physical mounting) and repeat until it reads true. A sign error here
+does not produce a wobble that you can catch — the vehicle flies *away* from
+the pad and keeps accelerating, because every new frame reports the marker as
+further away in the same direction.
+
+While this runs, the annotated camera view is on `http://<jetson-ip>:8080/`.
+
+**Also measure your blind altitude while you are here.** Walk the airframe down
+over the marker and note the height at which `/aruco/detected` goes false — the
+0.80 m marker stops fitting in the frame somewhere around 0.66 m. Set
+`blind_commit_altitude` to whatever you actually measure.
+
+### 2. Inspect, in the air (`mode:=inspect`)
+
+Flies the climb, the hold and the search, then prints the point it *would* fly
+to — and holds position instead. Nothing lateral is ever published.
+
+```bash
+ros2 launch drone_testing precision_land.launch.py
+ros2 run drone_testing precision_land --ros-args \
+    -p mode:=inspect -p takeoff_altitude:=2.0
+```
+
+```
+INSPECT: marker FORWARD 0.31 m, RIGHT 0.12 m | err 0.33 m |
+         would move from (+1.42, -0.88) to (+1.61, -0.81) NED. Nothing published.
+```
+
+This is where you confirm the numbers are sane in flight — that the reported
+error shrinks when you nudge the vehicle towards the marker by hand on the TX,
+and that it does not jump around while the vehicle is holding still.
+
+### 3. Align without landing (`land_after_align:=false`)
+
+Closes the loop with the vehicle still at altitude, so you can watch it
+converge with the abort key under your finger.
+
+```bash
+ros2 run drone_testing precision_land --ros-args \
+    -p mode:=align -p land_after_align:=false -p takeoff_altitude:=2.0
+```
+
+It aligns, announces `ALIGNED to 9 cm`, and then holds indefinitely. Press `q`
+to bring it down.
+
+### 4. The real thing (`mode:=align`)
+
+```bash
+ros2 run drone_testing precision_land --ros-args \
+    -p mode:=align -p takeoff_altitude:=2.0
+```
+
+Align → hold `aligned_hold_seconds` (10 s) → descend onto the marker.
+
+`agent_only` defaults to **true**, the same as every other launch file here, so
+the support stack comes up from launch and you run the flight node by hand in a
+second pane. That is what keeps stdin a tty, and the `q` / `k` aborts only work
+when it is. Everything in one shot, with no keyboard abort:
+
+```bash
+ros2 launch drone_testing precision_land.launch.py agent_only:=false mode:=align
+```
+
+Your RC kill switch is the real safety net either way.
+
+---
+
+### The camera side
+
+`aruco_pose` opens the camera itself with `cv2.VideoCapture` — it does not go
+through `zed_wrapper`, and like `window_detect` it avoids `cv_bridge`.
+
+| topic | type | what |
+|---|---|---|
+| `/aruco/detected` | `std_msgs/Bool` | debounced: true after `detect_frames` consecutive hits, false after `lost_frames` misses |
+| `/aruco/point` | `geometry_msgs/PointStamped` | marker centre in the **camera body frame**, metres, published only on a frame where the pose solved |
+| `/aruco/info` | `std_msgs/String` | one human-readable line, the same one the node logs |
+| `http://<jetson-ip>:8080/` | MJPEG | the annotated frame in a browser, no ROS needed on the viewing machine |
+
+Check it standalone at any time:
+
+```bash
+ros2 topic echo /aruco/info
+ros2 topic hz /aruco/point
+```
+
+**Why 800x600 and not something bigger.** The camera offers both 4:3 and 16:9,
+and 4:3 is the right choice: the taller vertical field of view is what decides
+how low the vehicle can go before the marker stops fitting in the frame, and
+4:3 keeps it about 20 cm longer. 800x600 also runs at 30 fps where 1280x960
+drops to 15, and for a control loop the frame rate is worth more than the
+pixels — the marker is still ~198 px across at 2 m, which is plenty of corner
+precision.
+
+The camera is read on its own thread and only the newest frame is ever
+processed. `cap.read()` blocks for a frame interval, and doing that inside a
+ROS timer would stall the node for 33 ms at a time.
+
+### The frame, and the one error that matters
+
+`aruco_pose` publishes the marker centre in the **camera body frame**:
+
+```
++x  RIGHT in the image
++y  UP in the image (towards the top)
++z  UP, i.e. opposite to where the camera looks   -> a marker below has NEGATIVE z
+```
+
+With the camera mounted **image-up towards the nose** and **image-right to the
+vehicle's right**, that becomes body FRD:
+
+```
+forward = y        right = x        down = -z
+```
+
+`precision_land` then rotates that whole vector into NED using the vehicle's
+**full attitude quaternion** from `VehicleAttitude` — not just its heading.
+That is what makes the measurement tilt-compensated, and it is not optional:
+the camera rolls and pitches with the airframe, so at 2 m a 10 degree pitch is
+a 0.35 m phantom lateral offset. Worse, that error is *correlated with the
+correction* — the vehicle pitches in order to move — so uncorrected it becomes
+an oscillation rather than a bias. Rotating the full 3D vector by the attitude
+removes it exactly.
+
+If `VehicleAttitude` is not being published the node says so and refuses to use
+the marker at all. It deliberately does **not** fall back to a heading-only
+rotation, which would silently reintroduce the very error the quaternion is
+there to remove.
+
+### Why the correction is a position setpoint and not a velocity
+
+Because the marker offset is re-measured every tick, a scale error in the
+vision is a **loop gain, not a bias**: commanding a correction of `s·e` leaves
+`(1-s)·e`, which converges for any `0 < s < 2` and never accumulates. So the
+scale is not what picks between position and velocity here. Two other things
+are:
+
+- **Losing the marker.** A latched position setpoint means the vehicle *parks*.
+  A velocity setpoint means it *coasts* until something explicitly zeroes it,
+  which near the ground is exactly the wrong default.
+- **Reuse.** `offboard_sequence` already owns a leashed, EKF2-reset-aware x/y
+  carrot — `hold_x`/`hold_y` walked towards `move_target_x/y` by
+  `_step_xy_ramp`, capped at `MOVE_LEASH` ahead of the measured position.
+  Driving that is reusing a control path that has already flown, rather than
+  inventing a new one.
+
+`align_gain` (0.6) commands only a fraction of the measured offset each cycle.
+That is *not* for the scale — it is phase margin against camera and link
+latency, and it guarantees the approach is monotone even if the vision scale is
+off by a third in the wrong direction.
+
+### Height comes from the lidar, never from the marker
+
+`fx` is derived from `hfov_deg`, not from a calibration, so it carries whatever
+error the quoted field of view has. That error does **not** reach x and y:
+
+```
+apparent marker width in px   p = fx_true · S / Z_true          (measured)
+solver, using fx = k·fx_true  Z = fx·S/p   = k·Z_true           (height wrong by k)
+                              X = u·Z/fx   = u·Z_true/fx_true   (lateral EXACT)
+```
+
+The inflated range and the deflated bearing cancel. So the lateral offsets are
+right even when the FOV is wrong, and only the *height* is scaled — which is
+why this node takes x and y from the vision and leaves every altitude decision
+on the rangefinder that `offboard_sequence` already gates arming on.
+
+What does not cancel is **lens distortion**, which is currently uncorrected
+(`distortion_coeffs` is zero). A wide lens bends the corners worst at the edge
+of the frame, which is where the marker sits when the vehicle is most
+off-centre. Running `cv2.calibrateCamera` on a chessboard and passing the real
+`fx`/`fy`/`cx`/`cy` and `distortion_coeffs` removes it. Until then treat the
+numbers as good near the centre and slightly optimistic at the edge.
+
+### The capture basket, and the blind last metre
+
+The marker has to be **fully** in frame for `solvePnP` to have four corners, so
+the usable basket is the footprint minus the marker. With a 78 degree
+horizontal FOV in 4:3 and an 0.80 m marker:
+
+| altitude | footprint (across x fore-aft) | marker centre must be within | marker size |
+|---|---|---|---|
+| 2.0 m | 3.24 x 2.43 m | ±1.22 m left/right, ±0.81 m fore/aft | ~198 px |
+| 1.5 m | 2.43 x 1.82 m | ±0.81 m left/right, ±0.51 m fore/aft | ~264 px |
+| 1.0 m | 1.62 x 1.21 m | ±0.41 m left/right, ±0.21 m fore/aft | ~395 px |
+| 0.66 m | — | marker no longer fits vertically | — |
+
+Two consequences, and they drive the whole design:
+
+1. **Align high, not on the way down.** The basket shrinks as you descend, so
+   the alignment runs at `takeoff_altitude` — 2.0 m is a good choice — and must
+   be *finished* by roughly 1 m.
+2. **The last stretch is open loop.** There is no smaller nested marker to hand
+   over to, so below `blind_commit_altitude` the descent is flown on the last
+   held point. The node logs the moment it crosses that line so the ulog says
+   exactly where the closed loop ended.
+
+Because of that, the x/y hold is **kept through the descent**, unlike
+`offboard_sequence`'s `_begin_landing`, which drops to a zero-velocity hold.
+Ten seconds of unheld descent from 2 m would drift further than the 15 cm the
+alignment just worked to achieve. It still falls back to zero-velocity hold the
+instant `flow_is_healthy()` goes false, which is the inherited gate — and every
+*other* path into the landing (operator abort, a dead height estimate, a lost
+rangefinder, an overshoot, the flight clock) keeps the inherited behaviour
+untouched. Those are emergencies, and in an emergency "do not translate" is the
+correct horizontal command.
+
+### What the flight does
+
+| stage | what happens |
+|---|---|
+| `PREPARATION` … `TAKEOFF` | identical to the other nodes: health gates, Offboard, arm, ground wait, ramped climb |
+| `HOLD` | `hold_seconds` at altitude, waiting for the flow to latch x/y. If the marker is already in sight when the hold ends, it skips straight to `ALIGN` |
+| `SEARCH` | holds station and watches for up to `search_seconds` |
+| `ALIGN` | re-measures every tick and walks the x/y hold point towards the marker at `align_gain` × the measured offset, until the error is inside `align_tolerance` for `align_settle_seconds` |
+| `ALIGNED_HOLD` | stops correcting, holds `aligned_hold_seconds`. Drifting back outside 1.5 × the tolerance sends it to `ALIGN` again |
+| `LANDING` | descends on the aligned point, keeping the x/y hold until the flow gives out |
+
+**The search does not sweep the yaw.** Unlike `window_scan`, which has a
+forward-facing camera where a yaw sweeps new ground, this camera looks straight
+down: yawing rotates the footprint but barely changes which patch of floor is
+inside it. It would cost tracking quality and buy almost no coverage, so the
+search is stationary and the basket is simply the footprint above.
+
+A marker only counts if it is **live**: `/aruco/detected` is already debounced
+in the detector, and `precision_land` additionally requires the pose to be no
+older than `marker_max_age`. A camera that dies goes quiet, and quiet reads as
+"no marker", never as a lock.
+
+Losing the marker mid-align **freezes the carrot** — the vehicle holds where it
+is rather than walking on towards a target derived from a measurement it no
+longer has. If it stays lost for `marker_lost_seconds` the flight goes back to
+`SEARCH`.
+
+`flight_seconds` is checked before every stage handler and is measured from the
+**start of the climb**, so a stage that gets stuck cannot postpone the descent.
+
+### Parameters
+
+| parameter | default | what |
+|---|---|---|
+| `mode` | `bench` | `bench` \| `inspect` \| `align` — see the ladder above |
+| `takeoff_altitude` | 2.0 | m above the arming point. Sets the capture basket |
+| `align_tolerance` | 0.15 | m radius that counts as centred over the marker |
+| `align_settle_seconds` | 1.5 | s inside that radius before the alignment is believed |
+| `align_gain` | 0.6 | fraction of the measured offset commanded per cycle. Below 1 guarantees monotone convergence. Raise slowly if at all |
+| `aligned_hold_seconds` | 10.0 | s held over the marker before the descent |
+| `land_after_align` | true | false = align and stay up (rung 3) |
+| `search_seconds` | 20.0 | s hovering and looking before giving up |
+| `align_timeout` | 45.0 | s trying to centre before giving up |
+| `flight_seconds` | 120.0 | s from the start of the climb to a forced descent, whatever else is happening |
+| `on_fail` | `land` | what a search / align timeout does: `land` \| `hold` |
+| `marker_max_age` | 0.5 | s after which the last pose is not evidence of anything |
+| `marker_lost_seconds` | 5.0 | s without a marker during `ALIGN` before returning to `SEARCH` |
+| `precision_descent` | true | keep the aligned x/y hold through the descent |
+| `blind_commit_altitude` | 1.0 | m below which the marker is expected to be out of frame. Logged, not enforced — **measure it** |
+| `marker_id` | 0 | ArUco id to track (`aruco_pose`) |
+| `marker_size` | 0.80 | marker edge length, m. Must be right: it sets the metric scale of the whole pose |
+| `aruco_dict` | `DICT_5X5_50` | `cv2.aruco` predefined dictionary name |
+| `hfov_deg` | 78.0 | horizontal FOV. Scales the reported height, which nothing uses |
+| `image_rotate` | 0 | `0\|90\|180\|270`, applied before detection. Use this if the camera is bolted on rotated |
+| `width` / `height` | 800 / 600 | 4:3 on purpose — see above |
+| `fourcc` | `MJPG` | MJPG gets 30 fps at 800x600 on this camera; YUYV does not |
+| `stream_port` | 8080 | browser MJPEG view. 0 disables it |
+| `show_gui` | false | `cv2.imshow`; needs a display, leave false on a headless Jetson |
+
+Plus everything `offboard_sequence` takes for the climb and the descent
+(`hold_seconds`, `ground_wait_seconds`, `climb_speed`, `land_speed`,
+`move_speed`, `min_altitude`, `max_altitude`, `request_offboard_from_ros`).
+
+The `sequence` parameter the parent declares is parsed and then ignored — this
+node flies its own plan and never enters the `STEP` stage.
+
+### Status output
+
+Same `/takeoff_status` topic and format, so the LCD needs no changes. The
+detail field carries the stage and the flight clock: `srch 94s` (searching,
+94 s until the forced descent), `err0.33 88s` (aligning, 33 cm out),
+`algn 7s` (aligned, 7 s of hold left).
+
+---
+
 ## 7. Optional: LCD status display
 
 An Arduino running `arduino/tft_status/tft_status.ino` shows the stage, arm
@@ -705,12 +1048,15 @@ sudo systemctl daemon-reload && sudo systemctl restart px4-agent.service
 | `cam`              | camera capture helper                                             |
 | `window_detect`    | ZED window detection, publishes `/window_detected` (section 6c)    |
 | `window_scan`      | takeoff, yaw sweep, lock onto the window, land after 40 s (section 6c) |
+| `aruco_pose`       | down-camera ArUco pose, publishes `/aruco/detected` and `/aruco/point` (section 6d) |
+| `precision_land`   | takeoff, find the marker, centre on it, land on it (section 6d)   |
 
 Other launch files:
 
 - `translate_test.launch.py` — agent + `offboard_translate` (section 6)
 - `sequence_test.launch.py` — agent + `offboard_sequence` (section 6b)
 - `window_scan.launch.py` — agent + ZED + `window_detect` + `window_scan` (section 6c)
+- `precision_land.launch.py` — agent + `aruco_pose` + `precision_land` (section 6d)
 - `arm_test.launch.py` — agent + `offboard_mission`, for arm/disarm bench tests
 - `offboard_launch.launch.py` — agent + ZED localization + `offboard_mission`
 
@@ -731,6 +1077,12 @@ Other launch files:
 | `Offboard lost; PX4 has control now` | The TX switch moved, or PX4 failsafed. The node lets go on purpose. |
 | `error: option --uninstall not recognized` on build | Stale `--symlink-install` state; see the build section above. |
 | `q` / `k` do nothing | The node was started via `ros2 launch` or systemd, so stdin is not a tty. Run it with `ros2 run` in its own pane. |
+| `BENCH: no /aruco/detected messages` | `aruco_pose` is not running, or it is on a different ROS domain. Start it: `ros2 launch drone_testing precision_land.launch.py flight:=false`. |
+| `precision_land` never leaves `SEARCH` | The marker is outside the footprint, or `marker_id` / `marker_size` / `aruco_dict` do not match the marker you actually printed. Check `ros2 topic echo /aruco/info` and the browser view on `:8080`. |
+| `No VehicleAttitude is being published` | `vehicle_attitude` is not in the PX4 DDS topic list, so the marker vector cannot be tilt-compensated and is refused. Add it to `dds_topics.yaml` and reboot the FC. |
+| The vehicle moves the **wrong way** towards the marker | An axis sign is inverted. Land, and go back to `mode:=bench` (section 6d) — this is exactly what that mode exists to catch. Fix `image_rotate` or the mounting. |
+| Aligns, then oscillates around the marker | `align_gain` too high for the camera latency, or the marker is near the frame edge where the uncorrected lens distortion is worst. Lower `align_gain`, and calibrate the camera. |
+| Lands 30–40 cm off after a good alignment | Drift during the open-loop descent. Check `precision_descent` is true, and that the flow stays healthy (`flow_ok=True`) down to `FLOW_MIN_AGL`. |
 
 ---
 
@@ -819,3 +1171,9 @@ fallback chain.
 6. `takeoff_altitude` set low (0.30 m).
 7. Clear space around and above the vehicle — flow-only hold drifts.
 8. You know which pane has the `q` key.
+9. **Precision landing only:** the `mode:=bench` sign check has been run *this
+   session*, on this airframe, and both axes read true (section 6d). A camera
+   that has been unplugged and replugged can come back on a different index.
+10. **Precision landing only:** `marker_id`, `marker_size` and `aruco_dict`
+    match the marker actually laid out, and the marker is inside the capture
+    basket for your `takeoff_altitude`.
