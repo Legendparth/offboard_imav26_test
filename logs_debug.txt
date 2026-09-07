@@ -1,100 +1,18 @@
-uavcan param list 125
-name: CAL_ACC0_ID 0
-name: CAL_ACC0_PRIO -1
-name: CAL_ACC0_ROT -1
-name: CAL_ACC0_XOFF 0.0000
-name: CAL_ACC0_XSCALE 1.0000
-name: CAL_ACC0_YOFF 0.0000
-name: CAL_ACC0_YSCALE 1.0000
-name: CAL_ACC0_ZOFF 0.0000
-name: CAL_ACC0_ZSCALE 1.0000
-name: CAL_ACC1_ID 0
-name: CAL_ACC2_ID 0
-name: CAL_ACC3_ID 0
-name: CAL_GYRO0_ID 2490378
-name: CAL_GYRO0_PRIO 50
-name: CAL_GYRO0_ROT -1
-name: CAL_GYRO0_XOFF -0.0039
-name: CAL_GYRO0_YOFF 0.0101
-name: CAL_GYRO0_ZOFF -0.0073
-name: CAL_GYRO1_ID 0
-name: CAL_GYRO2_ID 0
-name: CAL_GYRO3_ID 0
-name: CANNODE_BITRATE 1000000
-name: CANNODE_PUB_IMU 0
-name: CANNODE_TERM 0
-name: IMU_DGYRO_CUTOFF 30.0000
-name: IMU_GYRO_CAL_EN 1
-name: IMU_GYRO_CUTOFF 40.0000
-name: IMU_GYRO_NF0_BW 20.0000
-name: IMU_GYRO_NF0_FRQ 0.0000
-name: IMU_GYRO_NF1_BW 20.0000
-name: IMU_GYRO_NF1_FRQ 0.0000
-name: IMU_GYRO_RATEMAX 1000
-name: IMU_INTEG_RATE 200
-name: SENS_AFBR_HYSTER 1
-name: SENS_AFBR_L_RATE 25
-name: SENS_AFBR_MODE 0
-name: SENS_AFBR_SNM 3
-name: SENS_AFBR_S_RATE 50
-name: SENS_AFBR_THRESH 4
-name: SENS_BOARD_ROT 0
-name: SENS_BOARD_X_OFF 0.0000
-name: SENS_BOARD_Y_OFF 0.0000
-name: SENS_BOARD_Z_OFF 0.0000
-name: SENS_FLOW_MAXHGT 100.0000
-name: SENS_FLOW_MAXR 8.0000
-name: SENS_FLOW_MINHGT 0.0800
-name: SENS_FLOW_RATE 150.0000
-name: SENS_FLOW_ROT 0
-name: SENS_FLOW_SCALE 1.0000
-name: SENS_IMU_AUTOCAL 1
-name: SENS_IMU_CLPNOTI 0
-name: SENS_IMU_MODE 1
-name: SENS_MAG_RATE 100.0000
-name: SYS_CAL_TDEL 24
-name: SYS_CAL_TMAX 10
-name: SYS_CAL_TMIN 5
-name: SYS_FAC_CAL_MODE 0
-nsh>
-
-nsh> uavcan status
-Pool allocator status:
-    Capacity hard/soft: 500/250 blocks
-    Reserved:  71 blocks
-    Allocated: 13 blocks
-
-UAVCAN node status:
-    Internal failures: 0
-    Transfer errors:   5
-    RX transfers:      406648
-    TX transfers:      42658
-
-CAN1 status:
-    HW errors: 105
-    IO errors: 105
-    RX frames: 1485329
-    TX frames: 66339
-CAN2 status:
-    HW errors: 70481
-    IO errors: 70498
-    RX frames: 0
-    TX frames: 66322
-
-Sensor 'flow':
-name: uavcan_flow
-channel 0: node id 125 --> instance 0
-
-Sensor 'mag':
-name: uavcan_mag
-
-Sensor 'rangefinder':
-name: uavcan_rangefinder
-channel 0: node id 125 --> instance 0
-
-Online nodes (Node ID, Health, Mode):
-     125 OK         OPERAT    
-
-uavcan: cycle time: 2139375 events, 98695694us elapsed, 46.13us avg, min 8us max 574799us 2345.082us rms
-uavcan: cycle interval: 2139376 events, 1109.36us avg, min 11us max 574803us 2608.281us rms
+nsh> ver all
+HW arch: PX4_FMU_V6C
+HW type: V6C000001
+HW version: 0x000
+HW revision: 0x001
+PX4 git-hash: d6f12ad1c4f70ad3230afd7d86e971421e02fef4
+PX4 version: Release 1.17.0 (17891583)
+PX4 git-branch: stable
+OS: NuttX
+OS version: Release 11.0.0 (184549631)
+OS git-hash: fb2fadf6f599c1406f052db013efd00a2518e72c
+Build datetime: May 13 2026 18:50:30
+Build uri: localhost
+Build variant: default
+Toolchain: GNU GCC, 13.2.1 20231009
+PX4GUID: 0006000000003238363532335110002b0026
+MCU: STM32H7[4|5]xxx, rev. V
 nsh> 
