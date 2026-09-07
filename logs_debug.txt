@@ -34,4 +34,32 @@ TOPIC: vehicle_visual_odometry
     reset_counter: 0
     quality: 0
 
-nsh> 
+## output from the mavlink console about the vehicle vehicle_visual_odometry
+
+ark-jetson-orin@localhost:~/imav26_ws$ ros2 topic hz /fmu/in/vehicle_visual_odometry 
+average rate: 29.862
+	min: 0.012s max: 0.054s std dev: 0.00539s window: 31
+average rate: 29.936
+	min: 0.011s max: 0.070s std dev: 0.00701s window: 62
+average rate: 29.630
+	min: 0.011s max: 0.070s std dev: 0.00702s window: 91
+average rate: 29.238
+	min: 0.011s max: 0.070s std dev: 0.00760s window: 120
+average rate: 29.185
+	min: 0.011s max: 0.070s std dev: 0.00768s window: 149
+average rate: 29.325
+	min: 0.011s max: 0.070s std dev: 0.00726s window: 180
+average rate: 29.418
+	min: 0.011s max: 0.070s std dev: 0.00709s window: 210
+average rate: 29.489
+	min: 0.011s max: 0.070s std dev: 0.00674s window: 240
+average rate: 29.435
+	min: 0.011s max: 0.070s std dev: 0.00652s window: 269
+average rate: 29.396
+	min: 0.011s max: 0.070s std dev: 0.00647s window: 299
+average rate: 29.356
+	min: 0.011s max: 0.070s std dev: 0.00673s window: 328
+average rate: 29.408
+	min: 0.009s max: 0.080s std dev: 0.00712s window: 358
+
+##output about the topic in ros2
