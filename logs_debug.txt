@@ -63,3 +63,10 @@ average rate: 29.408
 	min: 0.009s max: 0.080s std dev: 0.00712s window: 358
 
 ##output about the topic in ros2
+
+EKF2_EV_CTRL = 1
+EKF2_EV_DELAY = 40.0ms
+EKF2_HGT_REF = Range sensor
+EKF2_RNG_CTRL = Enabled
+EKF2_OF_CTRL = Disabled
+UXRCE_DDS_SYNCT = Enabled
