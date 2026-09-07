@@ -193,6 +193,7 @@ def generate_launch_description():
                     'odom_topic': LaunchConfiguration('odom_topic'),
                     'pose_frame': LaunchConfiguration('pose_frame'),
                     'publish_velocity': LaunchConfiguration('publish_velocity'),
+                    'publish_rate': LaunchConfiguration('publish_rate'),
                     # Pose of the camera in the body frame, ROS convention.
                     # The wrapper reports the CAMERA's pose, so this is what
                     # turns it into the vehicle's -- see the header.
@@ -338,6 +339,12 @@ def generate_launch_description():
                         "from North and EKF2 estimates it (correct for this camera: "
                         "it cannot see North). ned = only if the vision frame is "
                         "genuinely North-aligned."),
+        DeclareLaunchArgument(
+            'publish_rate', default_value='15.0',
+            description='Hz sent to PX4, independently of the ZED frame rate. The '
+                        'uXRCE-DDS UART cannot carry 30 Hz of odometry alongside the '
+                        'setpoint streams -- it starves the offboard heartbeat and PX4 '
+                        'takes the aircraft. 0 = no throttle, only safe on Ethernet.'),
         DeclareLaunchArgument(
             'publish_velocity', default_value='false',
             description='Send the ZED twist as a body-FRD velocity. Leave false '

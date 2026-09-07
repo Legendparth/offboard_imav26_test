@@ -82,6 +82,31 @@ radians, applied yaw-then-pitch-then-roll. Defaults are all zero, i.e. camera
 at the CoG pointing straight forward, which is a no-op. Leave EKF2_EV_POS_*
 at zero when you use these.
 
+PUBLISH RATE
+------------
+`publish_rate` (default 15 Hz) throttles what goes DOWN THE LINK to PX4,
+independently of how fast the ZED runs. This is not a nicety -- it is the
+difference between flying and not.
+
+The uXRCE-DDS serial link is a 921600-baud UART shared by every ROS->PX4
+topic. Streaming 30 Hz of odometry down it alongside the 20 Hz setpoint and
+heartbeat streams saturates it, and what you get is not graceful degradation:
+the ulogs from the first vision flights show PX4 receiving vision at 5-6 Hz
+with 0.8 s gaps, and the offboard_control_mode heartbeat dying completely
+after under a second, which PX4 reports as offboard_control_signal_lost and
+acts on by taking the aircraft. Meanwhile EKF2 never rejected a single vision
+sample -- innovations were millimetres. The data was good; it just was not
+arriving.
+
+EKF2 does not need 30 Hz vision. It fuses at its own delayed horizon and 10-15
+Hz is ample at the speeds this vehicle flies. Set this to 0 to disable the
+throttle only if the link is Ethernet, where the bandwidth argument does not
+apply.
+
+Health accounting below is deliberately measured on the INCOMING ZED rate,
+not the throttled output, so `min_rate` still tells you the truth about the
+camera rather than about this setting.
+
 VELOCITY
 --------
 Off by default (`publish_velocity:=false`, fields left as NaN, which PX4
@@ -191,6 +216,9 @@ class ZedLocalization(Node):
     # than this, or if fewer than MIN_RATE samples arrived in the last second.
     MAX_AGE = 0.30                      # s
     MIN_RATE = 10.0                     # Hz
+    # Hz sent to PX4. 0 = every sample. See "PUBLISH RATE" above -- 30 Hz
+    # saturates the uXRCE-DDS UART and kills the offboard heartbeat.
+    PUBLISH_RATE = 15.0
 
     def __init__(self):
         super().__init__('zed_localization')
@@ -218,6 +246,9 @@ class ZedLocalization(Node):
             'reset_jump', self.RESET_JUMP).value)
         self.max_age = float(self.declare_parameter('max_age', self.MAX_AGE).value)
         self.min_rate = float(self.declare_parameter('min_rate', self.MIN_RATE).value)
+        publish_rate = float(self.declare_parameter(
+            'publish_rate', self.PUBLISH_RATE).value)
+        self.publish_interval = (1.0 / publish_rate) if publish_rate > 0.0 else 0.0
 
         # Pose of the camera in the body frame, ROS convention (x fwd, y left,
         # z up). See "WHERE THE CAMERA IS BOLTED ON" above. All zero = no-op.
@@ -263,6 +294,8 @@ class ZedLocalization(Node):
         self.status_pub = self.create_publisher(String, 'vio_status', status_qos)
 
         self.last_msg_time = None       # monotonic, last ZED sample received
+        self.last_publish_time = None   # monotonic, last sample sent to PX4
+        self.dropped = 0                # samples skipped by the rate throttle
         self.last_position = None       # NED, for the jump detector
         self.reset_counter = 0
         self.published = 0
@@ -277,7 +310,10 @@ class ZedLocalization(Node):
             f"ZED VO bridge: {self.odom_topic} -> /fmu/in/vehicle_visual_odometry "
             f"as POSE_FRAME_{'NED' if pose_frame == 'ned' else 'FRD'}, "
             f"velocity {'ON' if self.publish_velocity else 'OFF (NaN)'}, "
-            f"mounting offset {'APPLIED' if self.mounted else 'none (camera == body)'}. "
+            f"mounting offset {'APPLIED' if self.mounted else 'none (camera == body)'}, "
+            f"publishing at {publish_rate:.0f} Hz"
+            if publish_rate > 0.0 else "publishing every sample (throttle OFF)")
+        self.get_logger().warning(
             "This camera has no IMU: it is visual odometry, not visual-inertial.")
 
     # ---------------------------------------------------------------- bridge
@@ -309,7 +345,23 @@ class ZedLocalization(Node):
             return
 
         now = time.monotonic()
+
+        # Health and relocalisation detection run on EVERY sample, before the
+        # throttle. Health must describe the camera, not this setting; and a
+        # jump that happened between two published samples is still a jump,
+        # so reset_counter has to see the ones we drop.
+        self.last_msg_time = now
+        self.rate_window.append(now)
+        self.rate_window = [t for t in self.rate_window if now - t <= 1.0]
         self._detect_reset(position)
+
+        # Rate throttle. Keeping the link under its budget is what stops the
+        # offboard heartbeat being starved -- see "PUBLISH RATE" above.
+        if (self.publish_interval > 0.0 and self.last_publish_time is not None
+                and now - self.last_publish_time < self.publish_interval * 0.98):
+            self.dropped += 1
+            return
+        self.last_publish_time = now
 
         out = VehicleOdometry()
         # timestamp is "now", timestamp_sample is when the measurement was
@@ -377,9 +429,6 @@ class ZedLocalization(Node):
         self.visual_odom_pub.publish(out)
 
         self.published += 1
-        self.last_msg_time = now
-        self.rate_window.append(now)
-        self.rate_window = [t for t in self.rate_window if now - t <= 1.0]
 
     def _detect_reset(self, position):
         """Bump reset_counter when the ZED relocalises instead of moving.
@@ -433,9 +482,15 @@ class ZedLocalization(Node):
         age_ms = (0.0 if self.last_msg_time is None
                   else (time.monotonic() - self.last_msg_time) * 1000.0)
         status = String()
+        # in_hz is what the camera is giving us; out is what the link is
+        # actually carrying. They differ by the publish_rate throttle, and
+        # seeing both is how you tell a dead camera from a throttled one.
+        out_hz = (0.0 if self.publish_interval <= 0.0
+                  else min(1.0 / self.publish_interval, self.measured_rate()))
         status.data = "|".join([
             'OK' if healthy else 'BAD',
             f"{self.measured_rate():.0f}",
+            f"{out_hz if self.publish_interval > 0.0 else self.measured_rate():.0f}",
             f"{age_ms:.0f}",
             f"{self.reset_counter}",
             reason,
