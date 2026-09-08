@@ -985,6 +985,149 @@ detail field carries the stage and the flight clock: `srch 94s` (searching,
 
 ---
 
+## 6e. The sequence test on ZED vision (`offboard_sequence_vio`)
+
+The **same mission as 6b**, flown with lateral position coming from ZED visual
+odometry instead of the ARK Flow's optical flow. Height still comes from the
+lidar. `offboard_sequence_vio` subclasses `OffboardSequence` and changes
+exactly one thing — what counts as a healthy horizontal estimate — so the
+ramps, leashes, aborts and status output are all identical to 6b.
+
+The one behavioural difference in the air: **x/y hold latches on the ground.**
+Flow has no usable estimate until the vehicle is airborne, so 6b flies the
+ground wait and the climb as "zero velocity and hope". Vision is valid sitting
+still on the floor, so the climb is a real position hold against the take-off
+point and the vehicle goes straight up instead of sliding off. Set
+`hold_xy_from_ground:=false` for the old behaviour.
+
+### Set the PX4 parameters first
+
+Read the header block of `launch/sequence_vio_test.launch.py` — it is the
+authority and it explains the reasoning. The minimum, in QGC:
+
+| parameter        | value | why                                              |
+|------------------|-------|--------------------------------------------------|
+| `EKF2_EV_CTRL`   | `1`   | horizontal position only — **not** bit 1 (2), that is vertical position and hands height back to the camera |
+| `EKF2_HGT_REF`   | `2`   | height reference stays the rangefinder            |
+| `EKF2_RNG_CTRL`  | `1`   | lidar fusion on — still a hard arming gate        |
+| `EKF2_OF_CTRL`   | `0`   | flow off; do not fuse flow and vision at once     |
+| `EKF2_EV_DELAY`  | `40`  | ms, starting point. The number that matters most  |
+| `EKF2_EVP_NOISE` | `0.1` | m                                                 |
+| `EKF2_EV_NOISE_MD` | `0` | use the covariance from the message               |
+
+The node will refuse to arm if EKF2 is not actually fusing what it expects, so
+a mistake here shows up as a refusal to arm, not as a crash.
+
+### Measure the camera mounting
+
+`cam_x/y/z/roll/pitch/yaw` all default to `0.0`, which means "camera at the CoG
+pointing dead ahead". That is a no-op and almost certainly not where yours is.
+Getting the rotation wrong **tilts every commanded translation**; getting the
+lever arm wrong turns every yaw into a phantom sideways step.
+
+Measure the pose of the camera **in the body frame, ROS convention** — x
+forward, y **left**, z **up**, metres and radians. Leave `EKF2_EV_POS_X/_Y/_Z`
+at zero: the bridge applies the full rigid transform before publishing, which
+EKF2 cannot do because it has no parameter for the camera's *rotation*.
+
+### Running it
+
+`agent_only` defaults to `true`, so the launch file brings up the support stack
+only — agent, ZED wrapper, bridge, LCD — and you run the flight node yourself
+in a second pane, which is what keeps stdin a tty and the `q`/`k` aborts alive.
+
+**Pane 1 — support stack:**
+
+```bash
+cd ~/px4_ros_ws
+source install/setup.bash
+ros2 launch drone_testing sequence_vio_test.launch.py \
+  cam_x:=0.10 cam_y:=0.0 cam_z:=0.05 cam_pitch:=0.0
+```
+
+Wait for the bridge to print
+
+```
+VIO healthy: 15 Hz from /zed/zed_node/odom
+```
+
+**Do not go on until you have seen that line.**
+
+**Pane 3 — sanity check:**
+
+```bash
+source ~/px4_ros_ws/install/setup.bash
+ros2 topic echo /vio_healthy --once             # must be data: true
+ros2 topic hz /fmu/in/vehicle_visual_odometry   # should sit near 15 Hz
+```
+
+**Pane 2 — the flight node:**
+
+```bash
+cd ~/px4_ros_ws
+source install/setup.bash
+ros2 run drone_testing offboard_sequence_vio --ros-args \
+  -p takeoff_altitude:=0.5 \
+  -p sequence:="forward 0.5"
+```
+
+**Start much smaller than the launch defaults.** The defaults are 1.0 m and
+`forward 1.0, yaw 30, up 0.5, right 1.0`; for a first vision flight use 0.5 m
+and a single 0.5 m step, get one clean log, then add steps back one at a time.
+`q` aborts into a controlled descent, `k` force-disarms, and the RC kill switch
+is still the real safety net.
+
+### Parameters
+
+Every parameter from 6b applies unchanged. These are the additions:
+
+| parameter                | default                 | meaning                                                        |
+|--------------------------|-------------------------|----------------------------------------------------------------|
+| `hold_xy_from_ground`    | `true`                  | latch x/y hold before the climb instead of after                |
+| `vio_settle_seconds`     | `2.0`                   | s the vision estimate must be continuously healthy before latching |
+| `allow_missing_bridge_status` | `true`             | fall back to EKF2's flags alone if `/vio_healthy` is absent      |
+| `zed`                    | `true`                  | start the ZED wrapper here; `false` if you run it elsewhere      |
+| `camera_model`           | `zed`                   | gen-1 ZED — **no IMU**, so this is visual odometry only          |
+| `camera_name`            | `zed`                   | sets the topic prefix and the odom child frame                   |
+| `odom_topic`             | `/zed/zed_node/odom`    | ZED odometry the bridge converts                                 |
+| `pose_frame`             | `frd`                   | vision heading has an unknown offset from North; EKF2 estimates it |
+| `publish_rate`           | `15.0`                  | Hz sent to PX4. Do not raise on a UART link — see below          |
+| `publish_velocity`       | `false`                 | only `true` if `EKF2_EV_CTRL` bit 2 (4) is also set              |
+| `move_speed`             | `0.30`                  | m/s. Raise one flight at a time; fast translation breaks stereo VO |
+| `yaw_rate`               | `0.35`                  | rad/s. Keep slow — fast yaw is the surest way to lose tracking   |
+| `cam_x/y/z`              | `0.0`                   | m, camera position in body frame (x fwd, y **left**, z **up**)   |
+| `cam_roll/pitch/yaw`     | `0.0`                   | rad; `cam_pitch` **positive = nose down**                        |
+
+`publish_rate` is a throttle on what goes *down the link*, not on the ZED. The
+uXRCE-DDS UART cannot carry 30 Hz of odometry alongside the setpoint streams —
+it starves the offboard heartbeat and PX4 takes the aircraft. Only raise it on
+Ethernet.
+
+### When vision drops out
+
+Losing vision mid-flight is survivable, not fatal. If EKF2 stops fusing the
+external vision, the inherited logic falls back to zero-velocity hold and
+horizontal steps are **skipped** rather than dead-reckoned. Height is still the
+lidar's, so the descent is unaffected. Expect dropouts on motion blur, on
+featureless walls and in low light — an IMU-less stereo camera has nothing to
+coast on.
+
+### Flow or vision?
+
+You cannot pick from first principles; it depends on your arena's floor and
+walls. Fly the identical sequence three times and compare the logs:
+
+1. **Flow only** — `EKF2_OF_CTRL=1`, `EKF2_EV_CTRL=0`, via `sequence_test.launch.py` (6b).
+2. **Vision only** — `EKF2_OF_CTRL=0`, `EKF2_EV_CTRL=1`, via this launch file.
+3. **Both** — only if step 2 showed a dropout you actually need covered.
+
+Running both as the *normal* configuration is discouraged: they are two
+independent, differently-scaled, differently-delayed measurements of the same
+lateral state, and where they disagree the filter splits the difference and the
+vehicle drifts toward whichever one is lying.
+
+---
+
 ## 7. Optional: LCD status display
 
 An Arduino running `arduino/tft_status/tft_status.ino` shows the stage, arm
