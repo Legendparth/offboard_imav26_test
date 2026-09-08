@@ -46,14 +46,47 @@ Position is the easy half: NED = (y_enu, x_enu, -z_enu).
 
 WHICH FRAME TO DECLARE
 ----------------------
-`pose_frame` defaults to FRD, not NED, and that is deliberate. The ZED's odom
-frame is ENU *anchored on wherever the camera was looking at start-up* -- its
-x axis is the initial heading, not true East, because nothing in this camera
-can observe North (no magnetometer, no GNSS). Declaring NED would be telling
-PX4 the vision yaw is absolute when it is off by an arbitrary constant, and
-EKF2 would fight its own magnetometer forever. POSE_FRAME_FRD is exactly the
-"z is down, heading offset from North is a constant I do not know" case, and
-lets EKF2 estimate that offset itself.
+`pose_frame` defaults to FRD, not NED. The ZED's odom frame is ENU *anchored
+on wherever the camera was looking at start-up* -- its x axis is the initial
+heading, not true East, because nothing in this camera can observe North (no
+magnetometer, no GNSS). Declaring NED would be telling PX4 the vision yaw is
+absolute when it is off by an arbitrary constant, and EKF2 would fight its own
+magnetometer forever. POSE_FRAME_FRD is exactly the "z is down, heading offset
+from North is a constant I do not know" case.
+
+THAT DEFAULT IS ONLY CORRECT IF THE MAGNETOMETER IS ON. Read this before you
+fly with EKF2_MAG_TYPE = 5.
+
+FRD can never align yaw. Not "will not in practice" -- cannot, by construction:
+
+    ev_yaw_control.cpp, LOCAL_FRAME_FRD branch
+        resetQuatStateYaw(...);
+        _control_status.flags.yaw_align = false;   <-- explicitly false
+        _control_status.flags.ev_yaw    = true;
+
+Only the LOCAL_FRAME_NED branch sets yaw_align = true. So FRD is a declaration
+that some OTHER source owns the heading, and on this airframe the only other
+source is the magnetometer. Turn the magnetometer off and declare FRD and you
+get a vehicle that fuses vision position and vision yaw, reports cs_ev_pos and
+cs_ev_yaw both true, looks completely healthy on the ground -- and has
+cs_yaw_align false forever, which PX4 reports as local_position_invalid about
+a second after arming, and takes the aircraft.
+
+With no magnetometer and no GNSS, use `pose_frame:=ned`. Nothing in the system
+knows where North is, so there is no absolute heading for the vision yaw to
+disagree with, and letting the ZED's start-up heading DEFINE the navigation
+frame's north is self-consistent: the flight nodes capture their own reference
+yaw at arming and fly everything relative to it. The only thing you give up is
+that the reported heading is no longer North-referenced, which matters to a
+compass rose in QGC and to nothing else indoors.
+
+    magnetometer ON  (EKF2_MAG_TYPE = 0)  ->  pose_frame:=frd, EKF2_EV_CTRL = 1
+    magnetometer OFF (EKF2_MAG_TYPE = 5)  ->  pose_frame:=ned, EKF2_EV_CTRL = 9
+
+Do not mix the rows. Check the result before every first flight on a new
+parameter set:
+
+    ros2 topic echo /fmu/out/estimator_status_flags --once | grep cs_yaw_align
 
 WHERE THE CAMERA IS BOLTED ON
 -----------------------------

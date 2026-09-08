@@ -61,12 +61,33 @@ velocity, no yaw, no height. It is the smallest change that gets you lateral
 hold, and every additional bit is another way for the estimate to fight
 itself.
 
+BUT position-only assumes SOMETHING ELSE IS SUPPLYING THE HEADING, and on this
+airframe that can only be the magnetometer. EKF2 will not align yaw without an
+absolute heading source, and until it does (cs_yaw_align) the horizontal
+estimate is not anchored to anything, so PX4 invalidates the local position and
+takes the aircraft roughly a second after arming -- while cs_ev_pos and
+xy_valid both sit there looking perfectly healthy. If you have turned the
+magnetometer off for indoor flight, EKF2_EV_CTRL = 1 is NOT a valid
+configuration; you must enable vision yaw as well (see below). Check with
+
+    ros2 topic echo /fmu/out/estimator_status_flags --once | grep cs_yaw_align
+
+before every first flight on a new parameter set. README section 10.3.
+
     EKF2_EV_CTRL = 9 (position + yaw) only once position alone has flown
     clean, and only if the magnetometer is unusable indoors. Vision yaw and
     the magnetometer are two absolute heading sources; enabling both means
     EKF2 arbitrating between a compass sitting next to four ESCs and a VO
     heading that drifts. Pick one. If you enable vision yaw, set
-    EKF2_MAG_TYPE = 5 (None) at the same time.
+    EKF2_MAG_TYPE = 5 (None) AND pass pose_frame:=ned at the same time.
+
+    That last part is not optional and it is not obvious. EKF2 will not align
+    yaw from a POSE_FRAME_FRD estimate no matter how well vision yaw is
+    fusing -- ev_yaw_control.cpp sets yaw_align = false on the FRD branch
+    explicitly, and only the NED branch sets it true. EKF2_EV_CTRL = 9 with
+    the default pose_frame:=frd gets you cs_ev_yaw true, cs_yaw_align false,
+    and an aircraft PX4 takes away a second after arming. See the frame table
+    in drone_testing/zed_localization.py.
 
     Do NOT set bit 2 (velocity) unless you have also set publish_velocity:=true
     on the bridge -- and you probably should not. The bridge leaves velocity

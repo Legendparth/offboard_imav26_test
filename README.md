@@ -1280,14 +1280,27 @@ the ground — which is why a `dist_bottom` frozen at exactly that value means
 
 ### 10.2 Losing Offboard shortly after arming
 
-Offboard has only three mode requirements in PX4 (`mode_requirements.cpp`):
-angular velocity, attitude, and **offboard signal**. Nothing about position —
-so a flaky position estimate cannot, by itself, kick you out of Offboard.
-That narrows the causes a lot:
+Offboard's *static* mode requirements in PX4 (`mode_requirements.cpp`) are
+angular velocity, attitude, and **offboard signal**. But the requirements are
+also built **dynamically from the contents of `offboard_control_mode`**: when
+that message has `position = true` — which these nodes set whenever they are
+not in a blind descent — PX4 adds `local_position` to Offboard's requirements.
+You can watch this happen live:
+
+```bash
+ros2 topic echo /fmu/out/failsafe_flags --once | grep mode_req_local_position
+```
+
+Bit 14 (value `16384`, `NAVIGATION_STATE_OFFBOARD`) appears in that bitmask
+only while a node is publishing a position-flavoured `offboard_control_mode`.
+So **an invalid local position absolutely can kick you out of Offboard**, and
+`local_position_invalid` in the failsafe line is a cause to take seriously
+rather than noise alongside `offboard_control_signal_lost`.
 
 | flag in the new `PX4 failsafe:` log line | meaning | fix |
 |---|---|---|
-| `offboard_control_signal_lost` | No `OffboardControlMode` reached PX4 for `COM_OF_LOSS_T` (default **1.0 s**). Almost always a stall in the uXRCE-DDS uplink, not in the node. | Run the node with `ros2 run`, not inside a busy launch; cut the number of `/fmu/out` topics being bridged; check the agent with `-v6` for dropped uplink; consider `COM_OF_LOSS_T` 1.5–2.0. |
+| `local_position_invalid` + `local_velocity_invalid`, **flickering on and off every 1–2 s while the vehicle sits still** | EKF2 has no yaw alignment (`cs_yaw_align` false), so the horizontal estimate is never anchored to a heading. Vision position can be fusing happily (`cs_ev_pos` true, `xy_valid` true) and this still bites — but only once **armed**, because the commander only enforces mode requirements then. | See 10.3. |
+| `offboard_control_signal_lost` | No `OffboardControlMode` reached PX4 for `COM_OF_LOSS_T` (default **1.0 s**). Sometimes a stall in the uXRCE-DDS uplink — but it is also set as a *side effect* when PX4 drops Offboard for another reason, so do not stop reading at this flag. | Rule out 10.3 first. Then: run the node with `ros2 run`, not inside a busy launch; cut the number of `/fmu/out` topics being bridged; check the agent with `-v6` for dropped uplink; consider `COM_OF_LOSS_T` 1.5–2.0. |
 | `manual_control_signal_lost` | RC link lost while armed. | Keep the TX on. If you deliberately fly without RC, set `COM_RCL_EXCEPT` bit 2 (value `4`) to exempt Offboard. |
 | `gcs_connection_lost` | QGC/datalink dropped, `COM_DL_LOSS_T` expired. | `COM_DLL_EXCEPT`, or keep QGC connected. |
 
@@ -1297,6 +1310,90 @@ ground, so Position mode is unavailable and PX4 escalates down to Land —
 `nav_state -> AUTO_LAND(18)`. Set `COM_OBL_RC_ACT = 4` (Land) so the
 behaviour is at least explicit and predictable rather than the result of a
 fallback chain.
+
+### 10.3 No yaw alignment: `cs_yaw_align` is false
+
+**Symptom.** The vehicle arms, sits on the ground, and about a second later:
+
+```
+PX4 failsafe SET: local_position_invalid, local_velocity_invalid, offboard_control_signal_lost
+nav_state -> POSCTL(2)
+```
+
+and after the node stands down the two position flags keep toggling on and off
+every second or two while the vehicle has not moved at all.
+
+**Cause.** EKF2 needs an **absolute heading** before a horizontal position
+estimate means anything. The bridge declares its odometry as `POSE_FRAME_FRD`
+— "z is down, my heading is offset from North by a constant I do not know" —
+so EKF2 must learn that offset from another source. There are only three:
+
+| source | flag | parameter |
+|---|---|---|
+| magnetometer | `cs_mag_hdg` / `cs_mag_3d` | `EKF2_MAG_TYPE` |
+| vision yaw | `cs_ev_yaw` | `EKF2_EV_CTRL` **bit 3** (value 8) |
+| GNSS yaw | `cs_gnss_yaw` | `EKF2_GPS_CTRL` |
+
+Turn the magnetometer off for indoor flight (`EKF2_MAG_TYPE = 5`) **without**
+also enabling vision yaw and all three are off, `cs_yaw_align` never latches,
+and you get the symptom above. This is easy to walk into because everything
+else looks healthy: vision really is being fused, `xy_valid` really is true,
+and the node reports `ekf_fusing=True`. Nothing complains until you arm.
+
+**Check it:**
+
+```bash
+ros2 topic echo /fmu/out/estimator_status_flags --once \
+  | grep -E "cs_yaw_align|cs_ev_pos|cs_ev_yaw|cs_mag_hdg|cs_gnss_yaw"
+```
+
+`cs_yaw_align: false` is the answer. **The fix has two halves, and doing only
+the first is the trap** — it leaves you with `cs_ev_yaw: true` and
+`cs_yaw_align: false`, which looks like progress and is not.
+
+**Half 1 — give EKF2 a yaw source.** For indoor vision flight:
+
+```
+EKF2_EV_CTRL  = 9    # 1 (horizontal position) + 8 (yaw)
+EKF2_MAG_TYPE = 5    # None
+```
+
+**Half 2 — declare the vision frame as NED**, or half 1 does nothing:
+
+```bash
+ros2 launch drone_testing sequence_vio_test.launch.py pose_frame:=ned ...
+```
+
+EKF2 refuses to align yaw from a `POSE_FRAME_FRD` estimate *by construction* —
+FRD means "my heading is offset from North by a constant I don't know", and a
+frame like that cannot align anything to North:
+
+```c
+// ev_yaw_control.cpp, LOCAL_FRAME_FRD branch
+resetQuatStateYaw(...);
+_control_status.flags.yaw_align = false;   // explicitly false
+_control_status.flags.ev_yaw    = true;
+```
+
+Only the `LOCAL_FRAME_NED` branch sets `yaw_align = true`. So FRD is a promise
+that *something else* owns the heading — the magnetometer — and with
+`EKF2_MAG_TYPE = 5` there is nothing else. Declaring NED is correct here
+precisely *because* the magnetometer is off: nothing on the airframe knows
+where North is, so the ZED's start-up heading may as well define it. The nodes
+capture their own reference yaw at arming and fly relative to it, so the only
+thing you lose is a meaningful compass rose in QGC.
+
+| magnetometer | `EKF2_MAG_TYPE` | `pose_frame` | `EKF2_EV_CTRL` |
+|---|---|---|---|
+| on | `0` | `frd` | `1` (position only) |
+| off | `5` | `ned` | `9` (position + yaw) |
+
+Do not mix the rows. Re-check the flags and confirm `cs_yaw_align` **and**
+`cs_ev_yaw` are both true before arming.
+
+`offboard_sequence_vio` now refuses to arm while `cs_yaw_align` is false and
+prints which sources are off, so this fails on the ground instead of a second
+after arming.
 
 ---
 

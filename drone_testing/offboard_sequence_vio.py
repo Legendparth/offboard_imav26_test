@@ -187,6 +187,92 @@ class OffboardSequenceVio(OffboardSequence):
                    or getattr(f, 'cs_ev_yaw_fault', False))
         return bool(aiding) and not faulted
 
+    def yaw_is_aligned(self):
+        """Has EKF2 resolved which way the vehicle is pointing?
+
+        None if there are no estimator flags to read.
+
+        This is a separate question from "is vision being fused", and it is the
+        one that grounds a vehicle with no magnetometer. EKF2 needs an absolute
+        heading before a horizontal position estimate means anything: the
+        bridge declares its odometry as POSE_FRAME_FRD, i.e. "z is down and my
+        heading is offset from North by a constant I do not know", so EKF2 has
+        to learn that offset from some other source before it can rotate the
+        vision position into the local frame. The candidates are the
+        magnetometer (cs_mag_hdg), vision yaw (cs_ev_yaw, EKF2_EV_CTRL bit 3)
+        and GNSS (cs_gnss_yaw). With all of them off, cs_yaw_align never latches.
+
+        What that looks like in the air is the failure this check exists to
+        stop: cs_ev_pos true, xy_valid true, the node perfectly happy, and PX4
+        dropping Offboard about a second after arming because its own view of
+        the local position is invalid. The estimate was never anchored in
+        heading, so "forward" had no fixed meaning to begin with.
+        """
+        f = self.estimator_flags
+        if f is None:
+            return None
+        return bool(f.cs_yaw_align)
+
+    def _handle_preparation(self):
+        # Checked before the inherited rangefinder gate so the message names
+        # the thing that is actually wrong. Without this the node arms, PX4
+        # takes the aircraft a second later, and the log blames Offboard.
+        if self.yaw_is_aligned() is False:
+            self.get_logger().error("Not arming: " + self._yaw_align_diagnosis(),
+                                    throttle_duration_sec=5.0)
+            self.log_flight_state()
+            self.setpoint_counter = 0
+            return
+
+        super()._handle_preparation()
+
+    def _yaw_align_diagnosis(self):
+        """Why is cs_yaw_align false, and which of the two fixes is the fix?
+
+        The two cases look identical from the failsafe line and have completely
+        different remedies, so they are separated here rather than left to the
+        reader at 2 a.m. with the props on.
+        """
+        f = self.estimator_flags
+
+        if getattr(f, 'cs_ev_yaw', False):
+            # EV yaw fusion is running and yaw STILL will not align. That is not
+            # a fault; it is what EKF2 does by construction when the odometry
+            # declares POSE_FRAME_FRD, because FRD means "my heading is offset
+            # from North by a constant I do not know" and a frame like that
+            # cannot align anything to North:
+            #
+            #     ev_yaw_control.cpp, LOCAL_FRAME_FRD branch
+            #         resetQuatStateYaw(...);
+            #         _control_status.flags.yaw_align = false;
+            #         _control_status.flags.ev_yaw    = true;
+            #
+            # Only the LOCAL_FRAME_NED branch sets yaw_align = true.
+            return (
+                "EKF2 is fusing vision yaw (cs_ev_yaw true) but yaw is still not "
+                "aligned (cs_yaw_align false), and it never will be: the bridge is "
+                "declaring POSE_FRAME_FRD, and EKF2 sets yaw_align = false on the "
+                "FRD branch by construction -- only POSE_FRAME_NED aligns yaw. "
+                "Relaunch zed_localization with pose_frame:=ned. That is the "
+                "correct declaration here precisely BECAUSE the magnetometer is "
+                "off: nothing on this airframe knows where North is, so the "
+                "vision frame's x axis may as well define it. Switch back to frd "
+                "if you ever re-enable the magnetometer.")
+
+        sources = []
+        if not getattr(f, 'cs_mag_hdg', False) and not getattr(f, 'cs_mag_3d', False):
+            sources.append('magnetometer (EKF2_MAG_TYPE)')
+        sources.append('vision yaw (EKF2_EV_CTRL bit 3, i.e. 9 not 1)')
+        if not getattr(f, 'cs_gnss_yaw', False):
+            sources.append('GNSS yaw')
+        return (
+            "EKF2 has no yaw alignment (cs_yaw_align is false), so the horizontal "
+            "estimate is not anchored to a heading and PX4 will drop Offboard "
+            "seconds after arming. No heading source is active: "
+            + ", ".join(sources)
+            + ". For indoor vision flight set EKF2_EV_CTRL=9 (position+yaw) with "
+            "EKF2_MAG_TYPE=5 (None), and run the bridge with pose_frame:=ned.")
+
     def flow_is_healthy(self):
         """Overridden: 'is the LATERAL estimate trustworthy', vision edition.
 
@@ -208,7 +294,10 @@ class OffboardSequenceVio(OffboardSequence):
         if fused is None:
             # No estimator flags. xy_valid plus a live bridge is all we have.
             return True
-        return fused
+        # Losing yaw alignment in the air unanchors the heading the latched x/y
+        # point was captured in, so the inherited logic must drop back to
+        # zero-velocity hold and skip horizontal steps rather than fly to it.
+        return fused and bool(self.yaw_is_aligned())
 
     # -------------------------------------------------------- early x/y hold
 
@@ -237,9 +326,11 @@ class OffboardSequenceVio(OffboardSequence):
     def log_flight_state(self):
         super().log_flight_state()
         fused = self.vision_is_fused()
+        aligned = self.yaw_is_aligned()
         self.get_logger().info(
             f"vio: bridge={'ok' if self.bridge_is_alive() else 'BAD'} "
             f"ekf_fusing={'?' if fused is None else fused} "
+            f"yaw_align={'?' if aligned is None else aligned} "
             f"healthy={self.flow_is_healthy()} "
             f"xy={'POS-HOLD' if self.hold_xy else 'VEL-HOLD'}",
             throttle_duration_sec=1.0)
