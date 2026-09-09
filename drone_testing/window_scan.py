@@ -83,8 +83,11 @@ class WindowScan(OffboardSequence):
     # ---- the clock --------------------------------------------------------
     FLIGHT_SECONDS = 40.0    # s from the start of the climb to the descent
 
-    def __init__(self):
-        super().__init__('window_scan')
+    def __init__(self, node_name='window_scan'):
+        # node_name is a parameter for the same reason it is one on the base
+        # class: window_traverse reuses this whole sweep-and-lock under its own
+        # name rather than forking it.
+        super().__init__(node_name)
 
         self.SCAN_SPAN = math.radians(float(self._declare_number(
             'scan_span_deg', math.degrees(self.SCAN_SPAN))))
@@ -115,6 +118,9 @@ class WindowScan(OffboardSequence):
 
         self.flight_start = None        # monotonic time the climb began
         self.locked_heading = None
+
+        if self.__class__ is not WindowScan:
+            return
 
         self.get_logger().warning(
             f"Window scan: climb {self.TAKEOFF_ALTITUDE:.2f} m, hold "
@@ -167,11 +173,20 @@ class WindowScan(OffboardSequence):
             return 0.0
         return time.monotonic() - self.flight_start
 
+    def _clock_stages(self):
+        """The airborne stages the flight clock is allowed to land from.
+
+        A method rather than a literal so a subclass that adds stages of its
+        own -- window_traverse does -- can put them under the same clock
+        without reimplementing it.
+        """
+        return (self.TAKEOFF, self.HOLD, self.SCAN, self.LOCK)
+
     def _check_flight_clock(self):
         """Land at flight_seconds, from whichever airborne stage we are in."""
         if self.flight_start is None:
             return False
-        if self.current_stage not in (self.TAKEOFF, self.HOLD, self.SCAN, self.LOCK):
+        if self.current_stage not in self._clock_stages():
             return False
         if self.flight_time() < self.FLIGHT_SECONDS:
             return False

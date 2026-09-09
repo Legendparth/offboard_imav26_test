@@ -1128,6 +1128,227 @@ vehicle drifts toward whichever one is lying.
 
 ---
 
+## 6f. Flying through the window (`window_traverse`)
+
+Section 6c ends with the vehicle stopped, facing the window, doing nothing
+about it. This is the rest: **estimate where the window actually is, line up
+square in front of it, and fly through.** Localisation is ZED visual odometry
+(section 6e), not optical flow.
+
+```bash
+# bench, no props, camera only
+ros2 launch drone_testing window_traverse.launch.py flight:=false
+
+# flight: support stack from launch, flight node by hand so q/k stay alive
+ros2 launch drone_testing window_traverse.launch.py
+ros2 run drone_testing window_traverse --ros-args \
+    -p takeoff_altitude:=1.2 -p cam_x:=0.10 -p cam_pitch:=0.0
+```
+
+Three nodes, and one of them is new:
+
+| node              | what it does |
+|-------------------|--------------|
+| `zed_localization`| ZED odometry → PX4 external vision, exactly as in 6e |
+| `window_detect`   | the 6c detection, **plus** `/window_geometry`: the four corners and the centre as (depth, azimuth, elevation) in the camera frame |
+| `window_traverse` | the flight. Subclasses **both** `WindowScan` (the sweep and the lock) and `OffboardSequenceVio` (the vision health gate), so the climb, the sweep, the ramps and the landing are all inherited |
+
+### The stages
+
+```
+ ... climb -> hold -> SCAN -> LOCK -> AIM -> ALIGN -> TRAVERSE -> CLEAR -> land
+```
+
+| stage | what happens | how it ends |
+|---|---|---|
+| `SCAN` | the 6c yaw sweep | `/window_detected` holds true for `detect_seconds` |
+| `LOCK` | stop, freeze the yaw, hold position facing the window — and **build the pose estimate**, which is the best geometry of the whole flight: stationary, square on, whole window in frame | `pose_min_samples` accepted samples exist |
+| `AIM` | yaw onto the window normal **standing still** | heading within 12 deg of the normal |
+| `ALIGN` | fly to a point `standoff_distance` in front of the window, on its axis, at its height, re-derived from the live estimate every tick | position, altitude **and** heading all in tolerance together for `align_settle_seconds` |
+| `TRAVERSE` | **commit** — freeze the target, ignore the camera, fly through to `exit_distance` beyond | the distance along the committed line is flown |
+| `CLEAR` | hold on the far side | `clear_seconds` |
+
+`AIM` turns before it translates on purpose. An IMU-less stereo camera loses
+tracking on a fast yaw and loses it much more readily when the scene is also
+translating; after `AIM` the remaining yaw corrections are a few degrees and
+ride along with the approach unnoticed.
+
+### Which frame the setpoints are in
+
+Every setpoint is an **absolute point in the PX4 local NED frame** — the same
+frame `/fmu/out/vehicle_local_position` reports `x`, `y`, `z` in, z positive
+down. Not body-relative. Section 6b hides that behind direction words
+("forward 1.0"), but underneath it walks an NED hold point towards an NED
+target and publishes that point; this node computes the NED targets directly
+because a window's position is naturally an absolute point.
+
+Altitude is the one relative number, and only in the bookkeeping:
+`commanded_altitude` is metres above the **arming point**, turned into NED as
+`home_z - commanded_altitude` before it reaches PX4.
+
+### Where the window's position comes from
+
+`window_detect` publishes `/window_geometry` every frame it sees a
+quadrilateral: five rows of `(depth_m, azimuth_deg, elevation_deg)` — four
+corners in the order top-left, top-right, bottom-right, bottom-left, then the
+centre. Angles rather than pixels, because the angles are the part that needs
+the intrinsics, and the intrinsics arrive on `camera_info_topic` where the
+detector already is. Change the camera resolution and nothing downstream cares.
+
+`window_traverse` turns each frame into a point in NED in three steps:
+
+1. **rays to camera-frame points** — `x = d`, `y = d·tan(az)`, `z = −d·tan(el)`.
+   Exact, not approximate, because the ZED's depth is the distance along the
+   optical axis rather than the slant range.
+2. **camera → body FRD** — the mounting rotation and lever arm, from
+   `cam_x/cam_y/cam_z` and `cam_roll/cam_pitch/cam_yaw`. **The same six
+   numbers, in the same ROS convention (x fwd, y LEFT, z UP), that
+   `zed_localization` takes.** The launch file feeds one set to both nodes so
+   they cannot disagree; if you run either by hand, pass the same numbers.
+3. **body FRD → NED** — rotate by the `VehicleAttitude` quaternion, add the
+   vehicle position.
+
+Step 3 uses the **full attitude, not just the heading**. A vehicle translating
+at 0.4 m/s sits at 5–10 degrees of pitch, and at 3 m range a 10 degree pitch
+error puts the window half a metre off vertically — the window would appear to
+bob up and down every time the vehicle accelerated.
+
+### The depth outliers, which are the actual problem
+
+Stereo depth on a thin frame fails in one specific way: a sample box a few
+pixels off the frame reads the **wall behind** (metres too far) or returns
+nothing at all, and one such corner drags a naive four-corner average metres
+out of position. So no single frame is ever trusted. Five filters stand
+between a depth pixel and a setpoint:
+
+| filter | what it rejects |
+|---|---|
+| per corner | depth ≤ 0, or outside `[depth_min, depth_max]` |
+| per sample | corner depths disagreeing with their own median by more than `max(corner_spread, corner_spread_frac × range)`; corners more than `plane_tolerance` off their own best-fit plane; a reconstructed aperture outside `[window_min_size, window_max_size]`; opposite sides disagreeing by more than 40%; a normal more than `max_tilt_deg` off horizontal (a window is vertical — a horizontal normal is the floor) |
+| innovation | once an estimate exists, a sample whose centre is more than `gate_metres` from it or whose normal is more than `gate_yaw_deg` off it |
+| temporal | the estimate is the component-wise **median** over the last `buffer_seconds`, not a mean and not an EMA |
+| quorum | nothing is flown to until `pose_min_samples` accepted samples exist and the newest is younger than `pose_max_age` |
+
+The median is the point. An EMA with α = 0.25 — what
+`drone_imav_obs_course.py` uses — still moves 25 cm towards a sample that is a
+metre wrong, on the first frame. A median moves not at all until half the
+buffer agrees.
+
+Note the factor of four on `plane_tolerance`: a best-fit plane through four
+points splits one bad corner's error across all of them, so a corner X out of
+plane only shows a residual of X/4. The depth-spread test is the primary
+defence; planarity is the backstop for a corner displaced *across* the frame
+rather than along the ray. Tuned together, a corner 0.5 m out at 3 m range is
+rejected, and a genuine window seen at 35 degrees of obliquity is not.
+
+If the innovation gate rejects `gate_reset_count` samples in a row, the buffer
+is discarded and rebuilt: at that point the *estimate* is the minority opinion,
+and refusing every sample forever is worse than starting again.
+
+### Why it commits
+
+The estimate keeps updating through `SCAN`, `LOCK`, `AIM` and `ALIGN` — the
+approach target is recomputed every tick, and the inherited carrot does the
+smoothing, so a 10 cm shift in the estimate is a slightly different direction
+of travel rather than a 10 cm step in what PX4 is asked for.
+
+At the start of `TRAVERSE` the target freezes and the camera stops steering.
+Passing through a window means the window leaves the field of view, fills it,
+and ends up behind the camera; depth on a frame edge at half a metre is the
+least trustworthy data the camera produces, and it arrives when the aircraft
+is least able to act on it. The estimate that lined the aircraft up from
+1.6 m away, square on, with the whole window in frame, is better than anything
+measurable from inside the aperture.
+
+**If vision dies mid-traverse the aircraft does not stop in the window.** It
+pushes on open-loop along the committed heading at `traverse_speed` for up to
+`blind_traverse_seconds`, then lands. Open loop is exactly what the rest of
+this codebase refuses to do, and rightly; the alternative here is stopping
+inside an aperture with no way to tell which side of it you are on.
+
+### Watching the estimate
+
+```bash
+ros2 topic echo /window_geometry   # 15 floats: 5 points x (depth, az, el)
+ros2 topic echo /window_pose       # x|y|z|yaw_deg|width|height|samples|age, NED
+```
+
+`/window_pose` is empty while there is no usable estimate. When the run
+finishes, the node logs a one-line tally of how many samples were accepted out
+of how many arrived and **which test did the rejecting** — that line is the
+first thing to read when an approach did not converge. "37 of the last 40
+failed the planarity test" tells you the sample boxes are landing on the wall
+behind the frame; "corner depth missing" tells you the depth map has holes
+where the frame is.
+
+### Before the first flight
+
+1. **Walk the estimate with the props off.** Carry the airframe around in
+   front of the window and watch `/window_pose`. The centre should sit still
+   in NED to within a few centimetres while the airframe moves. That is the
+   whole point of the estimate being in NED rather than in the camera frame,
+   and it is the one test that catches a wrong `cam_pitch` or a wrong
+   `pose_frame` before it costs you an airframe.
+2. **Measure the window.** `/window_pose` reports the reconstructed width and
+   height. If they do not match a tape measure, the intrinsics or the depth
+   scale are wrong, and every distance in the approach is wrong by the same
+   factor. (Expect ~2% under: the detector pads its corners 5 px inwards.)
+3. **Check `cs_yaw_align`,** exactly as in 6e — with the magnetometer off you
+   need `EKF2_EV_CTRL=9`, `EKF2_MAG_TYPE=5` and `pose_frame:=ned` (10.3).
+4. Give yourself `standoff_distance + exit_distance` of clear space on the
+   approach side and beyond, plus the `align_tolerance` basket.
+
+### Parameters
+
+The traversal's own, on top of everything 6c and 6e take:
+
+| parameter | default | what |
+|---|---|---|
+| `standoff_distance` | 1.6 | m in front of the window plane the approach lines up on, along the normal |
+| `exit_distance` | 1.5 | m beyond the window plane the run ends |
+| `altitude_offset` | 0.0 | m added to the estimated window centre height |
+| `approach_speed` | 0.30 | m/s during `ALIGN` |
+| `traverse_speed` | 0.45 | m/s through the window |
+| `align_tolerance` | 0.18 | m radius around the approach point |
+| `align_yaw_tolerance_deg` | 8.0 | deg off the window normal |
+| `align_settle_seconds` | 1.5 | how long all three must hold together |
+| `align_timeout` | 60.0 | s before the approach is abandoned into a landing |
+| `traverse_timeout` | 25.0 | s for the run through |
+| `clear_seconds` | 4.0 | station keeping on the far side |
+| `blind_traverse_seconds` | 3.0 | s of open-loop push if vision dies mid-run |
+| `flight_seconds` | 150.0 | hard limit from the start of the climb — fires from every stage **except** `TRAVERSE` |
+| `cam_x/y/z`, `cam_roll/pitch/yaw` | 0.0 | camera pose in the body frame, ROS convention. **Must match `zed_localization`.** |
+| `depth_min` / `depth_max` | 0.35 / 8.0 | m, believable corner depths |
+| `corner_spread` / `corner_spread_frac` | 0.25 / 0.15 | m and fraction of range, the primary outlier filter |
+| `plane_tolerance` | 0.15 | m off the best-fit plane |
+| `window_min_size` / `window_max_size` | 0.35 / 3.0 | m, believable aperture |
+| `max_tilt_deg` | 35.0 | deg the normal may be off horizontal |
+| `buffer_seconds` | 2.5 | s the median is taken over |
+| `pose_min_samples` | 6 | accepted samples before anything is flown to |
+| `pose_max_age` | 1.5 | s before the newest sample stops being evidence |
+| `pose_lost_timeout` | 6.0 | s without a pose during `AIM`/`ALIGN` before abandoning |
+| `gate_metres` / `gate_yaw_deg` | 1.0 / 40.0 | innovation gate |
+
+And on `window_detect`: `camera_info_topic` (where the intrinsics come from),
+`publish_geometry` (true), `fallback_hfov_deg` (90, used only until the first
+`CameraInfo` arrives — the node warns loudly while it is guessing).
+
+### Status output
+
+Same `/takeoff_status` topic and format. The detail field: `aim24` (24 deg
+left to turn), `algn0.42` (0.42 m to the approach point), `thru1.8/3.1`
+(1.8 m flown of 3.1 m), `3s` (seconds of `CLEAR` left).
+
+### When it gives up
+
+An abandoned attempt **lands**, it does not retry. Going back to `SCAN` after
+a failed approach means a vehicle that is now somewhere other than where it
+swept from, with an unknown amount of battery, starting the same attempt under
+the same conditions that just failed. Land, read the rejection tally, fly it
+again.
+
+---
+
 ## 7. Optional: LCD status display
 
 An Arduino running `arduino/tft_status/tft_status.ino` shows the stage, arm
@@ -1189,8 +1410,9 @@ sudo systemctl daemon-reload && sudo systemctl restart px4-agent.service
 | `lcd_status`       | drives the Arduino status display                                 |
 | `pixhawk_node`     | MAVLink telemetry reader                                          |
 | `cam`              | camera capture helper                                             |
-| `window_detect`    | ZED window detection, publishes `/window_detected` (section 6c)    |
+| `window_detect`    | ZED window detection, publishes `/window_detected` and `/window_geometry` (sections 6c, 6f) |
 | `window_scan`      | takeoff, yaw sweep, lock onto the window, land after 40 s (section 6c) |
+| `window_traverse`  | takeoff, sweep, estimate the window's pose, line up and fly through it (section 6f) |
 | `aruco_pose`       | down-camera ArUco pose, publishes `/aruco/detected` and `/aruco/point` (section 6d) |
 | `precision_land`   | takeoff, find the marker, centre on it, land on it (section 6d)   |
 
@@ -1199,6 +1421,7 @@ Other launch files:
 - `translate_test.launch.py` — agent + `offboard_translate` (section 6)
 - `sequence_test.launch.py` — agent + `offboard_sequence` (section 6b)
 - `window_scan.launch.py` — agent + ZED + `window_detect` + `window_scan` (section 6c)
+- `window_traverse.launch.py` — agent + ZED + `zed_localization` + `window_detect` + `window_traverse` (section 6f)
 - `precision_land.launch.py` — agent + `aruco_pose` + `precision_land` (section 6d)
 - `arm_test.launch.py` — agent + `offboard_mission`, for arm/disarm bench tests
 - `offboard_launch.launch.py` — agent + ZED localization + `offboard_mission`
@@ -1225,6 +1448,9 @@ Other launch files:
 | `No VehicleAttitude is being published` | `vehicle_attitude` is not in the PX4 DDS topic list, so the marker vector cannot be tilt-compensated and is refused. Add it to `dds_topics.yaml` and reboot the FC. |
 | The vehicle moves the **wrong way** towards the marker | An axis sign is inverted. Land, and go back to `mode:=bench` (section 6d) — this is exactly what that mode exists to catch. Fix `image_rotate` or the mounting. |
 | Aligns, then oscillates around the marker | `align_gain` too high for the camera latency, or the marker is near the frame edge where the uncorrected lens distortion is worst. Lower `align_gain`, and calibrate the camera. |
+| `window_traverse` never leaves `LOCK` | No usable window pose. The node logs which test is rejecting the samples — read that tally. Usual causes: `camera_info_topic` wrong (the log says it is guessing the FOV), the depth map has holes where the frame is (`corner depth missing`), or the sample boxes are landing on the wall behind it (`corner depths disagree` / `corners not coplanar`). |
+| `/window_pose` centre wanders as you move the airframe | The estimate is not being placed correctly in NED. Check `cam_roll/cam_pitch/cam_yaw` and the lever arm — they must be the same numbers `zed_localization` has — and that `/fmu/out/vehicle_attitude` is actually in the PX4 DDS topic list. |
+| `Traverse abandoned: could not settle on the approach point` | VO noise is larger than `align_tolerance`, or the estimate is still moving. Loosen `align_tolerance`, or raise `pose_min_samples` / `buffer_seconds` so the target stops shifting under the aircraft. |
 | Lands 30–40 cm off after a good alignment | Drift during the open-loop descent. Check `precision_descent` is true, and that the flow stays healthy (`flow_ok=True`) down to `FLOW_MIN_AGL`. |
 
 ---

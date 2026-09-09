@@ -40,6 +40,7 @@ setup(
             'fc_reboot = drone_testing.fc_reboot:main',
             'window_detect = drone_testing.window_detect:main',
             'window_scan = drone_testing.window_scan:main',
+            'window_traverse = drone_testing.window_traverse:main',
             'aruco_pose = drone_testing.aruco_pose:main',
             'precision_land = drone_testing.precision_land:main',
         ],

@@ -40,6 +40,13 @@ WHAT IT PUBLISHES
                                               false after lost_frames misses
     /window_info            std_msgs/String   pipe-separated detail line,
                                               see publish_info()
+    /window_geometry        Float32MultiArray 5x3 of (depth_m, azimuth_deg,
+                                              elevation_deg) for the four
+                                              corners and the centre, in the
+                                              CAMERA frame. This is the input
+                                              window_traverse turns into a
+                                              window pose in NED -- see
+                                              publish_geometry().
     /window_detection/image sensor_msgs/Image the annotated frame
 
 HOW TO SEE IT
@@ -70,6 +77,7 @@ original script. That needs a display, so leave it false on the Jetson
 unless you are sitting in front of it with a monitor plugged in.
 """
 
+import math
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -80,8 +88,8 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import CompressedImage, Image
-from std_msgs.msg import Bool, String
+from sensor_msgs.msg import CameraInfo, CompressedImage, Image
+from std_msgs.msg import Bool, Float32MultiArray, MultiArrayDimension, String
 
 
 HSV_RANGES = {
@@ -358,6 +366,13 @@ class WindowDetect(Node):
     # rectified left colour image and the depth map registered to it.
     IMAGE_TOPIC = '/zed/zed_node/rgb/image_rect_color'
     DEPTH_TOPIC = '/zed/zed_node/depth/depth_registered'
+    CAMERA_INFO_TOPIC = '/zed/zed_node/rgb/camera_info'
+
+    # Fallback intrinsics, used only until the first CameraInfo arrives (and
+    # for good if camera_info_topic is wrong). A gen-1 ZED at HD720 is about
+    # 90 deg horizontally; getting this wrong scales every angle the geometry
+    # topic reports, so check the log line that says which one is in use.
+    FALLBACK_HFOV_DEG = 90.0
 
     # Debounce. A single frame's worth of green is not a window: one flash of
     # colour must not be able to stop a yaw sweep, and one dropped frame must
@@ -402,6 +417,12 @@ class WindowDetect(Node):
         self.lost_frames = int(self.declare_parameter('lost_frames', self.LOST_FRAMES).value)
         self.depth_scale = float(self.declare_parameter('depth_scale', self.DEPTH_SCALE).value)
         self.depth_units = 'cm' if abs(self.depth_scale - 100.0) < 1e-6 else 'm'
+        self.camera_info_topic = str(self.declare_parameter(
+            'camera_info_topic', self.CAMERA_INFO_TOPIC).value)
+        self.publish_geometry_topic = bool(self.declare_parameter(
+            'publish_geometry', True).value)
+        self.fallback_hfov = math.radians(float(self.declare_parameter(
+            'fallback_hfov_deg', self.FALLBACK_HFOV_DEG).value))
 
         if self.color not in HSV_RANGES:
             raise SystemExit(
@@ -417,9 +438,23 @@ class WindowDetect(Node):
         if self.use_depth:
             self.create_subscription(Image, self.depth_topic,
                                      self.depth_callback, qos_profile_sensor_data)
+        # Latched-ish in practice: zed_wrapper republishes CameraInfo with every
+        # frame, so one message arrives within a frame time of start-up and the
+        # fallback FOV is only ever used for the first frame or two.
+        if self.publish_geometry_topic:
+            self.create_subscription(CameraInfo, self.camera_info_topic,
+                                     self.camera_info_callback,
+                                     qos_profile_sensor_data)
 
         self.detected_pub = self.create_publisher(Bool, 'window_detected', 10)
         self.info_pub = self.create_publisher(String, 'window_info', 10)
+        # Geometry for the traversal node. Reliable rather than best-effort:
+        # it is a small message at camera rate and the consumer runs a median
+        # filter over a window of them, so a dropped one costs an outlier
+        # rejection it did not need to make.
+        self.geometry_pub = (self.create_publisher(
+            Float32MultiArray, 'window_geometry', 10)
+            if self.publish_geometry_topic else None)
         self.image_pub = (self.create_publisher(Image, 'window_detection/image', 1)
                           if self.publish_image else None)
         self.mask_pub = (self.create_publisher(Image, 'window_detection/mask', 1)
@@ -442,6 +477,11 @@ class WindowDetect(Node):
 
         self.depth_image = None
         self.depth_time = 0.0
+
+        # fx, fy, cx, cy from CameraInfo. None until the first one lands, at
+        # which point _intrinsics() stops guessing from the fallback FOV.
+        self.intrinsics = None
+        self._intrinsics_logged = False
 
         self.hit_streak = 0
         self.miss_streak = 0
@@ -472,6 +512,7 @@ class WindowDetect(Node):
             f"Window detection up. image={self.image_topic} "
             f"depth={self.depth_topic if self.use_depth else 'disabled'} "
             f"color={self.color}. Publishing /window_detected, /window_info"
+            + (", /window_geometry" if self.publish_geometry_topic else "")
             + (", /window_detection/image" if self.publish_image else "") + ".")
 
     # ------------------------------------------------------------------ subs
@@ -483,6 +524,45 @@ class WindowDetect(Node):
         except Exception as exc:
             self.get_logger().warning(f"Cannot convert depth frame: {exc}",
                                       throttle_duration_sec=5.0)
+
+    def camera_info_callback(self, msg):
+        """Keep the pinhole intrinsics the geometry topic is built on.
+
+        msg.k is the 3x3 row-major camera matrix of the RECTIFIED image, which
+        is the image this node is thresholding, so k[0]=fx, k[4]=fy, k[2]=cx,
+        k[5]=cy are directly the numbers wanted. A zero fx means the wrapper
+        has not calibrated yet -- ignore that message rather than latching a
+        division by zero.
+        """
+        fx, fy, cx, cy = float(msg.k[0]), float(msg.k[4]), float(msg.k[2]), float(msg.k[5])
+        if fx <= 1.0 or fy <= 1.0:
+            return
+        self.intrinsics = (fx, fy, cx, cy)
+        if not self._intrinsics_logged:
+            self._intrinsics_logged = True
+            self.get_logger().info(
+                f"CameraInfo from {self.camera_info_topic}: fx={fx:.1f} fy={fy:.1f} "
+                f"cx={cx:.1f} cy={cy:.1f} ({msg.width}x{msg.height}). "
+                "/window_geometry angles are now metric.")
+
+    def _intrinsics(self, shape):
+        """(fx, fy, cx, cy) for the frame, from CameraInfo or from the FOV.
+
+        The fallback assumes a centred principal point and square pixels and
+        is only there so a wrong camera_info_topic degrades into a few percent
+        of angular scale error instead of no geometry at all. It is warned
+        about once a second so it cannot go unnoticed.
+        """
+        if self.intrinsics is not None:
+            return self.intrinsics
+        h, w = shape[:2]
+        fx = (w / 2.0) / math.tan(self.fallback_hfov / 2.0)
+        self.get_logger().warning(
+            f"No CameraInfo on {self.camera_info_topic} yet; guessing the "
+            f"intrinsics from fallback_hfov_deg="
+            f"{math.degrees(self.fallback_hfov):.0f}.",
+            throttle_duration_sec=5.0)
+        return fx, fx, w / 2.0, h / 2.0
 
     def current_depth(self):
         """The newest depth frame, or None if it is missing or stale."""
@@ -554,6 +634,8 @@ class WindowDetect(Node):
             center = self.smoothed_corners.mean(axis=0)
 
             d1 = d2 = d3 = d4 = 0.0
+            depths_m = None
+            centre_depth_m = 0.0
             if depth_image is not None:
                 d1, s1 = sample_corner_depth(depth_image, u1, v1, center)
                 d2, s2 = sample_corner_depth(depth_image, u2, v2, center)
@@ -568,6 +650,14 @@ class WindowDetect(Node):
                 d3, self.prev_e3 = filter_depth(d3, self.prev_e3, self.DEPTH_ALPHA)
                 d4, self.prev_e4 = filter_depth(d4, self.prev_e4, self.DEPTH_ALPHA)
 
+                # Keep the metric copy BEFORE the display scaling. /window_info
+                # and the overlay may be in centimetres (depth_scale=100);
+                # /window_geometry is always metres, because the traversal node
+                # is doing metric geometry with it and a unit that depends on a
+                # display parameter is a crash waiting to happen.
+                depths_m = [d1, d2, d3, d4]
+                centre_depth_m = float(get_median_depth(
+                    depth_image, int(round(center[0])), int(round(center[1])), box=5))
                 d1, d2, d3, d4 = (d * self.depth_scale for d in (d1, d2, d3, d4))
 
             cv2.drawContours(cv_image, [window_contour], -1, (255, 0, 255), 3)
@@ -581,6 +671,8 @@ class WindowDetect(Node):
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
             info = self.frame_info(cv_image, center, [d1, d2, d3, d4], depth_image)
+            if depths_m is not None:
+                self.publish_geometry(cv_image.shape, center, depths_m, centre_depth_m)
         else:
             # Nothing this frame: drop the smoothing state so a later detection
             # starts from its own corners instead of blending into wherever the
@@ -595,6 +687,67 @@ class WindowDetect(Node):
             cv2.imshow("ZED Image Processing", cv_image)
             cv2.imshow("Green Mask", green_mask)
             cv2.waitKey(1)
+
+    def publish_geometry(self, shape, center, depths_m, centre_depth_m):
+        """The window as four camera-frame rays with a range on each.
+
+        Layout: 5 rows of 3, row-major, as a Float32MultiArray --
+
+            row 0..3   the corners, in the order the detector produces them:
+                       top-left, top-right, bottom-right, bottom-left, walking
+                       round the quad, so consecutive rows are adjacent edges
+                       and rows 0/2 and 1/3 are the diagonals.
+            row 4      the centre of the quad.
+            columns    (depth_m, azimuth_deg, elevation_deg)
+
+        depth_m is the ZED's depth, which is the distance along the OPTICAL
+        AXIS (the Z of the camera frame), not the slant range to the point.
+        That is what makes the reconstruction below exact rather than
+        approximate:
+
+            x_forward = depth
+            y_right   = depth * tan(azimuth)
+            z_down    = -depth * tan(elevation)
+
+        with azimuth positive to the right of the optical axis and elevation
+        positive above it. Deliberately the same convention as the depth_data
+        array in drone_imav_obs_course.window_coordinates(), so the arithmetic
+        that was flown in simulation carries over unchanged.
+
+        Angles rather than pixels because they are the part that needs the
+        intrinsics, and the intrinsics live here where CameraInfo arrives.
+        A consumer then needs no calibration of its own, and a change of
+        resolution on the wrapper changes nothing downstream.
+
+        A corner whose depth came back as 0 (no valid stereo pixel anywhere in
+        the sample box) is published as 0 rather than dropped: the array has a
+        fixed shape, and the consumer rejects non-positive depths anyway. This
+        is published per FRAME, not per debounced detection -- the consumer
+        gates on /window_detected for that, and wants every raw sample it can
+        get for its median filter.
+        """
+        if self.geometry_pub is None:
+            return
+
+        fx, fy, cx, cy = self._intrinsics(shape)
+        pts = list(self.smoothed_corners) + [np.asarray(center, dtype=np.float32)]
+        depths = list(depths_m) + [centre_depth_m]
+
+        data = []
+        for (u, v), d in zip(pts, depths):
+            az = math.degrees(math.atan2(float(u) - cx, fx))
+            # Positive elevation is UP, i.e. towards SMALLER v. The sign here
+            # is the one that makes z_down = -d*tan(el) come out right.
+            el = math.degrees(math.atan2(cy - float(v), fy))
+            data.extend([float(d), az, el])
+
+        msg = Float32MultiArray()
+        msg.layout.dim = [
+            MultiArrayDimension(label='point', size=5, stride=15),
+            MultiArrayDimension(label='depth_az_el', size=3, stride=3),
+        ]
+        msg.data = data
+        self.geometry_pub.publish(msg)
 
     def frame_info(self, cv_image, center, depths, depth_image):
         """Pipe-separated detail for /window_info.
