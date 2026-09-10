@@ -466,12 +466,20 @@ def generate_launch_description():
         DeclareLaunchArgument('min_altitude', default_value='0.4'),
         DeclareLaunchArgument('max_altitude', default_value='3.0'),
         DeclareLaunchArgument(
-            'scan_span_deg', default_value='20.0',
-            description='Total width of the yaw sweep about the takeoff heading.'),
+            'scan_span_deg', default_value='0.0',
+            description='Total width of the yaw sweep about the takeoff '
+                        'heading. 0 (the default) means NO SWEEP AT ALL: the '
+                        'vehicle climbs, holds, and then just stares straight '
+                        'ahead on its takeoff heading until the detector calls '
+                        'a window, so point it at the window before you arm. '
+                        'Set it to e.g. 20 (= 10 deg either side) to bring the '
+                        'sweep back; keep it narrow, a wide sweep swings the '
+                        'airframe far off heading and smears the optical '
+                        'flow.'),
         DeclareLaunchArgument(
-            'scan_yaw_rate', default_value='0.12',
+            'scan_yaw_rate', default_value='0.05',
             description='rad/s the yaw setpoint is walked at DURING THE SWEEP '
-                        'only (~7 deg/s). Deliberately slower than yaw_rate: a '
+                        'only (~3 deg/s). Deliberately slower than yaw_rate: a '
                         'fast sweep smears the optical flow and can cross a '
                         'window in fewer frames than the detector needs to '
                         'call it. Restored to yaw_rate once the window is '

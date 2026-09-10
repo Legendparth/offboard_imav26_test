@@ -847,8 +847,11 @@ class WindowTraverse(WindowScan):
 
         self.get_logger().warning(
             f"Window traversal on ARK FLOW: climb {self.TAKEOFF_ALTITUDE:.2f} m, "
-            f"hold {self.HOLD_SECONDS:.0f} s, sweep +/-"
-            f"{math.degrees(self.SCAN_SPAN) / 2:.0f} deg for the window, lock, "
+            f"hold {self.HOLD_SECONDS:.0f} s, "
+            + ("wait on the takeoff heading for the window (no sweep), lock, "
+               if self.SCAN_SPAN <= 0.0 else
+               f"sweep +/-{math.degrees(self.SCAN_SPAN) / 2:.0f} deg for the "
+               "window, lock, ") +
             f"line up {self.STANDOFF_DISTANCE:.2f} m in front of it and fly "
             f"through to {self.EXIT_DISTANCE:.2f} m beyond, then land. "
             f"Approach {self.APPROACH_SPEED:.2f} m/s, traverse "

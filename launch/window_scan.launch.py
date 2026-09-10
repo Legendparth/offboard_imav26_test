@@ -233,13 +233,16 @@ def generate_launch_description():
             description='Seconds from the START OF THE CLIMB to the descent, '
                         'window found or not.'),
         DeclareLaunchArgument(
-            'scan_span_deg', default_value='90.0',
+            'scan_span_deg', default_value='20.0',
             description='Total width of the yaw sweep, centred on the takeoff '
-                        'heading: 90 = 45 deg either side.'),
+                        'heading: 20 = 10 deg either side. Kept narrow on '
+                        'purpose -- a wide sweep swings the airframe far off '
+                        'the takeoff heading and smears the optical flow the '
+                        'position hold stands on.'),
         DeclareLaunchArgument(
-            'scan_yaw_rate', default_value='0.12',
+            'scan_yaw_rate', default_value='0.05',
             description='rad/s the yaw setpoint is walked at DURING THE SWEEP '
-                        'only (~7 deg/s), slower than yaw_rate. Restored to '
+                        'only (~3 deg/s), slower than yaw_rate. Restored to '
                         'yaw_rate once the window is locked.'),
         DeclareLaunchArgument(
             'scan_direction', default_value='right',

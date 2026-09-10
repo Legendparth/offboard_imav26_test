@@ -27,7 +27,7 @@ THE SWEEP
     vehicle is never asked to spin faster than it is actually turning.
 
     Slow is the point, and the sweep therefore has its own rate --
-    scan_yaw_rate, ~7 deg/s, not the ~20 deg/s the rest of the flight yaws
+    scan_yaw_rate, ~3 deg/s, not the ~20 deg/s the rest of the flight yaws
     at. Two reasons. A fast yaw smears the optical flow the position hold is
     standing on. And the sweep is a SEARCH: the detector needs several
     consecutive frames on a window before it will call it, and at 20 deg/s a
@@ -76,7 +76,7 @@ class WindowScan(OffboardSequence):
     LOCK = "LOCK"
 
     # ---- the sweep --------------------------------------------------------
-    SCAN_SPAN = math.radians(90.0)   # total arc, centred on the takeoff heading
+    SCAN_SPAN = math.radians(20.0)   # total arc, centred on the takeoff heading
     SCAN_LEG_TIMEOUT_MARGIN = 6.0    # s added to the theoretical leg duration
                                      # before a stuck leg is abandoned and the
                                      # sweep turns around anyway
@@ -88,7 +88,7 @@ class WindowScan(OffboardSequence):
     # window_detect's debounce needs to call it -- so the aircraft can sweep
     # straight past a window it technically saw. Slower also keeps the optical
     # flow clean, which is what the position hold is standing on.
-    SCAN_YAW_RATE = 0.12             # rad/s (~7 deg/s) while sweeping
+    SCAN_YAW_RATE = 0.05             # rad/s (~3 deg/s) while sweeping
     SCAN_FIRST_DIRECTION = 'right'   # which way the first half-leg goes
 
     # ---- the window -------------------------------------------------------
@@ -311,6 +311,15 @@ class WindowScan(OffboardSequence):
         self.cruise_yaw_rate = self.YAW_RATE
         self.YAW_RATE = self.SCAN_YAW_RATE
         self._enter_stage(self.SCAN)
+        if self.SCAN_SPAN <= 0.0:
+            # Sweep disabled (scan_span_deg = 0): the vehicle stares straight
+            # ahead on the heading it climbed on and waits for the detector.
+            # Point the airframe at the window before you arm.
+            self.get_logger().warning(
+                f"Searching without a sweep: holding "
+                f"{math.degrees(self.scan_center):+.0f} deg and waiting for "
+                "the window.")
+            return
         self.get_logger().warning(
             f"Scanning: sweeping +/-{math.degrees(self.SCAN_SPAN) / 2:.0f} deg "
             f"about {math.degrees(self.scan_center):+.0f} deg at "
@@ -355,6 +364,14 @@ class WindowScan(OffboardSequence):
 
         if self.window_is_confirmed():
             self._lock_on_window("window detected during the sweep")
+            return
+
+        if self.SCAN_SPAN <= 0.0:
+            # No sweep: hold the heading and keep looking until the flight
+            # clock runs out.
+            self.get_logger().info(
+                f"Searching on a fixed heading. {self.window_summary()}.",
+                throttle_duration_sec=1.0)
             return
 
         if abs(self.yaw_remaining) < 1e-3:
