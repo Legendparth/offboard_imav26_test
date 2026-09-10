@@ -19,13 +19,22 @@ add a yaw sweep would mean maintaining two copies of them.
     q -> abort into a controlled descent.   k -> force-disarm.
 
 THE SWEEP
-    From the takeoff heading the nose goes +45 deg, then -90, then +90,
-    and so on, at yaw_rate (default ~20 deg/s), so the whole 90 degree arc
-    is covered every leg. It is walked as a ramped yaw setpoint by the
+    From the takeoff heading the nose goes half a span towards the side the
+    window is expected on (scan_direction, right by default), then a full
+    span back the other way, then a full span again, and so on, so the whole
+    arc is covered every leg. It is walked as a ramped yaw setpoint by the
     inherited yaw ramp, which is leashed to the measured heading: the
     vehicle is never asked to spin faster than it is actually turning.
-    Slow is the point -- a fast yaw smears the optical flow that the
-    position hold is standing on.
+
+    Slow is the point, and the sweep therefore has its own rate --
+    scan_yaw_rate, ~7 deg/s, not the ~20 deg/s the rest of the flight yaws
+    at. Two reasons. A fast yaw smears the optical flow the position hold is
+    standing on. And the sweep is a SEARCH: the detector needs several
+    consecutive frames on a window before it will call it, and at 20 deg/s a
+    window can cross the frame in fewer frames than that, so the aircraft
+    sweeps past a window it technically saw. The rate is restored to the
+    normal one the moment the window is locked, so the approach that follows
+    is not slowed down by it.
 
 THE LOCK
     "Detected" means window_detect's DEBOUNCED /window_detected, which is
@@ -58,7 +67,7 @@ import rclpy
 from std_msgs.msg import Bool, String
 from px4_msgs.msg import VehicleStatus
 
-from drone_testing.offboard_sequence import OffboardSequence, wrap_pi
+from drone_testing.offboard_sequence import OffboardSequence, spin_node, wrap_pi
 
 
 class WindowScan(OffboardSequence):
@@ -71,6 +80,16 @@ class WindowScan(OffboardSequence):
     SCAN_LEG_TIMEOUT_MARGIN = 6.0    # s added to the theoretical leg duration
                                      # before a stuck leg is abandoned and the
                                      # sweep turns around anyway
+    # The sweep gets its OWN yaw rate, slower than the one the rest of the
+    # flight uses. Everywhere else a yaw is a manoeuvre to be got over with;
+    # here it is a search, and the search is rate-limited by the camera and the
+    # detector, not by the airframe. At the inherited 20 deg/s a 1 m window at
+    # 3 m crosses the frame in well under a second, which is fewer frames than
+    # window_detect's debounce needs to call it -- so the aircraft can sweep
+    # straight past a window it technically saw. Slower also keeps the optical
+    # flow clean, which is what the position hold is standing on.
+    SCAN_YAW_RATE = 0.12             # rad/s (~7 deg/s) while sweeping
+    SCAN_FIRST_DIRECTION = 'right'   # which way the first half-leg goes
 
     # ---- the window -------------------------------------------------------
     DETECT_TOPIC = 'window_detected'
@@ -91,6 +110,17 @@ class WindowScan(OffboardSequence):
 
         self.SCAN_SPAN = math.radians(float(self._declare_number(
             'scan_span_deg', math.degrees(self.SCAN_SPAN))))
+        self.SCAN_YAW_RATE = float(self._declare_number(
+            'scan_yaw_rate', self.SCAN_YAW_RATE))
+        direction = str(self.declare_parameter(
+            'scan_direction', self.SCAN_FIRST_DIRECTION).value).strip().lower()
+        if direction not in ('right', 'left'):
+            self.get_logger().warning(
+                f"scan_direction '{direction}' is not 'right' or 'left'; "
+                f"using '{self.SCAN_FIRST_DIRECTION}'.")
+            direction = self.SCAN_FIRST_DIRECTION
+        # +1 is clockwise seen from above, i.e. the camera swings to the right.
+        self.scan_first_sign = 1.0 if direction == 'right' else -1.0
         self.FLIGHT_SECONDS = float(self._declare_number(
             'flight_seconds', self.FLIGHT_SECONDS))
         self.DETECT_SECONDS = float(self._declare_number(
@@ -101,8 +131,10 @@ class WindowScan(OffboardSequence):
         # Detection input. Plain default QoS (reliable, depth 10): this is a
         # low-rate boolean, not a sensor stream, and window_detect publishes it
         # the same way.
-        self.create_subscription(Bool, detect_topic, self.window_callback, 10)
-        self.create_subscription(String, 'window_info', self.window_info_callback, 10)
+        self.create_subscription(Bool, detect_topic, self.window_callback, 10,
+                                 callback_group=self.sensor_cbg)
+        self.create_subscription(String, 'window_info', self.window_info_callback, 10,
+                                 callback_group=self.sensor_cbg)
 
         self.window_flag = False        # last value received
         self.window_msg_time = 0.0      # when it arrived
@@ -115,6 +147,7 @@ class WindowScan(OffboardSequence):
         self.scan_center = None
         self.scan_leg = 0
         self.scan_leg_deadline = None
+        self.cruise_yaw_rate = self.YAW_RATE  # restored when the sweep stops
 
         self.flight_start = None        # monotonic time the climb began
         self.locked_heading = None
@@ -273,11 +306,17 @@ class WindowScan(OffboardSequence):
         self.yaw_remaining = 0.0
         self.scan_leg = 0
         self.scan_leg_deadline = None
+        # Slow down for the search, and remember what to go back to. The lock
+        # restores it, so the approach that follows still yaws at flying speed.
+        self.cruise_yaw_rate = self.YAW_RATE
+        self.YAW_RATE = self.SCAN_YAW_RATE
         self._enter_stage(self.SCAN)
         self.get_logger().warning(
             f"Scanning: sweeping +/-{math.degrees(self.SCAN_SPAN) / 2:.0f} deg "
-            f"about {math.degrees(self.scan_center):+.0f} deg, looking for the "
-            "window.")
+            f"about {math.degrees(self.scan_center):+.0f} deg at "
+            f"{math.degrees(self.SCAN_YAW_RATE):.0f} deg/s, "
+            f"{'right' if self.scan_first_sign > 0 else 'left'} first, "
+            "looking for the window.")
 
     def _next_leg(self):
         """Aim the yaw ramp at the other end of the arc.
@@ -289,11 +328,15 @@ class WindowScan(OffboardSequence):
         """
         half = self.SCAN_SPAN / 2.0
         if self.scan_leg == 0:
-            delta = half
+            # Out to the side the window is expected on first, so the common
+            # case is found in a few degrees of turn instead of after a full
+            # traverse of the far half of the arc.
+            delta = half * self.scan_first_sign
         else:
             # Alternate: leg 1 goes the other way by a full span, leg 2 back,
             # and so on.
-            delta = -self.SCAN_SPAN if self.scan_leg % 2 == 1 else self.SCAN_SPAN
+            sign = -self.scan_first_sign if self.scan_leg % 2 == 1 else self.scan_first_sign
+            delta = self.SCAN_SPAN * sign
         self.scan_leg += 1
         self.yaw_remaining = delta
 
@@ -347,6 +390,7 @@ class WindowScan(OffboardSequence):
         """
         lp = self.local_position
         self.yaw_remaining = 0.0
+        self.YAW_RATE = self.cruise_yaw_rate
         if lp is not None:
             self.yaw_setpoint = wrap_pi(lp.heading)
             self.locked_heading = lp.heading
@@ -427,7 +471,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = WindowScan()
     try:
-        rclpy.spin(node)
+        spin_node(node)
     except KeyboardInterrupt:
         pass
     finally:

@@ -771,15 +771,10 @@ class WindowDetect(Node):
                        round the quad, so consecutive rows are adjacent edges
                        and rows 0/2 and 1/3 are the diagonals.
             row 4      the centre of the quad.
-            row 5      (truncated, border_margin_px, 0) -- NOT a point. See
-                       border_margin_px(): a non-zero first column means at
-                       least one corner is at or near the image edge, so the
-                       quad above describes the VISIBLE PART of a window
-                       rather than the window. Appended as a sixth row rather
-                       than sent on a topic of its own so that it cannot
-                       arrive separately from the measurement it disqualifies;
-                       a consumer written against the old 5x3 layout reads the
-                       first 15 values and is unaffected.
+            row 5      (truncated, border_margin_px, 0) -- NOT a point. A
+                       non-zero first column means at least one corner is at or
+                       near the image edge, so the quad above describes the
+                       VISIBLE PART of a window rather than the window.
             columns    (depth_m, azimuth_deg, elevation_deg)
 
         depth_m is the ZED's depth, which is the distance along the OPTICAL

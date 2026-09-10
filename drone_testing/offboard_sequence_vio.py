@@ -68,7 +68,7 @@ import rclpy
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Bool
 
-from drone_testing.offboard_sequence import OffboardSequence
+from drone_testing.offboard_sequence import OffboardSequence, spin_node
 
 
 class OffboardSequenceVio(OffboardSequence):
@@ -115,7 +115,8 @@ class OffboardSequenceVio(OffboardSequence):
         self.vio_healthy = False
         self.vio_status_time = None
         self.vio_healthy_sub = self.create_subscription(
-            Bool, '/vio_healthy', self.vio_healthy_callback, status_qos)
+            Bool, '/vio_healthy', self.vio_healthy_callback, status_qos,
+            callback_group=self.sensor_cbg)
 
         # Reported once when it first goes bad, so a launch with the bridge
         # missing is loud rather than mysterious.
@@ -341,7 +342,7 @@ def main(args=None):
     node = None
     try:
         node = OffboardSequenceVio()
-        rclpy.spin(node)
+        spin_node(node)
     except KeyboardInterrupt:
         pass
     finally:

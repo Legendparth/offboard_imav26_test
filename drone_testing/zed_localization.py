@@ -275,6 +275,12 @@ class ZedLocalization(Node):
             'min_orientation_variance', self.MIN_ORIENTATION_VARIANCE).value)
         self.min_velocity_variance = float(self.declare_parameter(
             'min_velocity_variance', self.MIN_VELOCITY_VARIANCE).value)
+        # False (the default) sends one clock for both timestamp fields; True
+        # restores the ZED's capture stamp in timestamp_sample. See the long
+        # comment where the message is built before turning this on -- it is
+        # the more correct-looking option and it is what stopped EKF2 fusing.
+        self.use_sample_timestamp = bool(self.declare_parameter(
+            'use_sample_timestamp', False).value)
         self.reset_jump = float(self.declare_parameter(
             'reset_jump', self.RESET_JUMP).value)
         self.max_age = float(self.declare_parameter('max_age', self.MAX_AGE).value)
@@ -344,6 +350,7 @@ class ZedLocalization(Node):
             f"as POSE_FRAME_{'NED' if pose_frame == 'ned' else 'FRD'}, "
             f"velocity {'ON' if self.publish_velocity else 'OFF (NaN)'}, "
             f"mounting offset {'APPLIED' if self.mounted else 'none (camera == body)'}, "
+            f"timestamps {'CAPTURE STAMP' if self.use_sample_timestamp else 'single clock'}, "
             f"publishing at {publish_rate:.0f} Hz"
             if publish_rate > 0.0 else "publishing every sample (throttle OFF)")
         self.get_logger().warning(
@@ -397,14 +404,40 @@ class ZedLocalization(Node):
         self.last_publish_time = now
 
         out = VehicleOdometry()
-        # timestamp is "now", timestamp_sample is when the measurement was
-        # taken. Handing PX4 both is what lets EKF2 fuse this at the right
-        # point in its history buffer instead of treating a 60 ms-old vision
-        # fix as current -- which at 1 m/s is a 6 cm error, every sample.
+        # BOTH timestamps are "now", on this machine's clock, and that is
+        # deliberate -- see use_sample_timestamp.
+        #
+        # The obvious thing is to put the ZED's capture stamp in
+        # timestamp_sample so EKF2 can fuse the sample at the right point in
+        # its history buffer. It does not work, and the failure is silent and
+        # vicious. PX4's uXRCE-DDS client applies its timesync offset when it
+        # converts an inbound message onto the flight controller's hrt clock,
+        # which counts microseconds since PX4 booted. Our two stamps are on
+        # the Jetson's clock, which counts microseconds since 1970. If the
+        # client translates `timestamp` and leaves `timestamp_sample` alone,
+        # EKF2 is handed a sample whose measurement time is decades in the
+        # future, places it outside its fusion time horizon, and cannot fuse
+        # it. It then does what it does whenever vision aiding times out: it
+        # re-anchors, resetHorizontalPositionToVision(), over and over.
+        #
+        # From the outside that looks exactly like the failure in
+        # test_debugs.txt -- a stream of "EKF2 lateral reset: delta_xy=(+0.00,
+        # +0.00)" at several hertz, ekf_fusing reporting True the whole time
+        # because cs_ev_pos really is set, and PX4 raising
+        # local_position_invalid the moment arming makes it enforce validity.
+        #
+        # Sending one consistent clock for both fields costs the ~60 ms of
+        # capture-to-publish latency as a fixed lag, which is what EKF2_EV_DELAY
+        # exists to absorb. Set it to that measured latency (40 ms is the
+        # starting point in the launch header) rather than trying to be exact
+        # here.
         out.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        out.timestamp_sample = int(
-            rclpy.time.Time.from_msg(msg.header.stamp).nanoseconds / 1000)
-        if out.timestamp_sample <= 0:
+        if self.use_sample_timestamp:
+            out.timestamp_sample = int(
+                rclpy.time.Time.from_msg(msg.header.stamp).nanoseconds / 1000)
+            if out.timestamp_sample <= 0:
+                out.timestamp_sample = out.timestamp
+        else:
             out.timestamp_sample = out.timestamp
 
         out.pose_frame = self.pose_frame
@@ -457,7 +490,11 @@ class ZedLocalization(Node):
             out.velocity_variance = [nan, nan, nan]
 
         out.reset_counter = self.reset_counter % 256
-        out.quality = 0
+        # 0 means "unknown" to EKF2. It is only actually consulted when
+        # EKF2_EV_QMIN > 0, but saying "good" on a sample we have just health-
+        # checked is both honest and one less thing that can silently gate
+        # fusion off if that parameter is ever raised.
+        out.quality = 100
 
         self.visual_odom_pub.publish(out)
 

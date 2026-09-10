@@ -1,7 +1,7 @@
 """
-Window traversal on ZED visual odometry.
+Window traversal on ARK Flow localisation.
 
-    uXRCE-DDS agent + zed_wrapper + zed_localization (VIO into PX4)
+    uXRCE-DDS agent + zed_wrapper (CAMERA ONLY)
     + window_detect (detection AND geometry) + window_traverse (the flight)
 
     arm -> climb -> hold -> sweep for the window -> lock and build a pose
@@ -9,10 +9,24 @@ Window traversal on ZED visual odometry.
     -> fly through it -> hold on the far side -> land.
 
 This is window_scan.launch.py's mission continued past the lock, flown on
-the localisation stack from sequence_vio_test.launch.py. Read BOTH of those
-files first -- everything they say about PX4 parameters, about the camera
-having no IMU, and about MPC_LAND_SPEED applies here unchanged and is not
-repeated.
+the localisation stack from sequence_test.launch.py: ARK Flow optical flow
+plus its rangefinder plus the IMU, fused in PX4. Read BOTH of those files
+first -- everything they say about PX4 parameters and about MPC_LAND_SPEED
+applies here unchanged and is not repeated.
+
+THERE IS NO EXTERNAL VISION HERE. The ZED supplies colour and depth frames so
+window_detect can find and measure the window; it does NOT supply position.
+There is no zed_localization bridge in this file and EKF2_EV_* means nothing
+to it -- if you have EKF2_EV_CTRL set from an earlier VIO experiment, clear it
+back to 0 or EKF2 will sit waiting for vision that never arrives.
+
+Why: on this airframe the ZED's visual odometry was making EKF2 reset its
+horizontal position six to seven times a second, continuously, even sitting
+still and disarmed. PX4 only enforces position validity once armed, so that
+surfaced as local_position_invalid about a second after arming and looked
+like an Offboard problem. tools/ekf_reset_rate.py measures it in 25 s without
+arming; a healthy vehicle reads ~0.00 resets/s. sequence_vio_test.launch.py
+and offboard_sequence_vio.py still hold the vision path if you go back to it.
 
 WHAT TO RUN
 
@@ -44,30 +58,52 @@ and it is the one that matters):
 
 BEFORE THE FIRST FLIGHT
 
-1. THE CAMERA MOUNTING NUMBERS ARE PASSED TO TWO NODES AND MUST MATCH.
-   cam_x/cam_y/cam_z and cam_roll/cam_pitch/cam_yaw below go both to
-   zed_localization (which uses them to turn the camera's odometry into the
-   vehicle's) and to window_traverse (which uses them to turn a pixel into a
-   point in front of the vehicle). This launch file feeds one set of
-   arguments to both so they cannot disagree. If you run either node by hand,
-   pass the same numbers. They are the pose of the camera in the body frame
-   in the ROS convention: x forward, y LEFT, z UP, radians, and the defaults
-   ("at the CoG, pointing straight forward") are almost certainly not yours.
+1. MEASURE THE CAMERA MOUNTING. cam_x/cam_y/cam_z and
+   cam_roll/cam_pitch/cam_yaw below go to window_traverse, which uses them to
+   turn a pixel into a point in front of the VEHICLE rather than in front of
+   the lens. Get them wrong and the window is estimated in the wrong place by
+   exactly the offset you failed to measure. They are the pose of the camera
+   in the body frame in the ROS convention: x forward, y LEFT, z UP, metres
+   and radians, and the defaults ("at the CoG, pointing straight forward")
+   are almost certainly not yours. Only one node reads them now, so unlike
+   the VIO version there is nothing here that can disagree with itself.
 
-2. CHECK cs_yaw_align. Exactly as in sequence_vio_test.launch.py: with the
-   magnetometer off you need EKF2_EV_CTRL=9, EKF2_MAG_TYPE=5 and
-   pose_frame:=ned, or PX4 takes the aircraft a second after arming.
+2. WATCH THE CPU. The failure this stack dies of on a Jetson is not a flight
+   bug: it is the companion falling behind, PX4 seeing a late setpoint and
+   taking the aircraft back with offboard_control_signal_lost about a second
+   after arming. The detection pipeline is capped at max_fps (10 Hz) and the
+   flight node now runs its setpoint timer on a thread of its own, but if you
+   turn publish_image and the MJPEG stream on for a real flight you are
+   spending that margin. Bench first with:
 
-        ros2 topic echo /fmu/out/estimator_status_flags --once | grep cs_yaw_align
+        ros2 launch drone_testing window_traverse.launch.py \
+            publish_image:=false stream_port:=0
 
-3. WALK THE ESTIMATE BEFORE YOU FLY IT. With the props off, carry the
+3. CHECK THE FLOW, NOT THE VISION FLAGS. The gate that matters here is
+   cs_opt_flow, and the estimate is not trustworthy on the ground: optical
+   flow needs ground texture and a rangefinder reading above FLOW_MIN_AGL, so
+   the node holds zero velocity until it has been healthy for a few seconds
+   after the climb and only then latches an x/y point. That is the inherited
+   behaviour from sequence_test.launch.py and it is why the status line reads
+   VEL-HOLD on the ground and POS-HOLD in the air.
+
+        ros2 topic echo /fmu/out/estimator_status_flags --once | grep cs_opt_flow
+        python3 src/drone_testing/tools/ekf_reset_rate.py   # want ~0.00/s
+
+   The magnetometer stays ON for this configuration (EKF2_MAG_TYPE=0): with
+   no external vision there is no other absolute heading source, and without
+   one EKF2 never aligns yaw and PX4 takes the aircraft shortly after arming.
+   That is README 10.3, and it is the trap in the opposite direction from the
+   VIO version.
+
+4. WALK THE ESTIMATE BEFORE YOU FLY IT. With the props off, carry the
    airframe to where you expect it to hover and watch /window_pose. The
    centre should sit still in NED to within a few centimetres while you move
    the airframe around -- that is the whole point of the estimate being in
    NED rather than in the camera frame, and it is the one test that catches a
-   wrong cam_pitch or a wrong pose_frame before it costs you an airframe.
+   wrong cam_pitch before it costs you an airframe.
 
-4. MEASURE THE WINDOW. /window_pose reports the width and height the
+5. MEASURE THE WINDOW. /window_pose reports the width and height the
    estimator reconstructs. If they do not match a tape measure, the
    intrinsics or the depth scale are wrong, and every distance in the
    approach is wrong by the same factor.
@@ -101,8 +137,8 @@ def generate_launch_description():
     agent_only = LaunchConfiguration('agent_only')
     flight = LaunchConfiguration('flight')
 
-    # The mounting pose of the camera, shared verbatim between the bridge and
-    # the flight node. One dict, two consumers: see item 1 in the header.
+    # The mounting pose of the camera. Only window_traverse reads it now that
+    # there is no VIO bridge -- see item 1 in the header.
     camera_mounting = {
         'cam_x': LaunchConfiguration('cam_x'),
         'cam_y': LaunchConfiguration('cam_y'),
@@ -134,30 +170,6 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('zed')),
     )
 
-    # VIO into PX4. Delayed so its first health report is about a camera that
-    # has had a chance to open.
-    bridge_node = TimerAction(
-        period=5.0,
-        actions=[
-            Node(
-                package='drone_testing',
-                executable='zed_localization',
-                name='zed_localization',
-                output='screen',
-                emulate_tty=True,
-                parameters=[dict(camera_mounting, **{
-                    'odom_topic': LaunchConfiguration('odom_topic'),
-                    'pose_frame': LaunchConfiguration('pose_frame'),
-                    'publish_velocity': LaunchConfiguration('publish_velocity'),
-                    'publish_rate': LaunchConfiguration('publish_rate'),
-                })],
-                remappings=[('vio_healthy', '/vio_healthy'),
-                            ('vio_status', '/vio_status')],
-            )
-        ],
-        condition=IfCondition(LaunchConfiguration('bridge')),
-    )
-
     # Detection and geometry. Same node and the same delay as window_scan; the
     # only addition is camera_info_topic, which is what makes /window_geometry
     # metric rather than a guess from an assumed field of view.
@@ -180,6 +192,14 @@ def generate_launch_description():
                     'publish_mask': LaunchConfiguration('publish_mask'),
                     'color': LaunchConfiguration('color'),
                     'min_area': LaunchConfiguration('min_area'),
+                    'border_margin': LaunchConfiguration('border_margin'),
+                    'max_fps': LaunchConfiguration('max_fps'),
+                    'use_depth': LaunchConfiguration('use_depth'),
+                    'depth_scale': LaunchConfiguration('depth_scale'),
+                    'fallback_hfov_deg': LaunchConfiguration('fallback_hfov_deg'),
+                    'detect_frames': LaunchConfiguration('detect_frames'),
+                    'lost_frames': LaunchConfiguration('lost_frames'),
+                    'publish_compressed': LaunchConfiguration('publish_compressed'),
                     'stream_port': LaunchConfiguration('stream_port'),
                     'stream_scale': LaunchConfiguration('stream_scale'),
                     'jpeg_quality': LaunchConfiguration('jpeg_quality'),
@@ -223,20 +243,44 @@ def generate_launch_description():
                     'min_altitude': LaunchConfiguration('min_altitude'),
                     'max_altitude': LaunchConfiguration('max_altitude'),
                     'scan_span_deg': LaunchConfiguration('scan_span_deg'),
+                    'scan_yaw_rate': LaunchConfiguration('scan_yaw_rate'),
+                    'scan_direction': LaunchConfiguration('scan_direction'),
                     'detect_seconds': LaunchConfiguration('detect_seconds'),
                     'relock_on_loss': LaunchConfiguration('relock_on_loss'),
                     'flight_seconds': LaunchConfiguration('flight_seconds'),
                     'request_offboard_from_ros': LaunchConfiguration(
                         'request_offboard_from_ros'),
-                    'hold_xy_from_ground': LaunchConfiguration('hold_xy_from_ground'),
-                    'vio_settle_seconds': LaunchConfiguration('vio_settle_seconds'),
                     # ---- the traversal ----
                     'standoff_distance': LaunchConfiguration('standoff_distance'),
                     'exit_distance': LaunchConfiguration('exit_distance'),
                     'altitude_offset': LaunchConfiguration('altitude_offset'),
+                    'gear_below_camera': LaunchConfiguration('gear_below_camera'),
+                    'drone_height': LaunchConfiguration('drone_height'),
+                    'drone_width': LaunchConfiguration('drone_width'),
+                    'vertical_clearance': LaunchConfiguration('vertical_clearance'),
+                    'lateral_clearance': LaunchConfiguration('lateral_clearance'),
+                    'hard_clearance': LaunchConfiguration('hard_clearance'),
+                    'sill_bias': LaunchConfiguration('sill_bias'),
+                    'align_alt_tolerance': LaunchConfiguration('align_alt_tolerance'),
                     'approach_speed': LaunchConfiguration('approach_speed'),
                     'traverse_speed': LaunchConfiguration('traverse_speed'),
                     'align_tolerance': LaunchConfiguration('align_tolerance'),
+                    'align_cross_tolerance': LaunchConfiguration(
+                        'align_cross_tolerance'),
+                    'align_along_tolerance': LaunchConfiguration(
+                        'align_along_tolerance'),
+                    'recentre_clear_seconds': LaunchConfiguration(
+                        'recentre_clear_seconds'),
+                    'recentre_yaw_step_deg': LaunchConfiguration(
+                        'recentre_yaw_step_deg'),
+                    'recentre_yaw_limit_deg': LaunchConfiguration(
+                        'recentre_yaw_limit_deg'),
+                    'recentre_timeout': LaunchConfiguration('recentre_timeout'),
+                    'recentre_backoff_seconds': LaunchConfiguration(
+                        'recentre_backoff_seconds'),
+                    'recentre_backoff': LaunchConfiguration('recentre_backoff'),
+                    'recentre_max_backoffs': LaunchConfiguration(
+                        'recentre_max_backoffs'),
                     'align_yaw_tolerance_deg': LaunchConfiguration(
                         'align_yaw_tolerance_deg'),
                     'align_settle_seconds': LaunchConfiguration('align_settle_seconds'),
@@ -260,6 +304,8 @@ def generate_launch_description():
                     'pose_lost_timeout': LaunchConfiguration('pose_lost_timeout'),
                     'gate_metres': LaunchConfiguration('gate_metres'),
                     'gate_yaw_deg': LaunchConfiguration('gate_yaw_deg'),
+                    'gate_reset_count': LaunchConfiguration('gate_reset_count'),
+                    'side_mismatch': LaunchConfiguration('side_mismatch'),
                 })],
             )
         ],
@@ -284,14 +330,11 @@ def generate_launch_description():
                         'false = fly the whole thing from this launch file.'),
         DeclareLaunchArgument(
             'flight', default_value='true',
-            description='false = camera side only: no DDS agent, no VIO bridge, '
-                        'no flight node. This is the bench test.'),
+            description='false = camera side only: no DDS agent and no flight '
+                        'node. This is the bench test.'),
         DeclareLaunchArgument(
             'detect', default_value='true',
             description='Start window_detect.'),
-        DeclareLaunchArgument(
-            'bridge', default_value='true',
-            description='Start zed_localization, the VIO bridge into PX4.'),
         DeclareLaunchArgument(
             'zed', default_value='true',
             description='Start zed_wrapper. false if it is already running.'),
@@ -311,38 +354,82 @@ def generate_launch_description():
                         'gets its intrinsics; a wrong topic here means the node '
                         'falls back to a guessed field of view and every angle '
                         'is scaled wrong. It says so in the log if it does.'),
-        DeclareLaunchArgument(
-            'odom_topic', default_value='/zed/zed_node/odom',
-            description='ZED odometry the bridge converts into PX4 vision.'),
-        DeclareLaunchArgument(
-            'pose_frame', default_value='frd',
-            description='frd with the magnetometer ON; ned with it OFF. Read the '
-                        'frame table in zed_localization.py -- getting this wrong '
-                        'is the "PX4 takes the aircraft a second after arming" bug.'),
-        DeclareLaunchArgument('publish_rate', default_value='15.0'),
-        DeclareLaunchArgument('publish_velocity', default_value='false'),
         DeclareLaunchArgument('show_windows', default_value='false'),
         DeclareLaunchArgument('publish_image', default_value='true'),
         DeclareLaunchArgument('publish_mask', default_value='false'),
         DeclareLaunchArgument(
-            'color', default_value='green',
+            'color', default_value='red',
             description='HSV range to look for: green, blue or red.'),
-        DeclareLaunchArgument('min_area', default_value='1500.0'),
+        DeclareLaunchArgument(
+            'border_margin', default_value='12.0',
+            description='px. A detected quad with a corner closer than this to '
+                        'the image edge is reported TRUNCATED, and the traversal '
+                        'node refuses to measure the window from it -- the quad '
+                        'is the visible PART of the window, so its centre is not '
+                        'the window centre and its width is not the window '
+                        'width. Flying at that centre is what put a prop into a '
+                        'window frame. Raise it if the detector flags windows '
+                        'that are plainly complete; lower it only if you are '
+                        'certain the aperture can never leave the frame.'),
+        DeclareLaunchArgument(
+            'min_area', default_value='1500.0',
+            description='px^2, smallest contour taken seriously. Too high and a '
+                        'window first seen from across the room is ignored until '
+                        'the aircraft is nearly on top of it.'),
+        DeclareLaunchArgument(
+            'use_depth', default_value='true',
+            description='false disables the depth path entirely. /window_geometry '
+                        'needs depth, so the traversal CANNOT run without it -- '
+                        'this is for debugging the colour detection alone.'),
+        DeclareLaunchArgument(
+            'depth_scale', default_value='1.0',
+            description='Multiplier on the raw depth image. ROS depth is metres, '
+                        'so 1.0 is right for zed_wrapper. 100.0 if some other '
+                        'driver hands you centimetres. Get this wrong and every '
+                        'distance in the approach is wrong by the same factor.'),
+        DeclareLaunchArgument(
+            'fallback_hfov_deg', default_value='90.0',
+            description='Horizontal FOV assumed ONLY while no CameraInfo has '
+                        'arrived on camera_info_topic. It is a guess and it '
+                        'scales every angle in /window_geometry; if you see the '
+                        'node warn that it is using this, fix the topic name '
+                        'rather than tuning this number.'),
+        DeclareLaunchArgument(
+            'detect_frames', default_value='3',
+            description='Consecutive hits before the detection latches true. '
+                        'Debounce against a single frame of noise.'),
+        DeclareLaunchArgument(
+            'lost_frames', default_value='5',
+            description='Consecutive misses before it latches false. Higher '
+                        'rides out a brief occlusion; too high and the flight '
+                        'node keeps flying at a window that is gone.'),
+        DeclareLaunchArgument(
+            'publish_compressed', default_value='true',
+            description='false drops the compressed image topic. Worth turning '
+                        'off with publish_image for a real flight -- it is CPU '
+                        'spent on something nobody is watching.'),
+        DeclareLaunchArgument(
+            'max_fps', default_value='10.0',
+            description='Cap on how often the detection pipeline runs. It is '
+                        'the biggest CPU consumer on the Jetson and the '
+                        'aircraft closes at 0.3-0.45 m/s, so 10 Hz loses '
+                        'nothing the estimator can use and leaves the CPU the '
+                        'offboard heartbeat needs. 0 = every frame.'),
         DeclareLaunchArgument('stream_port', default_value='8080'),
         DeclareLaunchArgument('stream_scale', default_value='0.5'),
         DeclareLaunchArgument('jpeg_quality', default_value='60'),
 
         # ---- camera mounting: pose of the camera IN THE BODY FRAME, ROS
         # convention (x fwd, y LEFT, z UP), metres and radians. Fed to BOTH the
-        # bridge and the flight node -- see item 1 in the header. MEASURE THESE.
+        # window_traverse -- see item 1 in the header. MEASURE THESE.
         DeclareLaunchArgument(
-            'cam_x', default_value='0.0',
+            'cam_x', default_value='0.105',
             description='Metres the camera sits FORWARD of the CoG.'),
         DeclareLaunchArgument(
             'cam_y', default_value='0.0',
             description='Metres the camera sits to the LEFT of the CoG.'),
         DeclareLaunchArgument(
-            'cam_z', default_value='0.0',
+            'cam_z', default_value='-0.04',
             description='Metres the camera sits ABOVE the CoG.'),
         DeclareLaunchArgument(
             'cam_roll', default_value='0.0',
@@ -379,8 +466,23 @@ def generate_launch_description():
         DeclareLaunchArgument('min_altitude', default_value='0.4'),
         DeclareLaunchArgument('max_altitude', default_value='3.0'),
         DeclareLaunchArgument(
-            'scan_span_deg', default_value='90.0',
+            'scan_span_deg', default_value='20.0',
             description='Total width of the yaw sweep about the takeoff heading.'),
+        DeclareLaunchArgument(
+            'scan_yaw_rate', default_value='0.12',
+            description='rad/s the yaw setpoint is walked at DURING THE SWEEP '
+                        'only (~7 deg/s). Deliberately slower than yaw_rate: a '
+                        'fast sweep smears the optical flow and can cross a '
+                        'window in fewer frames than the detector needs to '
+                        'call it. Restored to yaw_rate once the window is '
+                        'locked, so the approach is not slowed down.'),
+        DeclareLaunchArgument(
+            'scan_direction', default_value='right',
+            description="Which way the first half-leg of the sweep turns, "
+                        "'right' or 'left'. Point it at the side the window is "
+                        'expected on so the usual case is found in a few '
+                        'degrees instead of after crossing the far half of the '
+                        'arc.'),
         DeclareLaunchArgument('detect_seconds', default_value='0.4'),
         DeclareLaunchArgument(
             'relock_on_loss', default_value='false',
@@ -393,8 +495,6 @@ def generate_launch_description():
                         'Fires from every stage EXCEPT the traverse itself -- '
                         'the aircraft is never landed from inside a window.'),
         DeclareLaunchArgument('request_offboard_from_ros', default_value='true'),
-        DeclareLaunchArgument('hold_xy_from_ground', default_value='true'),
-        DeclareLaunchArgument('vio_settle_seconds', default_value='2.0'),
 
         # ---- the traversal ----
         DeclareLaunchArgument(
@@ -409,6 +509,42 @@ def generate_launch_description():
             description='m added to the estimated window centre height. Positive '
                         'is higher. Use it if the detected quad sits off-centre '
                         'on the real aperture.'),
+        DeclareLaunchArgument(
+            'gear_below_camera', default_value='0.120',
+            description='m from the camera down to the bottom of the landing '
+                        'gear. With cam_z this is what tells the traverse how '
+                        'far the airframe hangs below the point PX4 flies -- '
+                        'get it wrong low and the gear catches the sill.'),
+        DeclareLaunchArgument(
+            'drone_height', default_value='0.260',
+            description='m, landing gear bottom to the highest point.'),
+        DeclareLaunchArgument(
+            'drone_width', default_value='0.260',
+            description='m across the widest point.'),
+        DeclareLaunchArgument(
+            'vertical_clearance', default_value='0.150',
+            description='m of air wanted between the gear and the sill, and '
+                        'between the top and the lintel. The traverse height '
+                        'is solved for this; a window too small to give it '
+                        'gets a warning and the sill is favoured.'),
+        DeclareLaunchArgument(
+            'lateral_clearance', default_value='0.150',
+            description='m wanted either side. Advisory only -- it warns, '
+                        'nothing steers off it.'),
+        DeclareLaunchArgument(
+            'hard_clearance', default_value='0.030',
+            description='m. An aperture leaving less than this around the '
+                        'airframe is abandoned rather than flown.'),
+        DeclareLaunchArgument(
+            'sill_bias', default_value='0.100',
+            description='m of extra height above the airframe-centred '
+                        'solution, spent only if the aperture affords it. '
+                        'Buys margin against altitude sag at the sill, where '
+                        'a strike flips the aircraft.'),
+        DeclareLaunchArgument(
+            'align_alt_tolerance', default_value='0.08',
+            description='m of altitude error tolerated before committing to '
+                        'the traverse.'),
         DeclareLaunchArgument('approach_speed', default_value='0.30'),
         DeclareLaunchArgument(
             'traverse_speed', default_value='0.45',
@@ -418,6 +554,54 @@ def generate_launch_description():
             description='m radius around the approach point that counts as '
                         'lined up. Tighten it for a small window, but every '
                         'centimetre costs settling time against VO noise.'),
+        DeclareLaunchArgument(
+            'align_cross_tolerance', default_value='0.06',
+            description='m PERPENDICULAR to the approach line that the aircraft '
+                        'may be off the window centreline before the traverse is '
+                        'allowed to start. This is the tight one on purpose: '
+                        'every centimetre of it comes straight out of the lateral '
+                        'clearance, which on a 0.6 m window is only ~0.17 m a '
+                        'side to begin with.'),
+        DeclareLaunchArgument(
+            'align_along_tolerance', default_value='0.25',
+            description='m ALONG the approach line. Loose, because being 20 cm '
+                        'early or late on the standoff point changes nothing '
+                        'except the length of the run through.'),
+        DeclareLaunchArgument(
+            'recentre_clear_seconds', default_value='0.6',
+            description='s the detection must stay untruncated before RECENTRE '
+                        'hands over to AIM.'),
+        DeclareLaunchArgument(
+            'recentre_timeout', default_value='20.0',
+            description='s of RECENTRE before the attempt is abandoned. A window '
+                        'that never comes fully into view was never measured, and '
+                        'flying at an unmeasured aperture is the thing this whole '
+                        'stage exists to prevent.'),
+        DeclareLaunchArgument(
+            'recentre_backoff_seconds', default_value='7.0',
+            description='s of fruitless yawing before RECENTRE concludes the '
+                        'window is simply too wide for the field of view from '
+                        'here and moves away from it instead.'),
+        DeclareLaunchArgument(
+            'recentre_backoff', default_value='0.60',
+            description='m to retreat, backwards along the current heading, on '
+                        'each back-off.'),
+        DeclareLaunchArgument(
+            'recentre_max_backoffs', default_value='2',
+            description='how many back-offs before giving up on the window.'),
+        DeclareLaunchArgument(
+            'recentre_yaw_step_deg', default_value='4.0',
+            description='deg of yaw RECENTRE commands per tick while the '
+                        'window is clipped by the frame edge. A nudge, not a '
+                        'slew: enough to tell whether the window edge really '
+                        'is the frame edge, small enough that the window '
+                        'cannot swing out of view on the other side.'),
+        DeclareLaunchArgument(
+            'recentre_yaw_limit_deg', default_value='20.0',
+            description='deg of cumulative yaw RECENTRE is allowed either side '
+                        'of the heading an attempt started at. Past this the '
+                        'window does not fit in the field of view from here '
+                        'and it backs off instead of turning further.'),
         DeclareLaunchArgument('align_yaw_tolerance_deg', default_value='8.0'),
         DeclareLaunchArgument(
             'align_settle_seconds', default_value='1.5',
@@ -489,6 +673,18 @@ def generate_launch_description():
             description='m a new sample centre may sit from the current estimate '
                         'before it is rejected as an outlier.'),
         DeclareLaunchArgument('gate_yaw_deg', default_value='40.0'),
+        DeclareLaunchArgument(
+            'gate_reset_count', default_value='25',
+            description='Consecutive gated samples before the buffer is thrown '
+                        'away and the estimate rebuilt. If every new sample '
+                        'disagrees with the estimate, the estimate is the '
+                        'minority opinion -- this is what stops the aircraft '
+                        'flying confidently at nothing.'),
+        DeclareLaunchArgument(
+            'side_mismatch', default_value='0.40',
+            description='Fraction by which opposite sides of the reconstructed '
+                        'quad may differ. A real window seen obliquely still '
+                        'has matching opposite sides; a bad corner does not.'),
 
         # ---- the rest ----
         DeclareLaunchArgument(
@@ -496,7 +692,7 @@ def generate_launch_description():
             description='Reboot the FC first if EKF2 came up without the '
                         'rangefinder. Raise flight_node_delay to ~75 with this.'),
         DeclareLaunchArgument('flight_node_delay', default_value='12.0'),
-        DeclareLaunchArgument('lcd', default_value='true'),
+        DeclareLaunchArgument('lcd', default_value='false'),
         DeclareLaunchArgument(
             'lcd_port', default_value='',
             description='Arduino serial port; empty = auto-detect.'),
@@ -504,8 +700,7 @@ def generate_launch_description():
         # flight:=false leaves the camera side running on its own, which is the
         # bench test. Grouped rather than conditioned individually because two
         # of these already carry a condition of their own.
-        GroupAction([microxrce_node, lcd_node, reboot_node, bridge_node,
-                     traverse_node],
+        GroupAction([microxrce_node, lcd_node, reboot_node, traverse_node],
                     condition=IfCondition(flight)),
         zed_wrapper,
         detect_node,

@@ -88,6 +88,8 @@ import time
 import tty
 
 import rclpy
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
@@ -333,6 +335,12 @@ class OffboardSequence(Node):
     # x/y position hold is only latched after flow has been continuously
     # healthy this long, so a single good sample cannot trigger it.
     FLOW_SETTLE_SECONDS = 1.0
+    # How far the vehicle may appear to have moved during the climb before the
+    # arming point stops being somewhere we are willing to fly back to. Half a
+    # metre is more than a well-behaved climb ever produces and less than the
+    # distance at which flying to a stale point is itself the hazard.
+    TAKEOFF_ANCHOR_MAX_DRIFT = 0.50
+    TAKEOFF_ANCHOR_DEADBAND = 0.10   # m. Below this, do not bother correcting.
 
     # ---- timings / limits -------------------------------------------------
     SETPOINT_WARMUP = 20        # setpoints streamed before requesting Offboard (@20 Hz = 1 s)
@@ -435,31 +443,58 @@ class OffboardSequence(Node):
         # needs no changes.
         self.status_pub = self.create_publisher(String, 'takeoff_status', 10)
 
+        # Two callback groups on a MultiThreadedExecutor (see spin_node), and
+        # this is a flight-safety measure, not a performance one.
+        #
+        # rclpy's default is ONE thread and ONE mutually-exclusive group for
+        # everything, and its executor does not prioritise timers: it takes
+        # whatever work is ready. Every /fmu/out topic we subscribe to is
+        # therefore competing with the 20 Hz setpoint timer for the same
+        # thread, and PX4 hands the aircraft back if that timer is late by
+        # more than COM_OF_LOSS_T. /fmu/out/vehicle_attitude, which
+        # window_traverse needs and which PX4 publishes at the EKF rate
+        # (100-250 Hz, an order of magnitude above everything else here), is
+        # enough on its own to starve it -- that is the
+        # "offboard_control_signal_lost a second after arming" failure.
+        #
+        # control_cbg holds the timer and nothing else, so the heartbeat runs
+        # on its own thread and cannot be delayed by callback load. sensor_cbg
+        # holds every subscription, so they stay serialised with each other
+        # and only the timer/subscription pair can actually run concurrently.
+        # Anything mutable shared across that one boundary needs a lock; see
+        # window_traverse's estimator.
+        self.control_cbg = MutuallyExclusiveCallbackGroup()
+        self.sensor_cbg = MutuallyExclusiveCallbackGroup()
+
         self.vehicle_status_sub = self.create_subscription(
             VehicleStatus, '/fmu/out/vehicle_status_v1',
-            self.vehicle_status_callback, qos_profile=sensor_qos)
+            self.vehicle_status_callback, qos_profile=sensor_qos,
+            callback_group=self.sensor_cbg)
         self.local_position_sub = self.create_subscription(
             VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1',
-            self.local_position_callback, qos_profile=sensor_qos)
+            self.local_position_callback, qos_profile=sensor_qos,
+            callback_group=self.sensor_cbg)
 
         # Unversioned topic, so the name is the same on every firmware that
         # bridges it. This is the only place that tells us whether EKF2 is
         # actually fusing the rangefinder -- see rangefinder_is_healthy().
         self.estimator_flags_sub = self.create_subscription(
             EstimatorStatusFlags, '/fmu/out/estimator_status_flags',
-            self.estimator_flags_callback, qos_profile=sensor_qos)
+            self.estimator_flags_callback, qos_profile=sensor_qos,
+            callback_group=self.sensor_cbg)
 
         # PX4's own account of why it would take the aircraft away from us.
         self.failsafe_flags_sub = self.create_subscription(
             FailsafeFlags, '/fmu/out/failsafe_flags',
-            self.failsafe_flags_callback, qos_profile=sensor_qos)
+            self.failsafe_flags_callback, qos_profile=sensor_qos,
+            callback_group=self.sensor_cbg)
 
         # The land detector topic is unversioned on some builds and _v1 on
         # others; subscribe to both and take whichever one actually arrives.
         self.land_detected_subs = [
             self.create_subscription(
                 VehicleLandDetected, topic, self.land_detected_callback,
-                qos_profile=sensor_qos)
+                qos_profile=sensor_qos, callback_group=self.sensor_cbg)
             for topic in ('/fmu/out/vehicle_land_detected',
                           '/fmu/out/vehicle_land_detected_v1')
         ]
@@ -543,7 +578,9 @@ class OffboardSequence(Node):
         self._keyboard_thread.start()
 
         # 20 Hz. PX4 drops Offboard if setpoints arrive slower than 2 Hz.
-        self.timer = self.create_timer(0.05, self.timer_callback)
+        # On control_cbg so no volume of subscription traffic can delay it.
+        self.timer = self.create_timer(0.05, self.timer_callback,
+                                       callback_group=self.control_cbg)
 
         # Subclasses (window_scan) fly their own plan and print their own
         # summary; the sequence plan below would only be misleading there.
@@ -1065,6 +1102,44 @@ class OffboardSequence(Node):
     def _handle_takeoff(self):
         if not self._still_flyable():
             return
+
+        # Anchor x/y AS SOON AS the flow is usable, which is partway up the
+        # climb rather than at the top of it.
+        #
+        # Without this the whole climb is flown on the zero-velocity branch of
+        # publish_position_setpoint -- position [nan, nan, z], velocity
+        # [0, 0, vz] -- which has no position term at all. Below FLOW_MIN_AGL
+        # the flow is not fused, so EKF2 is dead-reckoning on the IMU, and any
+        # residual velocity bias integrates into a translation that nothing
+        # ever undoes: the vehicle leaves the pad in some direction, and the
+        # first thing that anchors it is the latch at the top of the climb,
+        # by which time it is already metres away. Latching here stops that
+        # drift the moment there is an estimate good enough to stop it with.
+        #
+        # If the drift so far is small, walk the held point back to the arming
+        # position with the inherited carrot rather than jumping to it -- so
+        # the vehicle returns over the pad instead of merely stopping wherever
+        # the drift left it. Beyond TAKEOFF_ANCHOR_MAX_DRIFT the arming point
+        # is not trusted (that much apparent motion during a climb is an
+        # estimate problem, not a real translation) and we simply hold here.
+        latched_now = not self.hold_xy
+        self._try_latch_xy_hold()
+        if latched_now and self.hold_xy and self.home_x is not None:
+            drift = math.hypot(self.hold_x - self.home_x, self.hold_y - self.home_y)
+            if drift > self.TAKEOFF_ANCHOR_DEADBAND:
+                if drift <= self.TAKEOFF_ANCHOR_MAX_DRIFT:
+                    self.move_target_x = self.home_x
+                    self.move_target_y = self.home_y
+                    self.moving = True
+                    self.get_logger().warning(
+                        f"Drifted {drift:.2f} m during the climb; walking back "
+                        "to the arming point.")
+                else:
+                    self.get_logger().error(
+                        f"Drifted {drift:.2f} m during the climb -- more than "
+                        f"the {self.TAKEOFF_ANCHOR_MAX_DRIFT:.2f} m that is "
+                        "credible. Holding here instead of flying back. CHECK "
+                        "SENS_FLOW_ROT AND THE FLOW MOUNTING.")
 
         self.log_flight_state()
 
@@ -1956,11 +2031,27 @@ class OffboardSequence(Node):
         super().destroy_node()
 
 
+def spin_node(node):
+    """Spin on two threads: one for the setpoint timer, one for callbacks.
+
+    rclpy.spin() would put both on one thread and let a busy topic delay the
+    heartbeat. Two threads is exactly enough for the two callback groups the
+    node declares -- more would only let subscriptions run concurrently with
+    each other, which buys nothing and costs the guarantee that they do not.
+    """
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
+    try:
+        executor.spin()
+    finally:
+        executor.remove_node(node)
+
+
 def main(args=None):
     rclpy.init(args=args)
     node = OffboardSequence()
     try:
-        rclpy.spin(node)
+        spin_node(node)
     except KeyboardInterrupt:
         pass
     finally:

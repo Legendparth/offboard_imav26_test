@@ -1,12 +1,28 @@
 """
 Takeoff -> sweep for the window -> estimate where it is -> line up on it ->
-fly through it -> land. Localisation is ZED visual odometry throughout.
+fly through it -> land. Localisation is ARK Flow + rangefinder, fused in PX4.
+
+The ZED is a CAMERA here and nothing else. It supplies the colour and depth
+frames the window is found and measured in; it does NOT supply the vehicle's
+position. That comes from PX4's EKF2 fusing the ARK Flow's optical flow and
+its rangefinder, exactly as in sequence_test.launch.py -- no zed_localization
+bridge, no external vision, no EKF2_EV_* parameters. See window_traverse.launch.py.
+
+What that costs, and it is not nothing: optical flow needs ground texture and
+a rangefinder reading above FLOW_MIN_AGL, so the horizontal estimate is not
+trustworthy until the aircraft is off the ground. The inherited x/y latch
+already handles this -- it holds zero velocity until the flow has been healthy
+for FLOW_SETTLE_SECONDS and only then anchors to a point. The window estimate
+is built in NED from that estimate, so it is no better than the flow is.
 
     arm -> sit on the ground -> climb -> hold -> SCAN (yaw sweep) ->
-    LOCK (stop, face it, build a pose estimate) -> AIM (yaw onto the window
-    normal) -> ALIGN (fly to a point standoff_distance in front of the
-    window, on its axis, at its height) -> TRAVERSE (commit and fly through)
-    -> CLEAR (hold beyond it) -> land
+    LOCK (stop, face it, build a pose estimate) -> [RECENTRE, only if the
+    window is hanging off the edge of the frame: yaw at what is visible until
+    the whole aperture is in view] -> AIM (yaw onto the window normal) ->
+    ALIGN (fly to a point standoff_distance in front of the window, on its
+    axis, at a height that clears the airframe through the aperture -- NOT
+    the window centre, see window_altitude) -> TRAVERSE (commit and fly
+    through) -> CLEAR (hold beyond it) -> land
 
     q -> abort into a controlled descent.   k -> force-disarm.
 
@@ -17,9 +33,8 @@ code, reached by inheriting from both halves of it:
 
     WindowScan          the yaw sweep, the debounced detection, the lock,
                         the flight clock
-    OffboardSequenceVio the vision health predicate, the on-the-ground x/y
-                        latch, the yaw-alignment arming gate
     OffboardSequence    arming, the climb, the ramps and leashes, the
+                        optical-flow health predicate and the x/y latch, the
                         estimator-reset bookkeeping, the descent, the
                         touchdown detection, the keyboard aborts
 
@@ -78,6 +93,17 @@ one such corner drags a naive four-corner average metres out of position.
 So no single frame is ever trusted. Five independent filters stand between
 a depth pixel and a setpoint:
 
+    truncation      a quad with a corner at the image edge is refused
+                    outright, before any of the rest of this runs. It is the
+                    only filter that is not a consistency test, because a
+                    truncated window is entirely self-consistent: it is a
+                    real, planar, correctly proportioned rectangle. It is
+                    just not the window -- it is the part of it that fits in
+                    the frame, narrower than the real aperture and with its
+                    centre pulled off the real one by half of whatever was
+                    cut off. No amount of filtering recovers the missing
+                    half, so the sample is not taken at all, and RECENTRE
+                    goes and gets a view that contains the whole thing.
     per corner      a non-positive depth, or one outside
                     [depth_min, depth_max], voids that corner
     per sample      the four corner depths must agree with their own median
@@ -128,13 +154,43 @@ committed heading for up to blind_traverse_seconds and then lands. Stopping
 halfway through an aperture is the one outcome worth spending open-loop
 seconds to avoid.
 
+SEEING THE WHOLE WINDOW BEFORE MEASURING IT
+-------------------------------------------
+The sweep stops on the FIRST frame that contains a window, and there is no
+reason that frame should contain all of it: the nose is turning, and the
+aperture enters the field of view from one side. Everything downstream --
+the centre, the width, the normal, the clearance arithmetic -- is computed
+from a quadrilateral, and a quadrilateral clipped by the image border is a
+perfectly good quadrilateral describing the wrong aperture.
+
+So window_detect flags any quad with a corner at the frame edge, the
+estimator refuses those samples, and RECENTRE is what makes that refusal
+useful instead of merely correct: it nudges the yaw towards the visible
+centroid, which is always on the opposite side of the image centre from the
+clipped edge, so turning towards it brings the missing part into view. The
+nudge is deliberately small -- recentre_yaw_step_deg per tick, at most
+recentre_yaw_limit_deg in total for an attempt -- because the question being
+asked is only "is that window edge actually the frame edge?", and a few
+degrees answers it: a genuinely clipped window un-clips almost immediately,
+a window that merely sits near the border does not move off it. Commanding
+the whole centroid bearing at once would instead swing the aperture out of
+frame on the far side and set the loop oscillating. It turns
+rather than translates -- a turn on the spot leaves the flow-based position
+hold undisturbed and costs nothing if the bearing is wrong, whereas
+translating on a measurement already known to be wrong is the failure being
+prevented. If yawing does not help within recentre_backoff_seconds the
+window is too wide for the field of view from where the aircraft is, and it
+retreats along its line of sight and looks again.
+
 YAW
 ---
 The nose is kept pointing along the direction of travel -- i.e. at the
 window, and then through it -- for the whole approach. Two reasons, neither
 of them cosmetic: the camera has to keep seeing the window for the estimate
 to keep updating, and a vehicle crabbing sideways through an aperture needs
-the aperture to be wider than its diagonal rather than its width. The yaw is
+the aperture to be wider than its diagonal rather than its width -- which is
+now charged for explicitly rather than assumed away, see swept_width(). The
+yaw is
 walked by the inherited ramp at yaw_rate, leashed to the measured heading,
 and AIM does the bulk of the turn standing still, before any translation, so
 the two never happen fast at the same time -- simultaneous yaw and
@@ -143,6 +199,7 @@ camera lose tracking.
 """
 
 import math
+import threading
 import time
 from collections import deque
 
@@ -153,8 +210,7 @@ from px4_msgs.msg import TrajectorySetpoint, VehicleAttitude, VehicleStatus
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Float32MultiArray, String
 
-from drone_testing.offboard_sequence import wrap_pi
-from drone_testing.offboard_sequence_vio import OffboardSequenceVio
+from drone_testing.offboard_sequence import spin_node, wrap_pi
 from drone_testing.window_scan import WindowScan
 
 
@@ -233,6 +289,14 @@ class WindowEstimator:
 
         self.samples = deque(maxlen=buffer_max)
         self.rejections = {}
+        # add() runs on the subscription thread and estimate()/fresh_count()
+        # on the setpoint-timer thread (see OffboardSequence's callback
+        # groups). deque.append is atomic, but iterating one while it is
+        # appended to is not -- CPython raises "deque mutated during
+        # iteration" -- and that iteration is _fresh(), on the path that
+        # produces every setpoint the approach flies. Hence a lock rather than
+        # a bet on the GIL.
+        self._lock = threading.RLock()
         self.accepted_total = 0
         self.consecutive_gated = 0
         self.last_reason = ''
@@ -248,6 +312,10 @@ class WindowEstimator:
         the middle of an OPEN window, where the depth pixel is looking at
         whatever is on the far side of the room.
         """
+        with self._lock:
+            return self._add(geometry, q_att, p_ned, r_cam, t_cam, now)
+
+    def _add(self, geometry, q_att, p_ned, r_cam, t_cam, now):
         corners_cam = []
         for depth, az_deg, el_deg in geometry[:4]:
             if not np.isfinite(depth) or depth <= 0.0:
@@ -374,56 +442,69 @@ class WindowEstimator:
         gate they are all within gate_yaw of each other and the renormalised
         median is a sane direction.
         """
-        fresh = self._fresh(now)
-        if len(fresh) < self.min_samples:
-            return None
+        with self._lock:
+            fresh = self._fresh(now)
+            if len(fresh) < self.min_samples:
+                return None
 
-        centre = np.median(np.array([s['centre'] for s in fresh]), axis=0)
-        normal = np.median(np.array([s['normal'] for s in fresh]), axis=0)
-        norm = float(np.linalg.norm(normal[:2]))
-        if norm < 1e-6:
-            return None
-        normal = np.array([normal[0] / norm, normal[1] / norm, 0.0])
+            centre = np.median(np.array([s['centre'] for s in fresh]), axis=0)
+            normal = np.median(np.array([s['normal'] for s in fresh]), axis=0)
+            norm = float(np.linalg.norm(normal[:2]))
+            if norm < 1e-6:
+                return None
+            normal = np.array([normal[0] / norm, normal[1] / norm, 0.0])
 
-        return {
-            'centre': centre,
-            'normal': normal,
-            'width': float(np.median([s['width'] for s in fresh])),
-            'height': float(np.median([s['height'] for s in fresh])),
-            'samples': len(fresh),
-            'age': now - fresh[-1]['t'],
-        }
+            return {
+                'centre': centre,
+                'normal': normal,
+                'width': float(np.median([s['width'] for s in fresh])),
+                'height': float(np.median([s['height'] for s in fresh])),
+                'samples': len(fresh),
+                'age': now - fresh[-1]['t'],
+            }
 
     def fresh_count(self, now):
         """How many accepted samples are inside the buffer window."""
-        return len(self._fresh(now))
+        with self._lock:
+            return len(self._fresh(now))
 
     def rejection_summary(self, limit=3):
-        if not self.rejections:
-            return 'none'
-        worst = sorted(self.rejections.items(), key=lambda kv: -kv[1])[:limit]
+        with self._lock:
+            if not self.rejections:
+                return 'none'
+            worst = sorted(self.rejections.items(), key=lambda kv: -kv[1])[:limit]
         return ', '.join(f"{name} x{count}" for name, count in worst)
 
 
 # ---------------------------------------------------------------- the flight
 
-class WindowTraverse(WindowScan, OffboardSequenceVio):
-    """Sweep, lock, line up, fly through.
+class WindowTraverse(WindowScan):
+    """Sweep, lock, line up, fly through, on ARK Flow localisation.
 
-    The base list is the whole design. WindowScan brings the sweep and the
-    lock; OffboardSequenceVio brings the vision health predicate that the
-    inherited horizontal control is gated on. Python's MRO puts them in that
-    order over the one shared OffboardSequence, so `flow_is_healthy` resolves
-    to the vision version and `_handle_scan` to the sweep, with no copy of
-    either living here.
+    One base, and that is the point. WindowScan brings the sweep, the lock and
+    the flight clock; the OffboardSequence underneath it brings arming, the
+    climb, the ramps, the descent AND `flow_is_healthy`, which is the ARK
+    Flow predicate every inherited horizontal gate is written against. So the
+    only new flight code here is the four stages after the lock.
+
+    This deliberately does NOT inherit OffboardSequenceVio. That class exists
+    to point the same gates at ZED visual odometry, and it is the right base
+    if you ever go back to external vision -- but the ZED's VO was resetting
+    EKF2's horizontal estimate several times a second on this airframe, so
+    the camera is used for seeing the window and nothing else. See
+    tools/ekf_reset_rate.py for how that was measured, and note the one
+    behavioural consequence: unlike the vision version, `flow_is_healthy`
+    tests dist_bottom against FLOW_MIN_AGL, so the lateral estimate is not
+    usable while the aircraft is sitting on the ground.
     """
 
+    RECENTRE = "RECENTRE"
     AIM = "AIM"
     ALIGN = "ALIGN"
     TRAVERSE = "TRAVERSE"
     CLEAR = "CLEAR"
 
-    TRAVERSE_STAGES = (AIM, ALIGN, TRAVERSE, CLEAR)
+    TRAVERSE_STAGES = (RECENTRE, AIM, ALIGN, TRAVERSE, CLEAR)
 
     # ---- the approach -----------------------------------------------------
     STANDOFF_DISTANCE = 1.60    # m in front of the window plane the approach
@@ -436,17 +517,100 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
                                 # is higher. Leave at 0 unless the detected
                                 # quad is known to sit off-centre on the frame.
 
+    # ---- the airframe -----------------------------------------------------
+    # The aircraft is not a point. It is 260 mm tall and 260 mm wide, and the
+    # ZED sits 120 mm above the bottom of the landing gear -- so the thing that
+    # actually has to fit through the aperture hangs BELOW the thing that
+    # measures it. Flying the vehicle origin at the window centre put the
+    # landing gear on the sill on the first attempt and tipped the aircraft
+    # over; these numbers exist so that cannot happen again.
+    GEAR_BELOW_CAMERA = 0.120   # m from the camera down to the bottom of the
+                                # landing gear
+    DRONE_HEIGHT = 0.260        # m total, gear bottom to the highest point
+    DRONE_WIDTH = 0.260         # m across, the widest point (prop tips)
+    VERTICAL_CLEARANCE = 0.150  # m of air wanted between the landing gear and
+                                # the sill, and between the top and the lintel,
+                                # when the aperture is big enough to afford it
+    LATERAL_CLEARANCE = 0.150   # m wanted either side. Advisory: nothing
+                                # steers sideways off it, it only warns.
+    HARD_CLEARANCE = 0.030      # m. An aperture that cannot give even this
+                                # much around the airframe is not flyable and
+                                # the attempt is abandoned rather than flown.
+    SILL_BIAS = 0.100           # m of deliberate extra height above the
+                                # airframe-centred solution, spent only if the
+                                # aperture has it to give. The errors here are
+                                # not symmetric: altitude tracking sags under
+                                # load, the rangefinder's idea of the floor
+                                # moves, and the two failures are not
+                                # equivalent -- brushing the lintel with a
+                                # prop guard is a bad traverse, catching the
+                                # gear on the sill flips the aircraft.
+
     APPROACH_SPEED = 0.30       # m/s the carrot is walked at during ALIGN
     TRAVERSE_SPEED = 0.45       # m/s during the run through. Faster than the
                                 # approach: less time in the aperture, and by
                                 # then the estimate is frozen so there is
                                 # nothing left to track.
 
-    ALIGN_TOLERANCE = 0.18      # m radius around the standoff point
-    ALIGN_ALT_TOLERANCE = 0.15  # m
+    ALIGN_TOLERANCE = 0.18      # m. A plain radius, used where a distance is
+                                # just a distance: arriving at the far side of
+                                # the traverse, and arriving at a back-off
+                                # point. NOT the alignment gate -- see below.
+    # The alignment gate splits that radius along the two axes it actually has,
+    # because they do not cost the same. CROSS is perpendicular to the traverse
+    # line: every centimetre of it is a centimetre off the window's centreline
+    # and comes straight out of the lateral clearance, which on a 0.6 m window
+    # is only 0.17 m per side to begin with. ALONG is up and down the approach
+    # line, where being 20 cm early or late changes nothing except how long the
+    # run through is. One 0.18 m sphere charged them at the same rate and let
+    # the whole budget be spent sideways, which is how a prop found a jamb.
+    ALIGN_CROSS_TOLERANCE = 0.06   # m perpendicular to the approach line
+    ALIGN_ALONG_TOLERANCE = 0.25   # m along it
+    ALIGN_ALT_TOLERANCE = 0.08  # m. Tight, because the vertical budget in a
+                                # window is now spent on airframe clearance:
+                                # 15 cm of altitude error is most of the gap
+                                # between the landing gear and the sill.
     ALIGN_YAW_TOLERANCE = math.radians(8.0)
     ALIGN_SETTLE_SECONDS = 1.5  # all three held simultaneously for this long
     AIM_YAW_TOLERANCE = math.radians(12.0)
+
+    # ---- re-centring on a truncated window --------------------------------
+    # window_detect flags a quad with a corner at the image edge as TRUNCATED:
+    # the aperture it measured is the visible PART of a window, narrower than
+    # the real one and with its centre pulled off the real one by half of
+    # whatever was cut off. Those samples are refused by the estimator, so a
+    # window first spotted at the edge of the frame produces no pose at all --
+    # which is correct, and useless on its own. RECENTRE is what does something
+    # about it: yaw towards the visible centroid, which brings the clipped side
+    # into view, and only then let the estimator build a pose.
+    #
+    # Yaw and not translate. Turning on the spot leaves the flow-based position
+    # hold undisturbed and costs nothing if the estimate is wrong, whereas
+    # translating on a measurement already known to be wrong is the failure it
+    # is trying to prevent.
+    #
+    # The correction is a NUDGE, not a slew. The bearing of the visible
+    # centroid can be tens of degrees off the optical axis, and commanding all
+    # of it at once swings the aircraft far enough that the window leaves the
+    # frame on the other side, the flow estimate is smeared, and the whole
+    # thing oscillates. What is actually wanted is "is the right edge of the
+    # window the right edge of the FRAME?" -- a couple of degrees of turn is
+    # enough to answer that, because a window that was genuinely clipped
+    # un-clips within a few degrees and one that was not stays put. So each
+    # tick asks for at most RECENTRE_YAW_STEP, re-measuring in between, and the
+    # cumulative turn away from the heading RECENTRE started at is capped at
+    # RECENTRE_YAW_LIMIT. Past that the window is not merely nudged off the
+    # edge -- it does not fit -- and the back-off is the right answer.
+    RECENTRE_CLEAR_SECONDS = 0.6    # s the detection must stay untruncated
+    RECENTRE_YAW_DEADBAND = math.radians(3.0)
+    RECENTRE_YAW_STEP = math.radians(4.0)   # max commanded correction per tick
+    RECENTRE_YAW_LIMIT = math.radians(20.0)  # max cumulative turn per attempt
+    RECENTRE_TIMEOUT = 20.0         # s per attempt, before backing off
+    RECENTRE_BACKOFF_SECONDS = 7.0  # s of fruitless yawing before deciding the
+                                    # window is simply too close to fit in the
+                                    # frame and backing away from it
+    RECENTRE_BACKOFF = 0.60         # m backwards along the current heading
+    RECENTRE_MAX_BACKOFFS = 2       # then give up
 
     AIM_TIMEOUT = 25.0
     ALIGN_TIMEOUT = 60.0
@@ -455,6 +619,12 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
 
     # ---- the estimate -----------------------------------------------------
     GEOMETRY_TOPIC = 'window_geometry'
+    ATTITUDE_MAX_HZ = 30.0      # what the attitude subscription is decimated
+                                # to. Geometry samples arrive at the camera
+                                # frame rate at most, so anything above that
+                                # is attitude nobody will ever pair with a
+                                # window, bought at the price of executor time
+                                # the setpoint timer needs.
     POSE_MAX_AGE = 1.5          # s. Older than this and the estimate is not
                                 # evidence about where the window is now.
     POSE_LOST_TIMEOUT = 6.0     # s without a usable estimate during AIM/ALIGN
@@ -499,12 +669,45 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
             'exit_distance', self.EXIT_DISTANCE))
         self.ALTITUDE_OFFSET = float(self._declare_number(
             'altitude_offset', self.ALTITUDE_OFFSET))
+        self.GEAR_BELOW_CAMERA = float(self._declare_number(
+            'gear_below_camera', self.GEAR_BELOW_CAMERA))
+        self.DRONE_HEIGHT = float(self._declare_number(
+            'drone_height', self.DRONE_HEIGHT))
+        self.DRONE_WIDTH = float(self._declare_number(
+            'drone_width', self.DRONE_WIDTH))
+        self.VERTICAL_CLEARANCE = float(self._declare_number(
+            'vertical_clearance', self.VERTICAL_CLEARANCE))
+        self.LATERAL_CLEARANCE = float(self._declare_number(
+            'lateral_clearance', self.LATERAL_CLEARANCE))
+        self.HARD_CLEARANCE = float(self._declare_number(
+            'hard_clearance', self.HARD_CLEARANCE))
+        self.SILL_BIAS = float(self._declare_number('sill_bias', self.SILL_BIAS))
+        self.ALIGN_ALT_TOLERANCE = float(self._declare_number(
+            'align_alt_tolerance', self.ALIGN_ALT_TOLERANCE))
         self.APPROACH_SPEED = float(self._declare_number(
             'approach_speed', self.APPROACH_SPEED))
         self.TRAVERSE_SPEED = float(self._declare_number(
             'traverse_speed', self.TRAVERSE_SPEED))
         self.ALIGN_TOLERANCE = float(self._declare_number(
             'align_tolerance', self.ALIGN_TOLERANCE))
+        self.ALIGN_CROSS_TOLERANCE = float(self._declare_number(
+            'align_cross_tolerance', self.ALIGN_CROSS_TOLERANCE))
+        self.ALIGN_ALONG_TOLERANCE = float(self._declare_number(
+            'align_along_tolerance', self.ALIGN_ALONG_TOLERANCE))
+        self.RECENTRE_CLEAR_SECONDS = float(self._declare_number(
+            'recentre_clear_seconds', self.RECENTRE_CLEAR_SECONDS))
+        self.RECENTRE_YAW_STEP = math.radians(float(self._declare_number(
+            'recentre_yaw_step_deg', math.degrees(self.RECENTRE_YAW_STEP))))
+        self.RECENTRE_YAW_LIMIT = math.radians(float(self._declare_number(
+            'recentre_yaw_limit_deg', math.degrees(self.RECENTRE_YAW_LIMIT))))
+        self.RECENTRE_TIMEOUT = float(self._declare_number(
+            'recentre_timeout', self.RECENTRE_TIMEOUT))
+        self.RECENTRE_BACKOFF_SECONDS = float(self._declare_number(
+            'recentre_backoff_seconds', self.RECENTRE_BACKOFF_SECONDS))
+        self.RECENTRE_BACKOFF = float(self._declare_number(
+            'recentre_backoff', self.RECENTRE_BACKOFF))
+        self.RECENTRE_MAX_BACKOFFS = int(self._declare_number(
+            'recentre_max_backoffs', self.RECENTRE_MAX_BACKOFFS))
         self.ALIGN_SETTLE_SECONDS = float(self._declare_number(
             'align_settle_seconds', self.ALIGN_SETTLE_SECONDS))
         self.ALIGN_YAW_TOLERANCE = math.radians(float(self._declare_number(
@@ -541,6 +744,23 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
         self.r_cam = rpy_to_matrix_frd(cam_roll, cam_pitch, cam_yaw)
         self.t_cam = np.array([cam_x, -cam_y, -cam_z])   # ROS FLU -> body FRD
 
+        # How far the airframe sticks out below and above the point PX4 flies.
+        # commanded_altitude positions the VEHICLE ORIGIN, the camera sits
+        # cam_z above it (FLU, so a negative cam_z is a camera below the
+        # origin), and the landing gear hangs GEAR_BELOW_CAMERA under the
+        # camera. Everything vertical downstream is expressed against these
+        # two numbers rather than against the origin, because the origin is
+        # not the part that hits the sill.
+        self.body_below = self.GEAR_BELOW_CAMERA - cam_z
+        self.body_above = self.DRONE_HEIGHT - self.body_below
+        self.get_logger().info(
+            f"Airframe: {self.DRONE_HEIGHT:.3f} m tall, {self.DRONE_WIDTH:.3f} m "
+            f"wide, extending {self.body_below:.3f} m below and "
+            f"{self.body_above:.3f} m above the commanded point. A window must "
+            f"measure at least "
+            f"{self.DRONE_HEIGHT + 2 * self.HARD_CLEARANCE:.2f} x "
+            f"{self.DRONE_WIDTH + 2 * self.HARD_CLEARANCE:.2f} m to be flown.")
+
         self.estimator = WindowEstimator(
             depth_min=float(self._declare_number('depth_min', self.DEPTH_MIN)),
             depth_max=float(self._declare_number('depth_max', self.DEPTH_MAX)),
@@ -576,13 +796,24 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
         # vehicle. See the header.
         self.attitude = None
         self.attitude_time = None
+        # PX4 publishes this at the EKF output rate -- 100-250 Hz depending on
+        # the board, an order of magnitude faster than every other topic this
+        # node takes put together, and far faster than anything here can use.
+        # The callback decimates to ATTITUDE_MAX_HZ; see attitude_callback.
+        self.attitude_min_interval = 1.0 / self.ATTITUDE_MAX_HZ
+        self.attitude_last_kept = 0.0
         self.create_subscription(VehicleAttitude, '/fmu/out/vehicle_attitude',
-                                 self.attitude_callback, qos_profile=sensor_qos)
+                                 self.attitude_callback, qos_profile=sensor_qos,
+                                 callback_group=self.sensor_cbg)
 
         geometry_topic = str(self.declare_parameter(
             'geometry_topic', self.GEOMETRY_TOPIC).value)
-        self.create_subscription(Float32MultiArray, geometry_topic,
-                                 self.geometry_callback, 10)
+        sub = self.create_subscription(Float32MultiArray, geometry_topic,
+                                       self.geometry_callback, 10,
+                                       callback_group=self.sensor_cbg)
+        # Resolved, so count_publishers() below asks about the same name the
+        # subscription is actually bound to and not the relative one.
+        self.geometry_topic = sub.topic_name
 
         # What the estimator currently believes, for anyone watching from the
         # ground: x|y|z|yaw_deg|width|height|samples|age.
@@ -602,8 +833,20 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
         self.align_in_band_since = None
         self.outcome = 'not attempted'
 
+        # The newest raw detection, truncated or not. Kept separately from the
+        # estimator because the two want opposite things from it: the estimator
+        # must never see a truncated sample, and RECENTRE has nothing else to
+        # steer by.
+        self.last_detection = None      # dict, see geometry_callback
+        self.truncated_frames = 0
+        self.recentre_untruncated_since = None
+        self.recentre_ref_heading = 0.0
+        self.recentre_backoffs = 0
+        self.recentre_backoff_target = None
+        self.recentre_attempt_since = None
+
         self.get_logger().warning(
-            f"Window traversal on ZED VISION: climb {self.TAKEOFF_ALTITUDE:.2f} m, "
+            f"Window traversal on ARK FLOW: climb {self.TAKEOFF_ALTITUDE:.2f} m, "
             f"hold {self.HOLD_SECONDS:.0f} s, sweep +/-"
             f"{math.degrees(self.SCAN_SPAN) / 2:.0f} deg for the window, lock, "
             f"line up {self.STANDOFF_DISTANCE:.2f} m in front of it and fly "
@@ -616,8 +859,22 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
     # ------------------------------------------------------------------ subs
 
     def attitude_callback(self, msg):
+        """Keep the newest attitude, at no more than ATTITUDE_MAX_HZ.
+
+        Dropping here rather than subscribing at a lower rate is the only
+        option -- the publication rate is PX4's to choose and there is no way
+        to ask it for less over uXRCE-DDS. The message is already deserialised
+        by the time we are called, so this saves the callback body rather than
+        the transport, but the body is what was costing the setpoint timer its
+        thread. The kept sample is always the freshest one, because it is
+        whichever message happens to arrive after the interval expires.
+        """
+        now = time.monotonic()
+        if now - self.attitude_last_kept < self.attitude_min_interval:
+            return
+        self.attitude_last_kept = now
         self.attitude = msg
-        self.attitude_time = time.monotonic()
+        self.attitude_time = now
 
     def geometry_callback(self, msg):
         """One frame's worth of window geometry, paired with where we are.
@@ -641,6 +898,42 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
             return
         geometry = data[:15].reshape(5, 3)
 
+        # Row 5, when present, is (truncated, border_margin_px, 0) -- see
+        # window_detect.publish_geometry. An older detector that does not send
+        # it reads as "not truncated", which is the pre-existing behaviour, so
+        # a version mismatch degrades to what this node did before rather than
+        # refusing every sample.
+        if data.size >= 18:
+            truncated = bool(data[15] > 0.5)
+            margin_px = float(data[16])
+        else:
+            truncated = False
+            margin_px = float('nan')
+            self.get_logger().warning(
+                "/window_geometry carries no truncation row: this window_detect "
+                "cannot tell a window from part of a window. Update it.",
+                throttle_duration_sec=10.0)
+
+        # Kept whatever the verdict: RECENTRE steers on the truncated ones.
+        self.last_detection = {
+            'time': time.monotonic(),
+            'truncated': truncated,
+            'margin_px': margin_px,
+            # The centre row's bearing off the optical axis, positive right.
+            'centre_az': math.radians(float(geometry[4][1])),
+            'centre_el': math.radians(float(geometry[4][2])),
+        }
+
+        if truncated:
+            # Refused outright rather than gated. Every other filter in the
+            # estimator asks "is this measurement consistent?", and a truncated
+            # quad is perfectly consistent -- it is a real, planar, correctly
+            # sized rectangle. It is just not the window. Nothing downstream
+            # can recover the missing half, so the only safe thing to do with
+            # the sample is not have it.
+            self.truncated_frames += 1
+            return
+
         lp = self.local_position
         if lp is None or not lp.xy_valid or not lp.z_valid:
             return
@@ -655,6 +948,19 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
                            p_ned, self.r_cam, self.t_cam, time.monotonic())
 
     # -------------------------------------------------------------- estimate
+
+    def fresh_detection(self):
+        """The newest raw detection if it is recent enough to act on.
+
+        "Recent" is the same POSE_MAX_AGE the estimate is held to. This is a
+        single frame and is deliberately NOT filtered: it is used to answer
+        "is the camera looking at part of a window right now, and which way",
+        which is a question about this instant.
+        """
+        det = self.last_detection
+        if det is None or time.monotonic() - det['time'] > self.POSE_MAX_AGE:
+            return None
+        return det
 
     def window_estimate(self):
         """The estimate, or None if it is missing, thin or stale."""
@@ -680,10 +986,29 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
         if est is None:
             fresh = self.estimator.fresh_count(time.monotonic())
             if self.geometry_seen == 0:
-                return ("no /window_geometry at all -- is window_detect new "
-                        "enough to publish it?")
+                # Two very different faults look the same from here: nobody is
+                # publishing the topic at all (wrong node, wrong remap, old
+                # window_detect), or window_detect is up and simply is not
+                # seeing a window. Only the first is worth restarting for.
+                if self.count_publishers(self.geometry_topic) == 0:
+                    return (f"nothing is publishing {self.geometry_topic} -- "
+                            "is window_detect running, and new enough to have "
+                            "publish_geometry?")
+                return (f"{self.geometry_topic} has a publisher but has never "
+                        "carried a message: window_detect is not detecting the "
+                        "window. Check the colour, min_area and the lighting.")
+            det = self.fresh_detection()
+            if det is not None and det['truncated']:
+                # Worth saying explicitly. "No usable pose" while the camera is
+                # plainly looking at a window reads as a detector fault, and
+                # this is the one case where it is not one.
+                return (f"window in sight but TRUNCATED "
+                        f"({det['margin_px']:.0f} px to the frame edge, "
+                        f"{self.truncated_frames} such frames) -- not measurable "
+                        "until the whole aperture is in view")
             return (f"no usable pose ({fresh}/{self.MIN_SAMPLES} fresh samples, "
-                    f"{self.estimator.accepted_total} accepted ever; "
+                    f"{self.estimator.accepted_total} accepted ever, "
+                    f"{self.truncated_frames} truncated; "
                     f"rejections: {self.estimator.rejection_summary()})")
         return (f"window at ({est['centre'][0]:+.2f}, {est['centre'][1]:+.2f}, "
                 f"{est['centre'][2]:+.2f}) NED, facing "
@@ -730,25 +1055,148 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
     def window_altitude(self, est):
         """Height above the arming point to fly the traverse at, clamped.
 
+        NOT the window centre. The aircraft is 260 mm tall and hangs mostly
+        BELOW the camera that measured the window, so putting the commanded
+        point on the window centre puts the landing gear ~160 mm lower than
+        the centre -- which is what walked the gear into the sill and tipped
+        the aircraft over on the first attempt.
+
+        What is solved for here is a commanded height at which the whole
+        airframe fits inside the aperture:
+
+            sill + body_below + clearance  <=  z  <=  lintel - body_above - clearance
+
+        Within that band the preferred answer centres the AIRFRAME (not the
+        origin) on the window -- which by itself already biases the command
+        upward by (body_below - body_above)/2 -- and then adds SILL_BIAS on
+        top, clipped by the upper bound, because the two ways of getting this
+        wrong are not equally expensive. When the aperture is too tight for
+        the full clearance the band inverts, and the LOWER bound wins:
+        clipping the lintel with a prop guard is survivable, catching the gear
+        on the sill is what flips the aircraft.
+
         Returns None before home_z exists, which cannot happen from any stage
         that calls it -- home is captured at arming -- but the flight envelope
         clamp is real: a window estimate that has gone wrong vertically must
         not be able to command a climb past max_altitude or a descent into the
-        floor. When the clamp bites it is reported, because a window whose
-        estimated centre is outside the envelope is usually a bad estimate
-        rather than a high window.
+        floor.
         """
         if self.home_z is None:
             return None
-        wanted = self.home_z - est['centre'][2] + self.ALTITUDE_OFFSET
+
+        # Height of the window centre above the arming point, and the sill and
+        # lintel either side of it.
+        centre = self.home_z - est['centre'][2]
+        half = 0.5 * float(est.get('height') or 0.0)
+        sill = centre - half
+        lintel = centre + half
+
+        lower = sill + self.body_below + self.VERTICAL_CLEARANCE
+        upper = lintel - self.body_above - self.VERTICAL_CLEARANCE
+
+        # Airframe centred in the aperture: the commanded point sits
+        # (body_below - body_above)/2 above the window centre.
+        wanted = centre + 0.5 * (self.body_below - self.body_above) + self.SILL_BIAS
+
+        if lower > upper:
+            # Not enough room for the full clearance either side. Take the
+            # lower bound -- gear clear of the sill first -- but never command
+            # a height whose gear is below the sill at all.
+            lower_hard = sill + self.body_below + self.HARD_CLEARANCE
+            upper_hard = lintel - self.body_above - self.HARD_CLEARANCE
+            wanted = max(lower, lower_hard)
+            if upper_hard >= lower_hard:
+                # There is still a hard-clearance band, just not a comfortable
+                # one. Stay inside it: favouring the sill must not be allowed
+                # to push the airframe out through the top of the aperture.
+                wanted = min(wanted, upper_hard)
+            self.get_logger().warning(
+                f"Window is {2 * half:.2f} m tall: too tight for "
+                f"{self.VERTICAL_CLEARANCE:.2f} m clearance around a "
+                f"{self.DRONE_HEIGHT:.2f} m airframe. Favouring the sill and "
+                f"flying at {wanted:.2f} m.",
+                throttle_duration_sec=5.0)
+        else:
+            wanted = min(max(wanted, lower), upper)
+
+        wanted += self.ALTITUDE_OFFSET
+
         clamped = min(max(wanted, self.MIN_ALTITUDE), self.MAX_ALTITUDE)
         if abs(clamped - wanted) > 1e-3:
             self.get_logger().warning(
-                f"Window centre is at {wanted:.2f} m above the arming point, "
-                f"outside the {self.MIN_ALTITUDE:.2f}-{self.MAX_ALTITUDE:.2f} m "
-                f"envelope. Flying the traverse at {clamped:.2f} m instead.",
+                f"The traverse wants {wanted:.2f} m above the arming point "
+                f"(window centre {centre:.2f} m, sill {sill:.2f} m), outside "
+                f"the {self.MIN_ALTITUDE:.2f}-{self.MAX_ALTITUDE:.2f} m "
+                f"envelope. Flying the traverse at {clamped:.2f} m instead -- "
+                "check the gear clears the sill before trusting this.",
                 throttle_duration_sec=5.0)
         return clamped
+
+    def swept_width(self, yaw_error=0.0):
+        """How wide the airframe actually is when it is not square to the frame.
+
+        A square of side W, yawed by e relative to the aperture, presents
+        W(|cos e| + |sin e|) across it -- the diagonal at 45 degrees, which for
+        a 260 mm airframe is 368 mm, 108 mm more than the number the clearance
+        arithmetic used to be done with. Eight degrees of yaw, which is the
+        alignment tolerance, is already 34 mm of it, and 34 mm is a fifth of
+        the entire per-side margin on a 0.6 m window.
+        """
+        return self.DRONE_WIDTH * (abs(math.cos(yaw_error)) + abs(math.sin(yaw_error)))
+
+    def cross_track_of(self, est):
+        """Signed distance from the window's centreline, metres, positive right.
+
+        The window axis is the line through the window centre along its normal;
+        this is how far off it the aircraft is right now. Distinct from the
+        ALIGN cross-track error, which is measured against the STANDOFF POINT
+        the estimate currently implies -- the same thing when the estimate is
+        steady, and not the same thing at the instant the estimate has moved.
+        This is the one that has to be right at the commit, because it is the
+        offset the aircraft will carry through the aperture.
+
+        None if there is no position to measure.
+        """
+        lp = self.local_position
+        if lp is None:
+            return None
+        normal = est['normal']
+        offset = np.array([lp.x - est['centre'][0], lp.y - est['centre'][1]])
+        # Horizontal perpendicular to the (horizontal component of the) normal.
+        perp = np.array([-normal[1], normal[0]])
+        norm = float(np.linalg.norm(perp))
+        if norm < 1e-6:
+            return None
+        return float(np.dot(offset, perp / norm))
+
+    def aperture_margins(self, est, cross=0.0, yaw_error=0.0):
+        """(vertical, lateral) metres of spare aperture around the airframe.
+
+        Vertical is per side at the height window_altitude would command.
+
+        Lateral used to assume the aircraft was exactly on the window axis and
+        exactly square to it. It is neither. Both departures are charged here:
+        `cross` is how far off the centreline the aircraft actually is, which
+        comes off one side of the margin entirely rather than being shared,
+        and `yaw_error` widens the airframe itself via swept_width. With the
+        defaults it reduces to the old geometric answer, which is what the
+        pre-commit reporting wants; the commit passes the measured values.
+
+        Both can be negative, which means the airframe does not fit.
+        """
+        height = float(est.get('height') or 0.0)
+        width = float(est.get('width') or 0.0)
+        alt = self.window_altitude(est)
+        if alt is None:
+            vertical = 0.5 * (height - self.DRONE_HEIGHT)
+        else:
+            centre = self.home_z - est['centre'][2]
+            sill = centre - 0.5 * height
+            lintel = centre + 0.5 * height
+            vertical = min(alt - self.body_below - sill,
+                           lintel - (alt + self.body_above))
+        lateral = 0.5 * (width - self.swept_width(yaw_error)) - abs(cross)
+        return vertical, lateral
 
     def _set_target(self, x, y, altitude=None):
         """Point the inherited ramps at an NED point and an altitude.
@@ -794,7 +1242,8 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
         traverse has its own, much shorter, timeout; the clock catches the
         aircraft again in CLEAR immediately afterwards.
         """
-        return super()._clock_stages() + (self.AIM, self.ALIGN, self.CLEAR)
+        return super()._clock_stages() + (self.RECENTRE, self.AIM, self.ALIGN,
+                                          self.CLEAR)
 
     def timer_callback(self):
         self.publish_window_pose()
@@ -824,6 +1273,7 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
         self._track_pose_health()
 
         {
+            self.RECENTRE: self._handle_recentre,
             self.AIM: self._handle_aim,
             self.ALIGN: self._handle_align,
             self.TRAVERSE: self._handle_traverse,
@@ -850,6 +1300,14 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
 
         est = self.window_estimate()
         if est is None:
+            det = self.fresh_detection()
+            if det is not None and det['truncated']:
+                # The sweep stopped on a window that is hanging off the edge of
+                # the frame. There is no pose and there is not going to be one
+                # from here, because every sample is being refused. Go and look
+                # at the whole thing first.
+                self._begin_recentre(det)
+                return
             self.get_logger().info(
                 f"Locked, building the window pose: {self.pose_summary()}",
                 throttle_duration_sec=1.0)
@@ -862,6 +1320,192 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
             return
 
         self._begin_aim(est)
+
+    # ------------------------------------------------------------ RECENTRE
+
+    def _begin_recentre(self, det):
+        """Stop, and turn to look at the whole window before measuring it."""
+        self._enter_stage(self.RECENTRE)
+        self.moving = False
+        self.recentre_untruncated_since = None
+        self.recentre_backoff_target = None
+        self.recentre_attempt_since = time.monotonic()
+        lp = self.local_position
+        self.recentre_ref_heading = self.yaw_setpoint if lp is None else lp.heading
+        self.get_logger().warning(
+            f"RECENTRE: the window is truncated by the frame edge "
+            f"({det['margin_px']:.0f} px), so the quad being measured is only "
+            f"part of it and its centre is not the window's centre. Nudging "
+            f"{'clockwise' if det['centre_az'] > 0 else 'anticlockwise'} in "
+            f"{math.degrees(self.RECENTRE_YAW_STEP):.0f} deg steps (up to "
+            f"{math.degrees(self.RECENTRE_YAW_LIMIT):.0f} deg) to bring the "
+            "rest into view before anything is flown at it.")
+
+    def _handle_recentre(self):
+        """Yaw at the visible part of the window until the whole one is in frame.
+
+        The steering signal is the bearing of the VISIBLE centroid off the
+        optical axis. That centroid is biased towards the middle of the image
+        relative to the true window centre -- exactly by the clipping -- so
+        turning towards it always turns towards the clipped side. It does not
+        need to be accurate, only correctly signed, and it is: whichever edge
+        the window is falling off, the centroid sits on the other side of the
+        image centre from it.
+
+        Three ways out. The window comes fully into view and AIM takes over;
+        the aperture is simply too big for the field of view from here, so the
+        aircraft backs away and tries again; or neither works and the attempt
+        is abandoned rather than flown at a window whose extent was never
+        measured.
+        """
+        if not self._still_flyable():
+            return
+
+        self._try_latch_xy_hold()
+        self.log_flight_state()
+
+        # A back-off in progress owns the stage until it arrives: yawing while
+        # translating is the one thing the whole approach is written to avoid.
+        if self.recentre_backoff_target is not None:
+            if self._arrived_at_backoff():
+                self.recentre_backoff_target = None
+                self.recentre_attempt_since = time.monotonic()
+                lp = self.local_position
+                if lp is not None:
+                    self.recentre_ref_heading = lp.heading
+                # Both clocks are per ATTEMPT, not per stage: a back-off that
+                # used half the stage timeout getting there must not leave the
+                # look that follows it no time to succeed.
+                self._restart_stage_clock()
+                self.get_logger().info("RECENTRE: backed off; looking again.")
+            else:
+                self.get_logger().info(
+                    "RECENTRE: backing away from the window to get it all in "
+                    "frame.", throttle_duration_sec=1.0)
+                return
+
+        # Checked before the branches below, so it catches every way of being
+        # stuck here -- still truncated, or fully in frame but never producing
+        # enough accepted samples to build a pose from.
+        if self._in_stage_for() > self.RECENTRE_TIMEOUT:
+            self._abandon(
+                f"never got a measurable view of the whole window in "
+                f"{self.RECENTRE_TIMEOUT:.0f} s of re-centring")
+            return
+
+        det = self.fresh_detection()
+        if det is None:
+            # The window has gone entirely. Hold, and let the shared pose-lost
+            # timeout decide when that has gone on too long.
+            if self._give_up_on_pose('RECENTRE'):
+                return
+            self.get_logger().info(
+                f"RECENTRE: lost sight of the window. {self.pose_summary()}",
+                throttle_duration_sec=1.0)
+            return
+
+        if not det['truncated']:
+            now = time.monotonic()
+            if self.recentre_untruncated_since is None:
+                self.recentre_untruncated_since = now
+            elif now - self.recentre_untruncated_since >= self.RECENTRE_CLEAR_SECONDS:
+                est = self.window_estimate()
+                if est is not None and self.hold_xy:
+                    self.get_logger().warning(
+                        "RECENTRE: the whole window is in frame and measured. "
+                        f"{self.pose_summary()}.")
+                    self._begin_aim(est)
+                    return
+                # In view but not yet enough accepted samples for a pose. That
+                # is the estimator filling its buffer; wait for it here rather
+                # than in AIM, where the aircraft would already be turning.
+                self.get_logger().info(
+                    f"RECENTRE: window fully in frame, building the pose. "
+                    f"{self.pose_summary()}", throttle_duration_sec=1.0)
+            return
+
+        # Still truncated: keep nudging towards what we can see. One small
+        # step at a time, off the CURRENT measured heading, so the next frame
+        # is a fresh answer to "is it still clipped?" rather than the tail of a
+        # turn commanded several degrees ago.
+        self.recentre_untruncated_since = None
+        lp = self.local_position
+        az = det['centre_az']
+        step = 0.0
+        if lp is not None and abs(az) > self.RECENTRE_YAW_DEADBAND:
+            step = math.copysign(min(abs(az), self.RECENTRE_YAW_STEP), az)
+            # Leash the whole correction to RECENTRE_YAW_LIMIT either side of
+            # where this attempt started, so a bad centroid cannot walk the
+            # aircraft round in a circle chasing an edge that never clears.
+            turned = wrap_pi(lp.heading - self.recentre_ref_heading)
+            allowed = self.RECENTRE_YAW_LIMIT - math.copysign(turned, step)
+            if allowed <= 0.0:
+                self.get_logger().warning(
+                    f"RECENTRE: turned the full "
+                    f"{math.degrees(self.RECENTRE_YAW_LIMIT):.0f} deg and the "
+                    "window is still clipped -- it does not fit in the frame "
+                    "from here.", throttle_duration_sec=2.0)
+                self._begin_backoff()
+                return
+            step = math.copysign(min(abs(step), allowed), step)
+            self._aim_yaw_at(wrap_pi(lp.heading + step))
+
+        attempt = time.monotonic() - (self.recentre_attempt_since or time.monotonic())
+        if attempt > self.RECENTRE_BACKOFF_SECONDS:
+            self._begin_backoff()
+            return
+
+        self.get_logger().info(
+            f"RECENTRE: truncated ({det['margin_px']:.0f} px to the edge, "
+            f"centroid {math.degrees(az):+.0f} deg), nudging "
+            f"{math.degrees(step):+.1f} deg.",
+            throttle_duration_sec=1.0)
+
+    def _begin_backoff(self):
+        """Give up on turning and move away from the window instead.
+
+        Yawing only helps while the window fits in the field of view at all.
+        Once it does not -- the aircraft has ended up close to a wide aperture
+        -- turning just swaps which edge is clipped, and the only thing that
+        puts the whole window in frame is distance. Backwards along the
+        current heading, which points at the window, so this retreats along
+        the line of sight and does not lose it.
+        """
+        lp = self.local_position
+        if lp is None or not self.hold_xy:
+            self.get_logger().warning(
+                "RECENTRE: want to back off but there is no lateral estimate to "
+                "do it on. Holding.", throttle_duration_sec=2.0)
+            self.recentre_attempt_since = time.monotonic()
+            return
+
+        if self.recentre_backoffs >= self.RECENTRE_MAX_BACKOFFS:
+            self._abandon(
+                f"the window was still truncated after "
+                f"{self.RECENTRE_MAX_BACKOFFS} back-offs -- it does not fit in "
+                "the field of view from anywhere this approach can reach")
+            return
+
+        self.recentre_backoffs += 1
+        heading = lp.heading
+        target = (self.hold_x - math.cos(heading) * self.RECENTRE_BACKOFF,
+                  self.hold_y - math.sin(heading) * self.RECENTRE_BACKOFF)
+        self.recentre_backoff_target = np.array(target)
+        self.MOVE_SPEED = self.APPROACH_SPEED
+        self._set_target(target[0], target[1])
+        self._restart_stage_clock()
+        self.get_logger().warning(
+            f"RECENTRE: yawing has not un-truncated the window in "
+            f"{self.RECENTRE_BACKOFF_SECONDS:.0f} s, so it does not fit in the "
+            f"frame from here. Backing off {self.RECENTRE_BACKOFF:.2f} m "
+            f"(attempt {self.recentre_backoffs}/{self.RECENTRE_MAX_BACKOFFS}).")
+
+    def _arrived_at_backoff(self):
+        lp = self.local_position
+        if lp is None or self.recentre_backoff_target is None:
+            return True
+        return math.hypot(self.recentre_backoff_target[0] - lp.x,
+                          self.recentre_backoff_target[1] - lp.y) <= self.ALIGN_TOLERANCE
 
     # ---------------------------------------------------------------- AIM
 
@@ -1001,11 +1645,14 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
                 f"{self.ALIGN_TIMEOUT:.0f} s")
             return
 
-        lp = self.local_position
-        remaining = math.hypot(self.move_target_x - lp.x, self.move_target_y - lp.y)
+        along, cross = self._approach_errors()
+        if along is None:
+            along = cross = 0.0
         alt = self.relative_altitude()
         self.get_logger().info(
-            f"ALIGN: {remaining:.2f} m to the approach point, "
+            f"ALIGN: {-along:+.2f} m along / {cross:+.2f} m across to the "
+            f"approach point (tolerances {self.ALIGN_ALONG_TOLERANCE:.2f}/"
+            f"{self.ALIGN_CROSS_TOLERANCE:.2f}), "
             f"{math.degrees(self._heading_error(self._target_heading())):.0f} deg "
             f"off the normal, alt {'n/a' if alt is None else f'{alt:+.2f}'}/"
             f"{self.commanded_altitude:.2f} m. {self.pose_summary()}",
@@ -1017,13 +1664,42 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
             return self.approach_points(est)[2]
         return self.yaw_setpoint
 
-    def _aligned(self):
-        """All three axes of "lined up", simultaneously."""
+    def _approach_errors(self):
+        """(along, cross) metres from the standoff point, in the traverse frame.
+
+        along is signed along the direction of travel -- positive means past
+        the standoff point, towards the window. cross is signed perpendicular
+        to it, positive to the right of the direction of travel, and is the
+        number that matters: it is the aircraft's offset from the window's
+        centreline, and it is subtracted from the lateral clearance one for one.
+
+        Returns (None, None) if there is nothing to measure against.
+        """
         lp = self.local_position
         if lp is None or self.move_target_x is None:
+            return None, None
+        heading = self._target_heading()
+        ex = lp.x - self.move_target_x
+        ey = lp.y - self.move_target_y
+        c, sn = math.cos(heading), math.sin(heading)
+        return ex * c + ey * sn, -ex * sn + ey * c
+
+    def _aligned(self):
+        """All four axes of "lined up", simultaneously.
+
+        Four rather than three now: along-track and cross-track are separate
+        gates with different tolerances, because they buy different things.
+        Cross-track is charged at the tight rate -- it is the aircraft's
+        distance from the centreline of the aperture it is about to fly
+        through, and it is spent out of a clearance budget that on a typical
+        window is under 20 cm a side.
+        """
+        along, cross = self._approach_errors()
+        if along is None:
             return False
-        if math.hypot(self.move_target_x - lp.x,
-                      self.move_target_y - lp.y) > self.ALIGN_TOLERANCE:
+        if abs(cross) > self.ALIGN_CROSS_TOLERANCE:
+            return False
+        if abs(along) > self.ALIGN_ALONG_TOLERANCE:
             return False
         alt = self.relative_altitude()
         if alt is None or abs(alt - self.commanded_altitude) > self.ALIGN_ALT_TOLERANCE:
@@ -1031,6 +1707,54 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
         return self._heading_error(self._target_heading()) <= self.ALIGN_YAW_TOLERANCE
 
     # ----------------------------------------------------------- TRAVERSE
+
+    def _aperture_is_flyable(self, est):
+        """Is there physically room for this aircraft, AS IT IS NOW, in this aperture?
+
+        Called once, at the commit, because that is the last moment anything
+        can still be called off cheaply -- after it the target is frozen and
+        the camera is no longer steering. A window that cannot clear the
+        airframe by HARD_CLEARANCE is abandoned rather than attempted: the
+        failure mode of trying is the gear catching an edge and the aircraft
+        going over, which is exactly what happened when nothing checked.
+
+        The lateral half of this used to be a statement about the WINDOW --
+        half its width less half the airframe's -- and that made it a check
+        the aircraft could pass while sitting well off the centreline pointing
+        several degrees off the normal, which is the state a prop hits a jamb
+        from. It is now a statement about the AIRCRAFT IN THIS WINDOW: the
+        measured cross-track offset comes out of the margin, and the measured
+        heading error widens the airframe. The alignment gate keeps both small;
+        this is what makes sure they were actually small.
+        """
+        cross = self.cross_track_of(est)
+        if cross is None:
+            cross = 0.0
+        _, _, heading = self.approach_points(est)
+        yaw_error = self._heading_error(heading)
+
+        vertical, lateral = self.aperture_margins(est, cross=cross, yaw_error=yaw_error)
+        geometric = 0.5 * (float(est.get('width') or 0.0) - self.DRONE_WIDTH)
+
+        if vertical < self.HARD_CLEARANCE or lateral < self.HARD_CLEARANCE:
+            self._abandon(
+                f"the window measures {est['width']:.2f}x{est['height']:.2f} m "
+                f"and the aircraft is {cross:+.2f} m off its centreline at "
+                f"{math.degrees(yaw_error):.0f} deg of yaw error, which leaves "
+                f"{vertical:.2f} m vertically and {lateral:.2f} m laterally "
+                f"around a {self.DRONE_WIDTH:.2f}x{self.DRONE_HEIGHT:.2f} m "
+                f"airframe (geometric lateral margin would be {geometric:.2f} m "
+                f"if it were centred and square) -- less than the "
+                f"{self.HARD_CLEARANCE:.2f} m minimum")
+            return False
+        if vertical < self.VERTICAL_CLEARANCE or lateral < self.LATERAL_CLEARANCE:
+            self.get_logger().warning(
+                f"Tight fit: {vertical:.2f} m vertical and {lateral:.2f} m "
+                f"lateral margin, below the {self.VERTICAL_CLEARANCE:.2f}/"
+                f"{self.LATERAL_CLEARANCE:.2f} m wanted. Off the centreline by "
+                f"{cross:+.2f} m at {math.degrees(yaw_error):.0f} deg. "
+                "Flying it anyway.")
+        return True
 
     def _begin_traverse(self):
         """Commit: freeze the target and stop listening to the camera.
@@ -1057,6 +1781,8 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
                 "Committing to the traverse on the settled heading: the pose "
                 "estimate went stale during the alignment settle.")
         else:
+            if not self._aperture_is_flyable(est):
+                return
             entry, exit_point, heading = self.approach_points(est)
             self.traverse_window = est
 
@@ -1069,9 +1795,17 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
         self.yaw_remaining = wrap_pi(heading - self.yaw_setpoint)
         self._enter_stage(self.TRAVERSE)
 
-        size = ('unknown size' if self.traverse_window is None
-                else f"{self.traverse_window['width']:.2f}x"
-                     f"{self.traverse_window['height']:.2f} m")
+        if self.traverse_window is None:
+            size = 'unknown size'
+        else:
+            commit_cross = self.cross_track_of(self.traverse_window) or 0.0
+            v_margin, h_margin = self.aperture_margins(
+                self.traverse_window, cross=commit_cross,
+                yaw_error=self._heading_error(heading))
+            size = (f"{self.traverse_window['width']:.2f}x"
+                    f"{self.traverse_window['height']:.2f} m, leaving "
+                    f"{v_margin:.2f} m above and below the airframe and "
+                    f"{h_margin:.2f} m either side")
         self.get_logger().warning(
             f"TRAVERSE: committed. Flying through to ({exit_point[0]:+.2f}, "
             f"{exit_point[1]:+.2f}) NED at {self.TRAVERSE_SPEED:.2f} m/s on a "
@@ -1270,13 +2004,21 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
         armed = self.arming_state == VehicleStatus.ARMING_STATE_ARMED
         lp = self.local_position
 
-        if self.current_stage == self.AIM:
+        if self.current_stage == self.RECENTRE:
+            det = self.fresh_detection()
+            if det is None:
+                detail = "rc?"
+            elif det['truncated']:
+                detail = f"rc{math.degrees(det['centre_az']):+.0f}"
+            else:
+                detail = "rcOK"
+        elif self.current_stage == self.AIM:
             detail = f"aim{math.degrees(abs(self.yaw_remaining)):.0f}"
         elif self.current_stage == self.ALIGN:
-            left = (0.0 if lp is None or self.move_target_x is None
-                    else math.hypot(self.move_target_x - lp.x,
-                                    self.move_target_y - lp.y))
-            detail = f"algn{left:.2f}"
+            # Cross-track is the one worth the four characters on the LCD: it
+            # is what the traverse clearance is spent on.
+            _, cross = self._approach_errors()
+            detail = "algn?" if cross is None else f"algnX{cross:+.2f}"
         elif self.current_stage == self.TRAVERSE:
             total = self.STANDOFF_DISTANCE + self.EXIT_DISTANCE
             detail = f"thru{self._distance_along_traverse():.1f}/{total:.1f}"
@@ -1288,7 +2030,7 @@ class WindowTraverse(WindowScan, OffboardSequenceVio):
             self.current_stage,
             'ARM' if armed else 'DIS',
             f"{alt:.2f}" if alt is not None else 'nan',
-            'POS' if self.hold_xy else ('VIO' if self.flow_is_healthy() else '---'),
+            'POS' if self.hold_xy else ('FLO' if self.flow_is_healthy() else '---'),
             detail,
         ])
         self.status_pub.publish(msg)
@@ -1314,7 +2056,7 @@ def main(args=None):
     node = None
     try:
         node = WindowTraverse()
-        rclpy.spin(node)
+        spin_node(node)
     except KeyboardInterrupt:
         pass
     finally:

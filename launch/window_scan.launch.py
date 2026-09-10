@@ -136,6 +136,8 @@ def generate_launch_description():
                     'takeoff_altitude': LaunchConfiguration('takeoff_altitude'),
                     'flight_seconds': LaunchConfiguration('flight_seconds'),
                     'scan_span_deg': LaunchConfiguration('scan_span_deg'),
+                    'scan_yaw_rate': LaunchConfiguration('scan_yaw_rate'),
+                    'scan_direction': LaunchConfiguration('scan_direction'),
                     'yaw_rate': LaunchConfiguration('yaw_rate'),
                     'detect_seconds': LaunchConfiguration('detect_seconds'),
                     'relock_on_loss': LaunchConfiguration('relock_on_loss'),
@@ -234,6 +236,16 @@ def generate_launch_description():
             'scan_span_deg', default_value='90.0',
             description='Total width of the yaw sweep, centred on the takeoff '
                         'heading: 90 = 45 deg either side.'),
+        DeclareLaunchArgument(
+            'scan_yaw_rate', default_value='0.12',
+            description='rad/s the yaw setpoint is walked at DURING THE SWEEP '
+                        'only (~7 deg/s), slower than yaw_rate. Restored to '
+                        'yaw_rate once the window is locked.'),
+        DeclareLaunchArgument(
+            'scan_direction', default_value='right',
+            description="Which way the first half-leg turns, 'right' or "
+                        "'left'. Point it at the side the window is expected "
+                        'on.'),
         DeclareLaunchArgument(
             'yaw_rate', default_value='0.35',
             description='rad/s the yaw setpoint is walked at (~20 deg/s). Keep '
