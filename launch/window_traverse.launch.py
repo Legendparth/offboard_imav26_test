@@ -240,6 +240,8 @@ def generate_launch_description():
                     'climb_speed': LaunchConfiguration('climb_speed'),
                     'land_speed': LaunchConfiguration('land_speed'),
                     'yaw_rate': LaunchConfiguration('yaw_rate'),
+                    'takeoff_return_to_pad': LaunchConfiguration(
+                        'takeoff_return_to_pad'),
                     'min_altitude': LaunchConfiguration('min_altitude'),
                     'max_altitude': LaunchConfiguration('max_altitude'),
                     'scan_span_deg': LaunchConfiguration('scan_span_deg'),
@@ -350,11 +352,15 @@ def generate_launch_description():
             'depth_topic', default_value='/zed/zed_node/depth/depth_registered',
             description='Depth registered to image_topic, 32FC1 in metres.'),
         DeclareLaunchArgument(
-            'camera_info_topic', default_value='/zed/zed_node/rgb/camera_info',
-            description='CameraInfo for image_topic. This is where the geometry '
-                        'gets its intrinsics; a wrong topic here means the node '
-                        'falls back to a guessed field of view and every angle '
-                        'is scaled wrong. It says so in the log if it does.'),
+            'camera_info_topic', default_value='auto',
+            description='CameraInfo for image_topic. "auto" (the default) '
+                        'takes the sibling of image_topic, which is where '
+                        'image_transport always puts it -- so the two cannot '
+                        'drift apart. This is where the geometry gets its '
+                        'intrinsics; without it the node falls back to a '
+                        'guessed field of view and every angle, and therefore '
+                        'every window size and position, is scaled wrong. It '
+                        'says so in the log once a second if it does.'),
         DeclareLaunchArgument('show_windows', default_value='false'),
         DeclareLaunchArgument('publish_image', default_value='true'),
         DeclareLaunchArgument('publish_mask', default_value='false'),
@@ -464,10 +470,22 @@ def generate_launch_description():
                         'for the turn onto the window normal. Keep it slow: a '
                         'fast yaw is the most reliable way to make an IMU-less '
                         'stereo camera lose tracking.'),
+        DeclareLaunchArgument(
+            'takeoff_return_to_pad', default_value='false',
+            description='After the climb anchors on optical flow, fly back to '
+                        'the x/y captured at arming. FALSE by default: the '
+                        'ground x/y estimate is not trustworthy (no flow '
+                        'below FLOW_MIN_AGL, and it drifts through the ground '
+                        'wait), so flying to it is a translation to a number '
+                        'of unknown quality -- and it happens right after the '
+                        'climb, which is what makes a takeoff look like it '
+                        'pitched over and went backwards. Leave it false '
+                        'unless you specifically need the aircraft back over '
+                        'the pad; the drift is logged either way.'),
         DeclareLaunchArgument('min_altitude', default_value='0.4'),
         DeclareLaunchArgument('max_altitude', default_value='3.0'),
         DeclareLaunchArgument(
-            'scan_span_deg', default_value='0.0',
+            'scan_span_deg', default_value='20.0',
             description='Total width of the yaw sweep about the takeoff '
                         'heading. 0 (the default) means NO SWEEP AT ALL: the '
                         'vehicle climbs, holds, and then just stares straight '

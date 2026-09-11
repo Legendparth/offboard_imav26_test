@@ -917,6 +917,8 @@ class WindowTraverse(WindowScan):
         self.recentre_backoffs = 0
         self.recentre_backoff_target = None
         self.recentre_attempt_since = None
+        self.last_good_est = None
+        self.last_good_est_time = 0.0
 
         self.get_logger().warning(
             f"Window traversal on ARK FLOW: climb {self.TAKEOFF_ALTITUDE:.2f} m, "
@@ -1059,7 +1061,13 @@ class WindowTraverse(WindowScan):
     def _track_pose_health(self):
         """Bookkeeping for how long the estimate has been usable, or not."""
         now = time.monotonic()
-        if self.window_estimate() is not None:
+        est = self.window_estimate()
+        if est is not None:
+            # Kept so a converged approach can still be finished -- and still
+            # clearance-checked -- when the detector drops out at the worst
+            # possible moment, which on a thin window frame is most moments.
+            self.last_good_est = est
+            self.last_good_est_time = now
             self.pose_lost_since = None
             if self.pose_ok_since is None:
                 self.pose_ok_since = now
@@ -1780,11 +1788,19 @@ class WindowTraverse(WindowScan):
 
         est = self.window_estimate()
         if est is None:
-            if self._give_up_on_pose('ALIGN'):
-                return
             # Keep the last target rather than stopping dead: a one-second
             # dropout in the middle of an approach is normal, and freezing the
             # carrot on every one of them makes the approach jerky.
+            #
+            # Note what is NOT here: the give-up check. It used to run at the
+            # top of this stage and return, which meant a vehicle that was 3 cm
+            # from the approach point, 1 degree off the normal and still
+            # closing got abandoned -- and landed -- because the detector had
+            # been quiet for six seconds. The target, the heading and the
+            # alignment gate are all still valid without a live pose; they are
+            # measured against move_target_x/y, which is frozen. So the gate
+            # gets its chance first, and the give-up is checked below, only
+            # once we know this tick did not finish the job.
             self.get_logger().info(
                 f"ALIGN: pose stale, holding the last target. {self.pose_summary()}",
                 throttle_duration_sec=1.0)
@@ -1815,6 +1831,11 @@ class WindowTraverse(WindowScan):
             return
 
         self.align_in_band_since = None
+
+        # Not aligned and no live pose: now the stale clock is allowed to end
+        # the attempt.
+        if est is None and self._give_up_on_pose('ALIGN'):
+            return
 
         if self._in_stage_for() > self.ALIGN_TIMEOUT:
             self._abandon(
@@ -1944,6 +1965,21 @@ class WindowTraverse(WindowScan):
         depth on an image edge -- are the camera's worst cases.
         """
         est = self.window_estimate()
+        if est is None and self.last_good_est is not None:
+            # The live pose is gone but the approach was flown on a real
+            # measurement and the aircraft is sitting in the gate derived from
+            # it. Commit on that measurement rather than on nothing: it is
+            # what the standoff point, the altitude and the heading were all
+            # built from, and it is what makes _aperture_is_flyable below a
+            # real check instead of a skipped one. The window has not moved;
+            # only the camera's opinion of it has gone quiet.
+            age = time.monotonic() - self.last_good_est_time
+            self.get_logger().warning(
+                f"Committing on the last good window pose ({age:.1f} s old): "
+                "the detector went quiet during the alignment settle, but the "
+                "aircraft is aligned on the geometry that pose produced.")
+            est = self.last_good_est
+
         if est is None:
             # Only reachable if the estimate died in the settle window. The
             # aircraft is in the right place pointing the right way; use the

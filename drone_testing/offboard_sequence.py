@@ -341,6 +341,19 @@ class OffboardSequence(Node):
     # distance at which flying to a stale point is itself the hazard.
     TAKEOFF_ANCHOR_MAX_DRIFT = 0.50
     TAKEOFF_ANCHOR_DEADBAND = 0.10   # m. Below this, do not bother correcting.
+    # Whether to fly BACK to the arming x/y once the flow anchors the climb.
+    #
+    # Off by default, and the reason is in the module header: the x/y estimate
+    # on the ground is not trustworthy. It is captured before the flow is
+    # fused, it drifts while the aircraft sits armed through ground_wait, and
+    # EKF2 re-datums it on the way up. Flying to it is therefore flying to a
+    # number of unknown quality -- and doing it as the first thing after the
+    # climb, which is when the aircraft pitches over and translates in a way
+    # that reads as "it took off backwards". Holding the point the flow
+    # actually anchored is a better estimate of where the aircraft is, and it
+    # costs only that the vehicle ends the climb wherever the drift left it,
+    # which the drift warning below reports either way.
+    TAKEOFF_RETURN_TO_PAD = False
 
     # ---- timings / limits -------------------------------------------------
     SETPOINT_WARMUP = 20        # setpoints streamed before requesting Offboard (@20 Hz = 1 s)
@@ -388,6 +401,8 @@ class OffboardSequence(Node):
         self.MOVE_SPEED = float(self._declare_number(
             'move_speed', self.MOVE_SPEED))
         self.YAW_RATE = float(self._declare_number('yaw_rate', self.YAW_RATE))
+        self.TAKEOFF_RETURN_TO_PAD = bool(self.declare_parameter(
+            'takeoff_return_to_pad', self.TAKEOFF_RETURN_TO_PAD).value)
         self.GROUND_WAIT_SECONDS = float(self._declare_number(
             'ground_wait_seconds', self.GROUND_WAIT_SECONDS))
         self.CLIMB_SPEED = float(self._declare_number(
@@ -1168,7 +1183,14 @@ class OffboardSequence(Node):
         self._try_latch_xy_hold()
         if latched_now and self.hold_xy and self.home_x is not None:
             drift = math.hypot(self.hold_x - self.home_x, self.hold_y - self.home_y)
-            if drift > self.TAKEOFF_ANCHOR_DEADBAND:
+            if drift > self.TAKEOFF_ANCHOR_DEADBAND and not self.TAKEOFF_RETURN_TO_PAD:
+                self.get_logger().warning(
+                    f"Drifted {drift:.2f} m during the climb; holding here "
+                    "rather than flying back to the arming point "
+                    "(takeoff_return_to_pad is false). If this number is "
+                    "large every flight, the drift is real: check "
+                    "SENS_FLOW_ROT, the flow mounting and the floor texture.")
+            elif drift > self.TAKEOFF_ANCHOR_DEADBAND:
                 if drift <= self.TAKEOFF_ANCHOR_MAX_DRIFT:
                     self.move_target_x = self.home_x
                     self.move_target_y = self.home_y

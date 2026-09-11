@@ -114,14 +114,48 @@ def get_median_depth(depth_img, u, v, box=3):
 
 
 def sample_corner_depth(depth_img, u, v, center, inset=10, box=4):
+    """Depth of the window FRAME at one corner, not of what is behind it.
+
+    The sample point is pushed in from the corner towards the middle of the
+    quad, because a point exactly on the corner straddles the edge. How far
+    in is the whole problem: the frame is only a few pixels wide once the
+    window is a few metres away, so one fixed inset that lands on the
+    material at 1.5 m lands in the OPENING at 4 m, and what comes back is the
+    depth of the far wall seen through the window.
+
+    That is not a small error and it is not random. One corner reading the
+    wall behind while the other three read the frame is the single biggest
+    source of "corner depths disagree" rejections downstream, and a frame
+    reconstructed from three good corners and one bad one is a window in the
+    wrong place, the wrong size, and at the wrong angle.
+
+    So sample a LADDER of insets and keep the NEAREST plausible reading.
+    Everything visible through the aperture is further away than the frame
+    around it -- that is what makes it an aperture -- so of the readings
+    taken along a line from the corner inwards, the smallest is the one that
+    landed on the material. The others are the room beyond it.
+    """
     cu, cv = center
     du, dv = cu - u, cv - v
     norm = np.hypot(du, dv) + 1e-6
-    su = int(round(u + inset * du / norm))
-    sv = int(round(v + inset * dv / norm))
-    su = min(max(su, 0), depth_img.shape[1] - 1)
-    sv = min(max(sv, 0), depth_img.shape[0] - 1)
-    return get_median_depth(depth_img, su, sv, box), (su, sv)
+    ux, uy = du / norm, dv / norm
+
+    h, w = depth_img.shape[:2]
+    best_depth = 0.0
+    best_point = (int(min(max(u, 0), w - 1)), int(min(max(v, 0), h - 1)))
+    for scale in (0.4, 0.7, 1.0, 1.6):
+        step = inset * scale
+        su = int(round(u + step * ux))
+        sv = int(round(v + step * uy))
+        su = min(max(su, 0), w - 1)
+        sv = min(max(sv, 0), h - 1)
+        d = get_median_depth(depth_img, su, sv, box)
+        if d <= 0.0:
+            continue
+        if best_depth <= 0.0 or d < best_depth:
+            best_depth = d
+            best_point = (su, sv)
+    return best_depth, best_point
 
 
 def hsv_mask(hsv_image, color):
@@ -452,7 +486,22 @@ class WindowDetect(Node):
         self.depth_scale = float(self.declare_parameter('depth_scale', self.DEPTH_SCALE).value)
         self.depth_units = 'cm' if abs(self.depth_scale - 100.0) < 1e-6 else 'm'
         self.camera_info_topic = str(self.declare_parameter(
-            'camera_info_topic', self.CAMERA_INFO_TOPIC).value)
+            'camera_info_topic', self.CAMERA_INFO_TOPIC).value).strip()
+        if self.camera_info_topic in ('', 'auto'):
+            # Derive it from image_topic by swapping the last segment. Every
+            # image_transport publisher puts CameraInfo next to the image it
+            # describes, so this is right by construction -- and it cannot
+            # drift out of step with image_topic the way a separately
+            # defaulted topic name can. That drift is not hypothetical: the
+            # launch file shipped image_topic on zed_wrapper's newer
+            # .../rgb/color/rect/image naming while camera_info_topic still
+            # said .../rgb/camera_info, so CameraInfo never arrived and every
+            # flight ran on the guessed fallback FOV.
+            self.camera_info_topic = (
+                self.image_topic.rsplit('/', 1)[0] + '/camera_info')
+            self.get_logger().info(
+                f"camera_info_topic derived from image_topic: "
+                f"{self.camera_info_topic}")
         self.publish_geometry_topic = bool(self.declare_parameter(
             'publish_geometry', True).value)
         self.fallback_hfov = math.radians(float(self.declare_parameter(
