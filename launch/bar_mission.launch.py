@@ -487,7 +487,7 @@ def generate_launch_description():
                         'going OVER costs you some altitude, assuming wrong '
                         'going UNDER hits the bar.'),
         DeclareLaunchArgument(
-            'assume_bar_distance', default_value='3.0',
+            'assume_bar_distance', default_value='1.0',
             description='m ahead of the aircraft the assumed bar sits, along '
                         'the takeoff heading. Measured from where the '
                         'aircraft IS at the end of the hold, not from the '
@@ -495,7 +495,7 @@ def generate_launch_description():
                         'trustworthy and the climb may have drifted. Only '
                         'used when assume_bar_height > 0.'),
         DeclareLaunchArgument(
-            'assume_bar_length', default_value='3.0',
+            'assume_bar_length', default_value='1.5',
             description='m. Only feeds the end-margin check on a blind '
                         'crossing. Set it to the real bar length if it is '
                         'short enough that crossing near an end is a risk.'),
@@ -506,7 +506,7 @@ def generate_launch_description():
             'exit_distance', default_value='1.20',
             description='m past the bar the crossing ends.'),
         DeclareLaunchArgument(
-            'cross_clearance', default_value='0.20',
+            'cross_clearance', default_value='0.25',
             description='m of air between the airframe and the bar. Over a '
                         'bar there is only sky on the other side, so this is '
                         'nearly free -- be generous. Going UNDER, it is the '
