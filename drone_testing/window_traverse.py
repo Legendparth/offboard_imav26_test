@@ -15,6 +15,28 @@ already handles this -- it holds zero velocity until the flow has been healthy
 for FLOW_SETTLE_SECONDS and only then anchors to a point. The window estimate
 is built in NED from that estimate, so it is no better than the flow is.
 
+HOW FAR IT IS ALLOWED TO TURN
+    Two things bound the yaw, and both exist because a large, fast turn after
+    takeoff is the one failure of this flight that is always a bug and never
+    a manoeuvre.
+
+    yaw_cone_deg is a hard cone about the heading the aircraft armed on --
+    50 degrees either side by default. Every heading this node commands is
+    clamped into it, and a window estimate whose bearing falls outside it is
+    refused, not flown at: at 90 or 180 degrees off the takeoff heading the
+    thing being measured is a reflection, a doorway behind the aircraft or a
+    pose built on a bad attitude, never the window the aircraft was pointed
+    at before it armed.
+
+    The other is EKF2's own yaw. The commanded yaw is an ABSOLUTE NED
+    heading, so when EKF2 re-datums its heading -- mag fusion settling after
+    takeoff is the usual trigger indoors -- the setpoint suddenly names a
+    direction the airframe is not pointing, and PX4 spins to it at full rate.
+    OffboardSequence._apply_heading_reset shifts the commanded yaw by the
+    same delta so nothing turns, and _on_heading_reset here rotates the
+    window pose and the traverse line with the frame so the approach survives
+    the reset too. The log line to look for is "EKF2 HEADING reset".
+
     arm -> sit on the ground -> climb -> hold -> SCAN (yaw sweep) ->
     LOCK (stop, face it, build a pose estimate) -> [RECENTRE, only if the
     window is hanging off the edge of the frame: yaw at what is visible until
@@ -411,6 +433,32 @@ class WindowEstimator:
         })
         return True, ''
 
+    def rotate_frame(self, delta, pivot):
+        """Turn every stored sample by `delta` about `pivot` (NED x/y).
+
+        Called when EKF2 re-datums yaw. The window did not move and the
+        aircraft did not move, but every sample in here was placed using an
+        attitude that has just been declared wrong by `delta`, so as a set
+        they are rotated by exactly that much about the point they were
+        measured from. Rotating them back keeps the estimate continuous
+        across the reset instead of throwing away a buffer that took several
+        seconds of stationary hover to fill.
+        """
+        if abs(delta) < 1e-6:
+            return
+        c, s = math.cos(delta), math.sin(delta)
+        px, py = float(pivot[0]), float(pivot[1])
+        with self._lock:
+            for sample in self.samples:
+                centre = sample['centre']
+                dx, dy = centre[0] - px, centre[1] - py
+                centre[0] = px + c * dx - s * dy
+                centre[1] = py + s * dx + c * dy
+                normal = sample['normal']
+                nx, ny = normal[0], normal[1]
+                normal[0] = c * nx - s * ny
+                normal[1] = s * nx + c * ny
+
     def _reject(self, reason):
         self.rejections[reason] = self.rejections.get(reason, 0) + 1
         self.last_reason = reason
@@ -497,6 +545,16 @@ class WindowTraverse(WindowScan):
     tests dist_bottom against FLOW_MIN_AGL, so the lateral estimate is not
     usable while the aircraft is sitting on the ground.
     """
+
+    # No sweep by default, unlike window_scan. This flight is pointed at the
+    # window before it arms, and the aircraft that is already looking at one
+    # has nothing to search for -- so it climbs, holds, and waits for the
+    # detector on the heading it took off with. It is also the difference
+    # between the launch file (which passes scan_span_deg=0) and running the
+    # node bare with `ros2 run`, which used to inherit WindowScan's 20 degree
+    # sweep and give the two paths different behaviour. Set scan_span_deg to
+    # bring the sweep back.
+    SCAN_SPAN = 0.0
 
     RECENTRE = "RECENTRE"
     AIM = "AIM"
@@ -612,6 +670,17 @@ class WindowTraverse(WindowScan):
     RECENTRE_BACKOFF = 0.60         # m backwards along the current heading
     RECENTRE_MAX_BACKOFFS = 2       # then give up
 
+    # ---- how far the flight is allowed to turn ----------------------------
+    # A hard cone about the heading the aircraft armed on, and the last line
+    # of defence against flying at something that is not the window. The
+    # mission is "the window is out in front, go through it": a target whose
+    # bearing is 90 or 180 degrees off the takeoff heading is not that window,
+    # it is a reflection, a doorway behind the aircraft, or an estimate built
+    # on an attitude that was wrong. Nothing inside this node is allowed to
+    # command a heading outside the cone, and an estimate that sits outside it
+    # is refused rather than flown at. Set yaw_cone_deg to 0 to disable it.
+    YAW_CONE_DEG = 50.0
+
     AIM_TIMEOUT = 25.0
     ALIGN_TIMEOUT = 60.0
     TRAVERSE_TIMEOUT = 25.0
@@ -725,6 +794,10 @@ class WindowTraverse(WindowScan):
         self.BLIND_TRAVERSE_SECONDS = float(self._declare_number(
             'blind_traverse_seconds', self.BLIND_TRAVERSE_SECONDS))
         self.MIN_SAMPLES = int(self._declare_number('pose_min_samples', self.MIN_SAMPLES))
+        self.YAW_CONE = math.radians(float(self._declare_number(
+            'yaw_cone_deg', self.YAW_CONE_DEG)))
+        self.bearing_rejected = 0
+        self.bearing_rejected_at = 0.0
 
         # The approach is flown by the inherited carrot, whose speed is
         # MOVE_SPEED. Setting it here rather than threading a second speed
@@ -966,10 +1039,21 @@ class WindowTraverse(WindowScan):
         return det
 
     def window_estimate(self):
-        """The estimate, or None if it is missing, thin or stale."""
+        """The estimate, or None if it is missing, thin, stale or off-cone."""
         est = self.estimator.estimate(time.monotonic())
         if est is None or est['age'] > self.POSE_MAX_AGE:
             return None
+        if self.YAW_CONE > 0.0 and self.current_stage != self.TRAVERSE:
+            # Not flown at. A window whose bearing is outside the cone is not
+            # the window this flight was pointed at before it armed, and the
+            # cheapest way to not fly at it is to not believe in it. Skipped
+            # during TRAVERSE only because the target there is already frozen
+            # and the aircraft is committed.
+            bearing = self._bearing_to(est['centre'])
+            if abs(bearing) > self.YAW_CONE:
+                self.bearing_rejected += 1
+                self.bearing_rejected_at = time.monotonic()
+                return None
         return est
 
     def _track_pose_health(self):
@@ -1009,6 +1093,13 @@ class WindowTraverse(WindowScan):
                         f"({det['margin_px']:.0f} px to the frame edge, "
                         f"{self.truncated_frames} such frames) -- not measurable "
                         "until the whole aperture is in view")
+            if time.monotonic() - self.bearing_rejected_at < self.POSE_MAX_AGE:
+                return (f"a window pose exists but it is outside the "
+                        f"{math.degrees(self.YAW_CONE):.0f} deg yaw cone about "
+                        f"the takeoff heading ({self.bearing_rejected} frames) "
+                        "-- not the window this flight was aimed at, so it is "
+                        "not being flown at. Point the aircraft at the window "
+                        "before arming, or raise yaw_cone_deg")
             return (f"no usable pose ({fresh}/{self.MIN_SAMPLES} fresh samples, "
                     f"{self.estimator.accepted_total} accepted ever, "
                     f"{self.truncated_frames} truncated; "
@@ -1225,13 +1316,89 @@ class WindowTraverse(WindowScan):
         forgotten. yaw_remaining is what the inherited ramp consumes, and the
         ramp is still what limits the rate and holds the leash.
         """
-        self.yaw_remaining = wrap_pi(heading - self.yaw_setpoint)
+        self.yaw_remaining = wrap_pi(self._clamp_to_cone(heading) - self.yaw_setpoint)
+
+    def _clamp_to_cone(self, heading):
+        """Pull an absolute heading back inside the yaw cone.
+
+        Every yaw this node commands goes through here, so whatever else goes
+        wrong upstream -- a truncated-window centroid that never clears, a
+        pose built on a bad attitude -- the nose cannot end up more than
+        yaw_cone_deg from the heading the aircraft took off on.
+        """
+        if self.YAW_CONE <= 0.0 or self.home_z is None:
+            return heading
+        off = wrap_pi(heading - self.home_yaw)
+        if abs(off) <= self.YAW_CONE:
+            return heading
+        clamped = wrap_pi(self.home_yaw + math.copysign(self.YAW_CONE, off))
+        self.get_logger().warning(
+            f"Yaw cone: {math.degrees(heading):+.0f} deg is "
+            f"{math.degrees(abs(off)):.0f} deg off the takeoff heading; "
+            f"commanding {math.degrees(clamped):+.0f} deg instead. Nothing "
+            "here turns further than "
+            f"{math.degrees(self.YAW_CONE):.0f} deg.",
+            throttle_duration_sec=2.0)
+        return clamped
+
+    def _bearing_to(self, point):
+        """Bearing from the vehicle to a NED point, off the takeoff heading."""
+        lp = self.local_position
+        if lp is None:
+            return 0.0
+        return wrap_pi(math.atan2(point[1] - lp.y, point[0] - lp.x) - self.home_yaw)
 
     def _heading_error(self, heading):
         lp = self.local_position
         if lp is None:
             return math.pi
         return abs(wrap_pi(heading - lp.heading))
+
+    # ---------------------------------------------------------- EKF2 resets
+
+    def _on_heading_reset(self, delta):
+        """Turn everything this node placed in NED with the frame.
+
+        The base class has already shifted yaw_setpoint and home_yaw, and
+        WindowScan its scan/lock headings. What is left here is geometry: the
+        window pose, the frozen traverse line and the move target were all
+        derived from an attitude EKF2 has just corrected by `delta`, so
+        relative to the aircraft they are now rotated by exactly that much.
+        Rotating them about the vehicle puts them back where the camera
+        actually saw them, and the approach carries on instead of jumping
+        sideways onto a window that appears to have swung round the room.
+        """
+        super()._on_heading_reset(delta)
+        lp = self.local_position
+        if lp is None:
+            # No pivot to rotate about. The estimate is the only thing that
+            # matters here and it is cheaper to rebuild it than to guess.
+            self.estimator.samples.clear()
+            return
+
+        pivot = (lp.x, lp.y)
+        self.estimator.rotate_frame(delta, pivot)
+
+        if self.recentre_ref_heading is not None:
+            self.recentre_ref_heading = wrap_pi(self.recentre_ref_heading + delta)
+        if self.traverse_heading is not None:
+            self.traverse_heading = wrap_pi(self.traverse_heading + delta)
+
+        c, sn = math.cos(delta), math.sin(delta)
+
+        def turn(x, y):
+            dx, dy = x - pivot[0], y - pivot[1]
+            return (pivot[0] + c * dx - sn * dy, pivot[1] + sn * dx + c * dy)
+
+        for name in ('traverse_entry', 'traverse_exit', 'recentre_backoff_target'):
+            point = getattr(self, name, None)
+            if point is not None:
+                point[0], point[1] = turn(point[0], point[1])
+        if self.move_target_x is not None:
+            self.move_target_x, self.move_target_y = turn(
+                self.move_target_x, self.move_target_y)
+            self.move_start_x, self.move_start_y = turn(
+                self.move_start_x, self.move_start_y)
 
     # ---------------------------------------------------------- state machine
 
@@ -1441,7 +1608,14 @@ class WindowTraverse(WindowScan):
             # where this attempt started, so a bad centroid cannot walk the
             # aircraft round in a circle chasing an edge that never clears.
             turned = wrap_pi(lp.heading - self.recentre_ref_heading)
-            allowed = self.RECENTRE_YAW_LIMIT - math.copysign(turned, step)
+            # How much of the budget this DIRECTION has already spent. It is
+            # the signed turn projected onto the direction of the step, not
+            # `copysign(turned, step)` -- that spelling discards the sign of
+            # `turned` and reads every turn as if it had gone the way this
+            # step is going, so one direction could never spend the budget at
+            # all and the aircraft could walk right round chasing an edge.
+            spent = turned if step > 0.0 else -turned
+            allowed = self.RECENTRE_YAW_LIMIT - spent
             if allowed <= 0.0:
                 self.get_logger().warning(
                     f"RECENTRE: turned the full "

@@ -245,6 +245,7 @@ def generate_launch_description():
                     'scan_span_deg': LaunchConfiguration('scan_span_deg'),
                     'scan_yaw_rate': LaunchConfiguration('scan_yaw_rate'),
                     'scan_direction': LaunchConfiguration('scan_direction'),
+                    'yaw_cone_deg': LaunchConfiguration('yaw_cone_deg'),
                     'detect_seconds': LaunchConfiguration('detect_seconds'),
                     'relock_on_loss': LaunchConfiguration('relock_on_loss'),
                     'flight_seconds': LaunchConfiguration('flight_seconds'),
@@ -484,6 +485,18 @@ def generate_launch_description():
                         'window in fewer frames than the detector needs to '
                         'call it. Restored to yaw_rate once the window is '
                         'locked, so the approach is not slowed down.'),
+        DeclareLaunchArgument(
+            'yaw_cone_deg', default_value='50.0',
+            description='HARD LIMIT on how far the nose may turn from the '
+                        'heading the aircraft armed on, in degrees either '
+                        'side. Nothing in the flight commands a yaw outside '
+                        'it, and a window estimate whose bearing is outside '
+                        'it is refused rather than flown at -- a "window" 90 '
+                        'or 180 degrees off the takeoff heading is a '
+                        'reflection, a doorway behind the aircraft, or a bad '
+                        'pose, never the one you pointed it at. Widen it only '
+                        'if the window really is that far round. 0 disables '
+                        'the check.'),
         DeclareLaunchArgument(
             'scan_direction', default_value='right',
             description="Which way the first half-leg of the sweep turns, "

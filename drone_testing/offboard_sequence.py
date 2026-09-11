@@ -515,6 +515,13 @@ class OffboardSequence(Node):
         # lateral position it jumps x/y/z instantly and tells us by how much.
         self._z_reset_counter = None
         self._xy_reset_counter = None
+        # ...and when it re-datums its YAW. This one is not cosmetic: the
+        # commanded yaw is an absolute NED heading, so an unhandled heading
+        # reset leaves PX4 holding a setpoint that now points somewhere else
+        # entirely and it spins the airframe -- as fast as MC_YAWRATE_MAX
+        # allows -- to get there. A 90 or 180 degree snap a second or two
+        # after takeoff, in either direction, is this and nothing else.
+        self._heading_reset_counter = None
 
         # Captured at the moment of arming; every setpoint is relative to it.
         self.home_x = None
@@ -637,7 +644,12 @@ class OffboardSequence(Node):
         if self._z_reset_counter is None:
             self._z_reset_counter = msg.z_reset_counter
             self._xy_reset_counter = msg.xy_reset_counter
+            self._heading_reset_counter = msg.heading_reset_counter
             return
+
+        if msg.heading_reset_counter != self._heading_reset_counter:
+            self._heading_reset_counter = msg.heading_reset_counter
+            self._apply_heading_reset(float(msg.delta_heading))
 
         if msg.z_reset_counter != self._z_reset_counter:
             self._z_reset_counter = msg.z_reset_counter
@@ -666,6 +678,36 @@ class OffboardSequence(Node):
                 self.get_logger().warning(
                     f"EKF2 lateral reset: delta_xy=({msg.delta_xy[0]:+.2f}, "
                     f"{msg.delta_xy[1]:+.2f}) m, shifted x/y hold to match.")
+
+    def _apply_heading_reset(self, delta):
+        """EKF2 has just moved its idea of north; move ours with it.
+
+        `heading` in VehicleLocalPosition jumps by delta_heading when the
+        estimator re-datums yaw -- mag fusion coming in after takeoff is the
+        usual trigger indoors, where the airframe's own current is a decent
+        fraction of the earth field. The physical aircraft did not move. But
+        yaw_setpoint is an ABSOLUTE heading in that same frame, so if it is
+        left alone it now describes a direction the airframe is no longer
+        pointing, and PX4 obligingly spins to it at full yaw rate.
+
+        Shifting it by the same delta means the commanded heading still names
+        the direction the nose is actually pointing, and nothing turns.
+        Everything else that latched a heading is a subclass's, which is what
+        _on_heading_reset is for.
+        """
+        if abs(delta) < 1e-6:
+            return
+        self.home_yaw = wrap_pi(self.home_yaw + delta)
+        self.yaw_setpoint = wrap_pi(self.yaw_setpoint + delta)
+        self._on_heading_reset(delta)
+        self.get_logger().warning(
+            f"EKF2 HEADING reset: delta={math.degrees(delta):+.1f} deg. "
+            "Shifted the commanded yaw with it, so the airframe holds the "
+            "direction it is actually pointing instead of spinning to the old "
+            "setpoint.")
+
+    def _on_heading_reset(self, delta):
+        """Hook: a subclass that latched a heading of its own fixes it here."""
 
     def estimator_flags_callback(self, msg):
         self.estimator_flags = msg

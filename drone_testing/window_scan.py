@@ -163,6 +163,21 @@ class WindowScan(OffboardSequence):
             f"lock on it when found. Landing {self.FLIGHT_SECONDS:.0f} s after "
             "the climb starts, window or no window.")
 
+    # ---------------------------------------------------------- EKF2 resets
+
+    def _on_heading_reset(self, delta):
+        """The base class has shifted the commanded yaw; shift ours too.
+
+        scan_center and locked_heading are absolute NED headings latched
+        before the reset, so they name the wrong direction afterwards for
+        exactly the same reason yaw_setpoint did.
+        """
+        super()._on_heading_reset(delta)
+        if self.scan_center is not None:
+            self.scan_center = wrap_pi(self.scan_center + delta)
+        if self.locked_heading is not None:
+            self.locked_heading = wrap_pi(self.locked_heading + delta)
+
     # ------------------------------------------------------------------ subs
 
     def window_callback(self, msg):
@@ -306,9 +321,10 @@ class WindowScan(OffboardSequence):
         self.yaw_remaining = 0.0
         self.scan_leg = 0
         self.scan_leg_deadline = None
-        # Slow down for the search, and remember what to go back to. The lock
-        # restores it, so the approach that follows still yaws at flying speed.
-        self.cruise_yaw_rate = self.YAW_RATE
+        # Slow down for the search. cruise_yaw_rate was captured in __init__
+        # and is NOT re-read here: a second pass through this function (a
+        # relock_on_loss sweep) would otherwise save the scan rate as the
+        # cruise rate and the flight would never yaw at flying speed again.
         self.YAW_RATE = self.SCAN_YAW_RATE
         self._enter_stage(self.SCAN)
         if self.SCAN_SPAN <= 0.0:
