@@ -1,84 +1,75 @@
-[zed_localization-4] [WARN] [1788947758.120540616] [zed_localization]: VIO healthy: 11 Hz from /zed/zed_node/odom.
-[window_detect-5] [INFO] [1788947759.068751067] [window_detect]: window: no   (streak 6 misses, 6 frames processed, 7 skipped by max_fps=10)
-[window_detect-5] [INFO] [1788947760.444177967] [window_detect]: window: no   (streak 16 misses, 16 frames processed, 24 skipped by max_fps=10)
-[window_detect-5] [INFO] [1788947761.506170440] [window_detect]: window: no   (streak 23 misses, 23 frames processed, 38 skipped by max_fps=10)
-[window_detect-5] [INFO] [1788947762.644164415] [window_detect]: window: no   (streak 32 misses, 32 frames processed, 59 skipped by max_fps=10)
-[INFO] [window_traverse-6]: process started with pid [36181]
-[window_detect-5] [INFO] [1788947763.715053015] [window_detect]: window: no   (streak 38 misses, 38 frames processed, 68 skipped by max_fps=10)
-[window_traverse-6] [WARN] [1788947764.572125335] [window_traverse]: Window traversal on ZED VISION: climb 1.20 m, hold 5 s, sweep +/-45 deg for the window, lock, line up 1.60 m in front of it and fly through to 1.50 m beyond, then land. Approach 0.30 m/s, traverse 0.45 m/s. Hard limit 150 s from the start of the climb. Press q to abort into a descent, k to force-disarm.
-[window_traverse-6] [WARN] [1788947764.575466700] [window_traverse]: stdin is not a tty; q/k abort is unavailable.
-[window_traverse-6] [INFO] [1788947764.578416927] [window_traverse]: Waiting for VehicleStatus from PX4...
-[window_detect-5] [INFO] [1788947764.748491936] [window_detect]: window: no   (streak 43 misses, 43 frames processed, 71 skipped by max_fps=10)
-[window_detect-5] [INFO] [1788947765.902592466] [window_detect]: window: no   (streak 51 misses, 51 frames processed, 81 skipped by max_fps=10)
-[window_traverse-6] [INFO] [1788947766.600127887] [window_traverse]: Waiting for VehicleStatus from PX4...
-[window_detect-5] [INFO] [1788947766.979048053] [window_detect]: window: no   (streak 59 misses, 59 frames processed, 89 skipped by max_fps=10)
-[window_traverse-6] [INFO] [1788947767.470120689] [window_traverse]: nav_state -> OFFBOARD(14)
-[window_traverse-6] [INFO] [1788947767.482599939] [window_traverse]: PX4 failsafe (expected on this airframe, harmless): home_position_invalid
-[window_traverse-6] [ERROR] [1788947767.503760078] [window_traverse]: Not arming: rangefinder unusable: dist_bottom_valid is false and /fmu/out/estimator_status_flags is not being published, so there is no second opinion.
-[window_traverse-6] [INFO] [1788947767.505067318] [window_traverse]: alt=n/a airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=True vxy=(-0.00,+0.00) | hdg=+90 deg yaw_sp=+0 deg
-[window_traverse-6] [INFO] [1788947767.506387583] [window_traverse]: vio: bridge=ok ekf_fusing=? yaw_align=? healthy=True xy=VEL-HOLD
-[window_traverse-6] [INFO] [1788947767.507420358] [window_traverse]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[window_detect-5] [INFO] [1788947768.075063039] [window_detect]: window: no   (streak 65 misses, 65 frames processed, 98 skipped by max_fps=10)
-[window_traverse-6] [INFO] [1788947768.551831033] [window_traverse]: alt=n/a airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=True vxy=(-0.01,+0.00) | hdg=+90 deg yaw_sp=+0 deg
-[window_traverse-6] [INFO] [1788947768.552615166] [window_traverse]: vio: bridge=ok ekf_fusing=True yaw_align=True healthy=True xy=VEL-HOLD
-[window_traverse-6] [INFO] [1788947769.159023485] [window_traverse]: Setpoint stream established, position estimate healthy.
-[window_traverse-6] [INFO] [1788947769.200571091] [window_traverse]: Offboard mode active.
-[window_traverse-6] [INFO] [1788947769.305750227] [window_traverse]: Arming point captured: x=-0.00 y=-0.22 z=-0.15 yaw=+90 deg. 'forward' means this heading for the whole flight.
-[window_traverse-6] [WARN] [1788947769.306544888] [window_traverse]: ARMED. Holding on the ground for 5 s.
-[window_detect-5] [INFO] [1788947769.314168779] [window_detect]: window: no   (streak 71 misses, 71 frames processed, 103 skipped by max_fps=10)
-[window_traverse-6] [INFO] [1788947769.349708505] [window_traverse]: Armed on the ground, 5.0 s to takeoff...
-[window_traverse-6] [INFO] [1788947769.552947624] [window_traverse]: vio: bridge=ok ekf_fusing=True yaw_align=True healthy=True xy=VEL-HOLD
-[window_traverse-6] [INFO] [1788947769.557143300] [window_traverse]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[window_traverse-6] [INFO] [1788947769.603076215] [window_traverse]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=True vxy=(-0.00,+0.01) | hdg=+90 deg yaw_sp=+90 deg
-[window_detect-5] [INFO] [1788947770.340258382] [window_detect]: window: no   (streak 80 misses, 80 frames processed, 113 skipped by max_fps=10)
-[window_traverse-6] [INFO] [1788947770.399409661] [window_traverse]: Armed on the ground, 3.9 s to takeoff...
-[window_traverse-6] [INFO] [1788947770.555362809] [window_traverse]: vio: bridge=ok ekf_fusing=True yaw_align=True healthy=True xy=VEL-HOLD
-[window_traverse-6] [INFO] [1788947770.654830232] [window_traverse]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=True vxy=(-0.04,-0.02) | hdg=+90 deg yaw_sp=+90 deg
-[window_traverse-6] [INFO] [1788947771.401080761] [window_traverse]: Flow healthy: latching x/y hold at (-0.01, -0.23).
-[window_traverse-6] [INFO] [1788947771.402197569] [window_traverse]: Armed on the ground, 2.9 s to takeoff...
-[window_detect-5] [INFO] [1788947771.405037204] [window_detect]: window: no   (streak 87 misses, 87 frames processed, 121 skipped by max_fps=10)
-[window_traverse-6] [WARN] [1788947771.417889036] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [INFO] [1788947771.600661799] [window_traverse]: vio: bridge=ok ekf_fusing=True yaw_align=True healthy=True xy=POS-HOLD
-[window_traverse-6] [INFO] [1788947771.601535789] [window_traverse]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[window_traverse-6] [INFO] [1788947771.700113868] [window_traverse]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=POS-HOLD flow_ok=True vxy=(-0.06,-0.03) | hdg=+90 deg yaw_sp=+90 deg
-[window_traverse-6] [WARN] [1788947772.100933432] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.02, +0.01) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947772.401786472] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.01, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [INFO] [1788947772.403157809] [window_traverse]: Armed on the ground, 1.9 s to takeoff...
-[window_detect-5] [INFO] [1788947772.507582974] [window_detect]: window: no   (streak 94 misses, 94 frames processed, 130 skipped by max_fps=10)
-[window_traverse-6] [INFO] [1788947772.631149741] [window_traverse]: vio: bridge=ok ekf_fusing=True yaw_align=True healthy=True xy=POS-HOLD
-[window_traverse-6] [INFO] [1788947772.700557161] [window_traverse]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=+0.00 m/s landed=True | xy=POS-HOLD flow_ok=True vxy=(-0.05,-0.03) | hdg=+90 deg yaw_sp=+90 deg
-[window_traverse-6] [WARN] [1788947772.791739547] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947772.799186958] [window_traverse]: Flow unhealthy: reverting to zero-velocity hold.
-[window_traverse-6] [ERROR] [1788947772.879286964] [window_traverse]: PX4 failsafe SET: local_position_invalid, local_velocity_invalid, offboard_control_signal_lost
-[window_traverse-6] [INFO] [1788947773.026534247] [window_traverse]: nav_state -> POSCTL(2)
-[window_traverse-6] [ERROR] [1788947773.052232761] [window_traverse]: Offboard lost; PX4 has control now (nav_state POSCTL(2)). Standing down. PX4 failsafe: local_position_invalid, local_velocity_invalid, offboard_control_signal_lost, home_position_invalid.
-[window_traverse-6] [INFO] [1788947773.101971313] [window_traverse]: Idle. Ctrl-C to exit.
-[window_traverse-6] [WARN] [1788947773.223167383] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.01, +0.01) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947773.392177352] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947773.550998578] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, -0.00) m, shifted x/y hold to match.
-[window_detect-5] [INFO] [1788947773.670368140] [window_detect]: window: no   (streak 100 misses, 100 frames processed, 134 skipped by max_fps=10)
-[window_traverse-6] [INFO] [1788947773.941026364] [window_traverse]: PX4 failsafe cleared: local_position_invalid, local_velocity_invalid, offboard_control_signal_lost
-[window_traverse-6] [INFO] [1788947773.953549650] [window_traverse]: nav_state -> OFFBOARD(14)
-[window_traverse-6] [ERROR] [1788947774.061823267] [window_traverse]: PX4 failsafe SET: offboard_control_signal_lost
-[window_traverse-6] [INFO] [1788947774.157607743] [window_traverse]: nav_state -> POSCTL(2)
-[window_traverse-6] [WARN] [1788947774.421169292] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [ERROR] [1788947774.518583028] [window_traverse]: PX4 failsafe SET: local_position_invalid, local_velocity_invalid
-[window_traverse-6] [WARN] [1788947774.616213244] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.01, +0.00) m, shifted x/y hold to match.
-[window_detect-5] [INFO] [1788947774.912428014] [window_detect]: window: no   (streak 104 misses, 104 frames processed, 138 skipped by max_fps=10)
-[window_traverse-6] [WARN] [1788947774.992198554] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947775.095430191] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, -0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947775.111536032] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, -0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947775.309656945] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [INFO] [1788947775.615906873] [window_traverse]: PX4 failsafe cleared: local_position_invalid, local_velocity_invalid
-[window_traverse-6] [WARN] [1788947775.635534947] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947775.752829244] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947775.816625468] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947775.851910036] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947775.916615387] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947776.086171016] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947776.115513495] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_detect-5] [INFO] [1788947776.210158134] [window_detect]: window: no   (streak 109 misses, 109 frames processed, 138 skipped by max_fps=10)
-[window_traverse-6] [WARN] [1788947776.411779755] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947776.821000510] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947777.051344257] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
-[window_traverse-6] [WARN] [1788947777.217143009] [window_traverse]: EKF2 lateral reset: delta_xy=(+0.00, +0.00) m, shifted x/y hold to match.
+[window_traverse-5] [WARN] [1789124116.739506065] [window_traverse]: RECENTRE: the whole window is in frame and measured. window at (+1.30, +1.07, -1.01) NED, facing -166 deg, 0.78x0.68 m, 6 samples, 16 ms old.
+[window_traverse-5] [WARN] [1789124116.741822808] [window_traverse]: AIM: turning to +14 deg to face the window square-on, holding position. window at (+1.30, +1.07, -1.01) NED, facing -166 deg, 0.78x0.68 m, 6 samples, 20 ms old.
+[window_traverse-5] [INFO] [1789124116.780399762] [window_traverse]: AIM: 10 deg to turn. window at (+1.30, +1.07, -1.01) NED, facing -166 deg, 0.78x0.68 m, 6 samples, 57 ms old
+[window_detect-4] [INFO] [1789124116.816132757] [window_detect]: window: YES  centre=(1017,430) offset=+0.59 area=60796px dist=4.02m
+[window_traverse-5] [INFO] [1789124117.074197589] [window_traverse]: alt=+1.19 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.20 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,-0.01) | hdg=+5 deg yaw_sp=+9 deg
+[window_traverse-5] [WARN] [1789124117.236962601] [window_traverse]: ALIGN: flying to (-0.26, +0.70) NED, 1.60 m in front of the window on its axis, at 0.30 m/s. window at (+1.30, +1.07, -1.01) NED, facing -166 deg, 0.78x0.68 m, 6 samples, 516 ms old.
+[window_traverse-5] [INFO] [1789124117.278118307] [window_traverse]: ALIGN: pose stale, holding the last target. no usable pose (5/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x50, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124117.293746723] [window_traverse]: ALIGN: +0.58 m along / -0.76 m across to the approach point (tolerances 0.25/0.06), 7 deg off the normal, alt +1.19/0.94 m. no usable pose (5/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x50, corner depth missing x4)
+[window_detect-4] [INFO] [1789124117.846887616] [window_detect]: window: YES  centre=(891,419) offset=+0.39 area=50610px dist=5.27m
+[window_traverse-5] [INFO] [1789124118.074371375] [window_traverse]: alt=+1.16 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.19 m rng_ok=True vz=+0.08 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.05,+0.05) | hdg=+14 deg yaw_sp=+14 deg
+[window_traverse-5] [INFO] [1789124118.285290477] [window_traverse]: ALIGN: pose stale, holding the last target. no usable pose (1/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x58, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124118.334575192] [window_traverse]: ALIGN: +0.52 m along / -0.68 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.13/0.94 m. no usable pose (1/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x59, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124118.525408602] [window_traverse]: window: no usable pose (1/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x60, corner depth missing x4)
+[window_detect-4] [INFO] [1789124118.856549330] [window_detect]: window: YES  centre=(840,386) offset=+0.31 area=52237px dist=6.15m
+[window_traverse-5] [INFO] [1789124119.125807294] [window_traverse]: alt=+1.02 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=+0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,+0.11) | hdg=+13 deg yaw_sp=+14 deg
+[window_traverse-5] [INFO] [1789124119.327050918] [window_traverse]: ALIGN: pose stale, holding the last target. no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x66, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124119.375647981] [window_traverse]: ALIGN: +0.44 m along / -0.55 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +0.98/0.94 m. no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x67, corner depth missing x4)
+[window_detect-4] [INFO] [1789124119.949807005] [window_detect]: window: YES  centre=(802,336) offset=+0.25 area=58027px dist=4.92m
+[window_traverse-5] [INFO] [1789124120.132224991] [window_traverse]: alt=+0.92 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.93 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.07,+0.13) | hdg=+13 deg yaw_sp=+14 deg
+[window_traverse-5] [INFO] [1789124120.334406080] [window_traverse]: ALIGN: pose stale, holding the last target. no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x75, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124120.376073687] [window_traverse]: ALIGN: +0.36 m along / -0.41 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +0.92/0.94 m. no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x75, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124120.528285726] [window_traverse]: window: no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x76, corner depth missing x4)
+[window_detect-4] [WARN] [1789124121.053771999] [window_detect]: No CameraInfo on /zed/zed_node/rgb/camera_info yet; guessing the intrinsics from fallback_hfov_deg=90.
+[window_detect-4] [INFO] [1789124121.055324737] [window_detect]: window: YES  centre=(743,320) offset=+0.16 area=67437px dist=5.24m
+[window_traverse-5] [INFO] [1789124121.176312021] [window_traverse]: alt=+0.92 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.93 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.15,+0.15) | hdg=+14 deg yaw_sp=+14 deg
+[window_traverse-5] [INFO] [1789124121.378159717] [window_traverse]: ALIGN: pose stale, holding the last target. no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x83, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124121.380512953] [window_traverse]: ALIGN: +0.20 m along / -0.27 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +0.92/0.94 m. no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x83, corner depth missing x4)
+[window_detect-4] [INFO] [1789124122.086864650] [window_detect]: window: YES  centre=(682,321) offset=+0.07 area=85049px dist=5.03m
+[window_traverse-5] [INFO] [1789124122.231699110] [window_traverse]: alt=+0.91 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.92 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.12,+0.12) | hdg=+14 deg yaw_sp=+14 deg
+[window_traverse-5] [INFO] [1789124122.427274909] [window_traverse]: ALIGN: pose stale, holding the last target. no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x90, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124122.428410036] [window_traverse]: ALIGN: +0.03 m along / -0.12 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +0.91/0.94 m. no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x90, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124122.536437044] [window_traverse]: window: no usable pose (0/6 fresh samples, 50 accepted ever, 47 truncated; rejections: corner depths disagree x91, corner depth missing x4)
+[window_detect-4] [INFO] [1789124123.180695387] [window_detect]: window: YES  centre=(634,321) offset=-0.01 area=104244px dist=4.53m
+[window_traverse-5] [INFO] [1789124123.275766483] [window_traverse]: alt=+0.93 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.93 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.04,+0.08) | hdg=+14 deg yaw_sp=+14 deg
+[window_traverse-5] [ERROR] [1789124123.278353893] [window_traverse]: Traverse abandoned: no usable window pose for 6 s during ALIGN.
+[window_traverse-5] [WARN] [1789124123.279607518] [window_traverse]: Landing: traverse abandoned -- no usable window pose for 6 s during ALIGN
+[window_traverse-5] [INFO] [1789124123.284166326] [window_traverse]: Horizontal control -> zero-velocity hold for descent.
+[window_detect-4] [INFO] [1789124124.280547437] [window_detect]: window: YES  centre=(625,264) offset=-0.02 area=112904px dist=4.57m
+[window_traverse-5] [INFO] [1789124124.327198495] [window_traverse]: alt=+0.79 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.83 m rng_ok=True vz=+0.16 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.03,+0.02) | hdg=+13 deg yaw_sp=+14 deg
+[window_traverse-5] [INFO] [1789124124.579531509] [window_traverse]: window: no usable pose (2/6 fresh samples, 52 accepted ever, 47 truncated; rejections: corner depths disagree x103, corner depth missing x4)
+[window_traverse-5] [INFO] [1789124125.328765079] [window_traverse]: alt=+0.62 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.65 m rng_ok=True vz=+0.13 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,-0.04) | hdg=+14 deg yaw_sp=+14 deg
+[window_detect-4] [INFO] [1789124125.351879874] [window_detect]: window: YES  centre=(582,167) offset=-0.09 area=112469px dist=4.48m
+[window_detect-4] [WARN] [1789124126.125097721] [window_detect]: No CameraInfo on /zed/zed_node/rgb/camera_info yet; guessing the intrinsics from fallback_hfov_deg=90.
+[window_traverse-5] [INFO] [1789124126.330462610] [window_traverse]: alt=+0.47 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.50 m rng_ok=True vz=+0.12 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.02,-0.03) | hdg=+13 deg yaw_sp=+14 deg
+[window_detect-4] [INFO] [1789124126.380088685] [window_detect]: window: YES  centre=(639,121) offset=-0.00 area=82382px dist=4.40m
+[window_traverse-5] [INFO] [1789124126.625244996] [window_traverse]: window: window in sight but TRUNCATED (0 px to the frame edge, 60 such frames) -- not measurable until the whole aperture is in view
+[window_traverse-5] [INFO] [1789124127.375995750] [window_traverse]: alt=+0.34 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.36 m rng_ok=True vz=+0.06 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.05,-0.01) | hdg=+14 deg yaw_sp=+14 deg
+[window_detect-4] [INFO] [1789124127.392006263] [window_detect]: window: YES  centre=(642,85) offset=+0.00 area=56257px dist=4.34m
+[window_traverse-5] [INFO] [1789124128.423416299] [window_traverse]: alt=+0.24 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.26 m rng_ok=True vz=+0.08 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.05,-0.02) | hdg=+11 deg yaw_sp=+14 deg
+[window_detect-4] [INFO] [1789124128.514844466] [window_detect]: window: YES  centre=(679,56) offset=+0.06 area=36650px dist=4.39m
+[window_traverse-5] [INFO] [1789124128.632402921] [window_traverse]: window: window in sight but TRUNCATED (0 px to the frame edge, 75 such frames) -- not measurable until the whole aperture is in view
+[window_traverse-5] [INFO] [1789124129.430842664] [window_traverse]: alt=+0.17 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.19 m rng_ok=True vz=-0.03 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.09,-0.03) | hdg=+12 deg yaw_sp=+14 deg
+[window_detect-4] [INFO] [1789124129.546554909] [window_detect]: window: YES  centre=(73,289) offset=-0.89 area=349px dist=2.65m
+[window_traverse-5] [WARN] [1789124129.827216233] [window_traverse]: Descent has stalled against something solid; PX4's land detector still says airborne. Confirming touchdown ourselves over 2 s.
+[window_traverse-5] [WARN] [1789124130.075551105] [window_traverse]: Descent has stalled against something solid; PX4's land detector still says airborne. Confirming touchdown ourselves over 2 s.
+[window_traverse-5] [WARN] [1789124130.174941158] [window_traverse]: Descent has stalled against something solid; PX4's land detector still says airborne. Confirming touchdown ourselves over 2 s.
+[window_traverse-5] [WARN] [1789124130.337076042] [window_traverse]: Descent has stalled against something solid; PX4's land detector still says airborne. Confirming touchdown ourselves over 2 s.
+[window_traverse-5] [INFO] [1789124130.433650600] [window_traverse]: alt=+0.22 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.20 m rng_ok=True vz=-0.08 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.01) | hdg=+10 deg yaw_sp=+14 deg
+[window_detect-4] [INFO] [1789124130.577749595] [window_detect]: window: YES  centre=(106,296) offset=-0.83 area=264px dist=2.63m
+[window_traverse-5] [INFO] [1789124130.676495256] [window_traverse]: window: no usable pose (0/6 fresh samples, 52 accepted ever, 76 truncated; rejections: corner depths disagree x111, corner depth missing x4, implausible window size x1)
+[window_detect-4] [WARN] [1789124130.743279185] [window_detect]: Window LOST.
+[window_traverse-5] [INFO] [1789124131.478661805] [window_traverse]: alt=+0.19 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.19 m rng_ok=True vz=-0.02 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.01) | hdg=+10 deg yaw_sp=+14 deg
+[window_detect-4] [INFO] [1789124131.649021637] [window_detect]: window: no   (streak 13 misses, 395 frames processed, 772 skipped by max_fps=10)
+[window_traverse-5] [ERROR] [1789124132.378550210] [window_traverse]: Touchdown confirmed by stalled descent, NOT by PX4's land detector. Check MPC_LAND_SPEED against land_speed and the LNDMC_* thresholds.
+[window_traverse-5] [WARN] [1789124132.379663633] [window_traverse]: Touchdown detected. Disarming.
+[window_detect-4] [INFO] [1789124132.732889685] [window_detect]: window: no   (streak 21 misses, 403 frames processed, 788 skipped by max_fps=10)
+[window_detect-4] [INFO] [1789124133.888184659] [window_detect]: window: no   (streak 29 misses, 411 frames processed, 808 skipped by max_fps=10)
+[window_detect-4] [INFO] [1789124134.915597737] [window_detect]: window: no   (streak 37 misses, 419 frames processed, 828 skipped by max_fps=10)
+[window_detect-4] [WARN] [1789124135.286164816] [window_detect]: No CameraInfo on /zed/zed_node/rgb/camera_info yet; guessing the intrinsics from fallback_hfov_deg=90.
+[window_detect-4] [INFO] [1789124135.921035655] [window_detect]: window: no   (streak 5 misses, 427 frames processed, 846 skipped by max_fps=10)
+[window_detect-4] [WARN] [1789124136.652962412] [window_detect]: WINDOW DETECTED  (centre=(780,5) offset=+0.22 area=706px dist=1.26m)
+[window_detect-4] [INFO] [1789124136.967502050] [window_detect]: window: YES  centre=(757,7) offset=+0.18 area=368px dist=1.24m
+[window_traverse-5] [ERROR] [1789124137.423892497] [window_traverse]: Disarm refused and we still look airborne. Handing over to PX4 AUTO.LAND rather than cutting the motors.
+[window_traverse-5] [INFO] [1789124137.478479310] [window_traverse]: Idle. Ctrl-C to exit.
+[window_traverse-5] [INFO] [1789124137.544076557] [window_traverse]: nav_state -> AUTO_LAND(18)
