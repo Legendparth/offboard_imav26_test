@@ -14,16 +14,70 @@ why there is no external vision here applies unchanged and is not repeated.
 RED BAR (over) AND BLUE BARS (under) ARE THE SAME MISSION
 
     They differ in a colour and a sign, so they are one node and one launch
-    file. The default here is the red bar, flown OVER:
+    file. The default here is the red bar, flown OVER and MEASURED:
 
         ros2 launch drone_testing bar_mission.launch.py
 
-    The blue bar, flown UNDER, is the same command with three arguments:
+    The red bar flown BLIND at the 1600 mm setting, which is what I would
+    actually fly -- see BLIND OR MEASURED below:
 
         ros2 launch drone_testing bar_mission.launch.py \\
-            color:=blue pass_mode:=under max_bar_height:=2.2
+            assume_bar_height:=1.6 assume_bar_distance:=3.0
+
+    The blue bar at the 800 mm setting, flown UNDER and measured:
+
+        ros2 launch drone_testing bar_mission.launch.py \\
+            color:=blue pass_mode:=under max_bar_height:=1.4
 
     Nothing else changes. Do not fork this file for the blue bar.
+
+BLIND OR MEASURED
+
+    assume_bar_height decides it. The default is 0 -- measured -- because
+    flying blind should be a decision you typed, not one you inherited from a
+    default. But for the RED bar, blind is very likely what you want:
+
+    the rules publish the height (1200 / 1600 / 1980 mm red, 400 / 800 / 1200
+    blue), so there is nothing for the camera to discover about it. Making a
+    vision measurement the gate on a number you were given in advance only
+    adds a way to fail -- and on an arena whose floor is the same colour as
+    the red bar, a fairly likely one.
+
+    Blind skips SEARCH and LOCK: climb, hold, then fly the geometry from
+    assume_bar_height and assume_bar_distance. bar_detect still runs and
+    still publishes; the flight just is not waiting on it. What it sees comes
+    out in the log as a CROSS-CHECK line against the assumed height, which is
+    the cheapest way to discover that assume_bar_height is set to the wrong
+    rules setting -- without having had to trust it in the air.
+
+    Set assume_bar_height:=0.0 to measure instead.
+
+    The two are not equally safe, and the asymmetry is what should decide
+    which obstacle uses which:
+
+        OVER  -- assuming 30 cm too low means flying 30 cm higher than
+                 necessary. Nothing happens.
+        UNDER -- assuming 30 cm too high means hitting the bar.
+
+    So: blind is the right default for the red bar. For the blue bars it is a
+    deliberate choice, and if you make it, measure the distance and the
+    setting carefully first.
+
+THE 400 mm BLUE BAR IS NOT FLYABLE ON THIS STACK
+
+    Worth knowing before the arena rather than in it. Going under, the
+    commanded altitude is bar_height - bar_radius - cross_clearance -
+    body_above. With the standard mounting (body_above = 0.10 m):
+
+        1200 mm  ->  0.85 m   comfortable
+         800 mm  ->  0.45 m   tight, but above the flow floor
+         400 mm  ->  0.05 m   impossible
+
+    Even at zero clearance the 400 mm setting needs 0.25 m, and FLOW_MIN_AGL
+    is 0.30: below that EKF2 is not fusing optical flow and there is no
+    horizontal estimate at all. Flying under a bar on dead reckoning is not a
+    thing to attempt. 800 mm is the aggressive-but-real target; if you want
+    more margin there, cross_clearance:=0.10 puts it at 0.55 m.
 
 THE FLOOR IS THE SAME COLOUR AS THE RED BAR
 
@@ -221,6 +275,9 @@ def generate_launch_description():
 
                     # ---- the crossing ----
                     'pass_mode': LaunchConfiguration('pass_mode'),
+                    'assume_bar_height': LaunchConfiguration('assume_bar_height'),
+                    'assume_bar_distance': LaunchConfiguration('assume_bar_distance'),
+                    'assume_bar_length': LaunchConfiguration('assume_bar_length'),
                     'standoff_distance': LaunchConfiguration('standoff_distance'),
                     'exit_distance': LaunchConfiguration('exit_distance'),
                     'cross_clearance': LaunchConfiguration('cross_clearance'),
@@ -406,6 +463,42 @@ def generate_launch_description():
             description='over = the red bar, under = the blue ones. This is '
                         'the ONLY logical difference between the two '
                         'missions; do not fork the node for it.'),
+        DeclareLaunchArgument(
+            'assume_bar_height', default_value='0.0',
+            description='FLY BLIND at this bar height, in metres, instead of '
+                        'measuring it. 0 (the default) = measure it with the '
+                        'camera.\n'
+                        'The default is 0 for two reasons: flying blind is a '
+                        'decision that should be typed rather than inherited, '
+                        'and it keeps this node behaving the same whether it '
+                        'is started from here or with a bare `ros2 run`. Opt '
+                        'in explicitly: assume_bar_height:=1.6\n'
+                        'The rules publish the height -- 1.2 / 1.6 / 1.98 for '
+                        'the red bar, 0.4 / 0.8 / 1.2 for the blue -- so for '
+                        'the red bar there is nothing for the camera to '
+                        'discover, and making a vision measurement the gate '
+                        'on a number you were given in advance only adds a '
+                        'way to fail. SEARCH and LOCK are skipped; bar_detect '
+                        'still runs and logs a CROSS-CHECK line comparing '
+                        'what it sees with what was assumed.\n'
+                        'The default 1.6 is the middle red setting. Set it to '
+                        'the setting you actually chose. Note the asymmetry '
+                        'before using this on the blue bars: assuming wrong '
+                        'going OVER costs you some altitude, assuming wrong '
+                        'going UNDER hits the bar.'),
+        DeclareLaunchArgument(
+            'assume_bar_distance', default_value='3.0',
+            description='m ahead of the aircraft the assumed bar sits, along '
+                        'the takeoff heading. Measured from where the '
+                        'aircraft IS at the end of the hold, not from the '
+                        'arming point -- the ground x/y estimate is not '
+                        'trustworthy and the climb may have drifted. Only '
+                        'used when assume_bar_height > 0.'),
+        DeclareLaunchArgument(
+            'assume_bar_length', default_value='3.0',
+            description='m. Only feeds the end-margin check on a blind '
+                        'crossing. Set it to the real bar length if it is '
+                        'short enough that crossing near an end is a risk.'),
         DeclareLaunchArgument(
             'standoff_distance', default_value='1.20',
             description='m short of the bar the crossing starts from.'),

@@ -16,6 +16,20 @@ without being rewritten.
 
     q -> abort into a controlled descent.   k -> force-disarm.
 
+BLIND OR MEASURED
+    assume_bar_height > 0 skips SEARCH and LOCK and flies the geometry from
+    the parameters instead: the rules publish the bar heights (1200 / 1600 /
+    1980 mm red, 400 / 800 / 1200 blue), so there is nothing for the camera
+    to discover, and making a vision measurement the gate on a number given
+    in advance only adds a way to fail. The detector stays up and logs a
+    CROSS-CHECK line against the assumed height; the flight does not wait on
+    it. assumed_estimate() builds the same dict a real measurement produces,
+    so there is exactly one crossing implementation either way.
+
+    The two are not equally safe. Assuming wrong going OVER costs altitude;
+    assuming wrong going UNDER hits the bar. Blind is the right default for
+    the red bar and a deliberate choice for the blue ones.
+
 ONE NODE FOR BOTH BARS
     The red bar is flown OVER and the blue bars are flown UNDER, and that is
     the only difference between the two missions. Same detector, same
@@ -383,6 +397,29 @@ class BarCross(OffboardSequence):
         self.YAW_CONE = math.radians(float(self._declare_number(
             'yaw_cone_deg', self.YAW_CONE_DEG)))
 
+        # ---- flying it blind ----
+        # The rules give the bar's height: 1200, 1600 or 1980 mm for the red
+        # one, 400, 800 or 1200 for the blue. When the setting is known there
+        # is nothing for the camera to discover, and making a vision
+        # measurement the gate on a number that was published in advance adds
+        # a way to fail without adding anything.
+        #
+        # assume_bar_height > 0 therefore skips SEARCH and LOCK entirely and
+        # flies the geometry straight from these three numbers. The detector
+        # stays up and keeps reporting, but as a CROSS-CHECK in the log rather
+        # than as something the flight waits on.
+        #
+        # Worth being clear about the asymmetry, because it decides which
+        # obstacle should use this. Going OVER, assuming wrong by 30 cm means
+        # flying 30 cm higher than necessary. Going UNDER, it means hitting
+        # the bar. Blind is the right default for the red bar and a deliberate
+        # choice for the blue ones.
+        self.ASSUME_BAR_HEIGHT = float(self._declare_number('assume_bar_height', 0.0))
+        self.ASSUME_BAR_DISTANCE = float(self._declare_number(
+            'assume_bar_distance', 3.0))
+        self.ASSUME_BAR_LENGTH = float(self._declare_number('assume_bar_length', 3.0))
+        self.flying_blind = self.ASSUME_BAR_HEIGHT > 0.0
+
         cam_x = float(self._declare_number('cam_x', 0.0))
         cam_y = float(self._declare_number('cam_y', 0.0))
         cam_z = float(self._declare_number('cam_z', 0.0))
@@ -456,6 +493,22 @@ class BarCross(OffboardSequence):
         self.set_in_band_since = None
         self.flight_start = None
         self.outcome = 'not attempted'
+
+        if self.flying_blind:
+            self.get_logger().warning(
+                f"Bar crossing on ARK FLOW, FLYING BLIND: climb "
+                f"{self.TAKEOFF_ALTITUDE:.2f} m, hold {self.HOLD_SECONDS:.0f} s, "
+                f"then go {self.pass_mode.upper()} a bar ASSUMED to be "
+                f"{self.ASSUME_BAR_HEIGHT:.2f} m high and "
+                f"{self.ASSUME_BAR_DISTANCE:.2f} m ahead on the takeoff "
+                f"heading, with {self.CROSS_CLEARANCE:.2f} m of clearance. "
+                "The camera is NOT steering this: point the aircraft along "
+                "the course and measure the distance to the bar before you "
+                "arm. bar_detect still runs and still reports, as a "
+                "cross-check in the log. Hard limit "
+                f"{self.FLIGHT_SECONDS:.0f} s from the start of the climb. "
+                "Press q to abort into a descent, k to force-disarm.")
+            return
 
         self.get_logger().warning(
             f"Bar crossing on ARK FLOW: climb {self.TAKEOFF_ALTITUDE:.2f} m, "
@@ -585,6 +638,43 @@ class BarCross(OffboardSequence):
         self.bar_pose_pub.publish(msg)
 
     # -------------------------------------------------------- the geometry
+
+    def assumed_estimate(self):
+        """The bar the parameters say is there, in the same shape a real one has.
+
+        Built so everything downstream -- crossing_points, crossing_altitude,
+        the end-margin check, the clearance arithmetic in _begin_set -- runs
+        unchanged. A blind flight and a measured one differ only in where this
+        dict came from, which is the point: there is one crossing
+        implementation and it is the one that has been flown.
+
+        The bar is placed assume_bar_distance ahead of WHERE THE AIRCRAFT IS
+        NOW, along the heading it took off on, lying across that heading. It
+        is not placed relative to the arming x/y, because the ground estimate
+        is not trustworthy and the climb may have drifted -- the aircraft's
+        current position, anchored on flow, is the better datum.
+        """
+        lp = self.local_position
+        if lp is None or self.home_z is None:
+            return None
+
+        heading = self.home_yaw
+        forward = np.array([math.cos(heading), math.sin(heading), 0.0])
+        centre = (np.array([lp.x, lp.y, self.home_z - self.ASSUME_BAR_HEIGHT])
+                  + forward * self.ASSUME_BAR_DISTANCE)
+        # The bar lies ACROSS the course, so its direction is perpendicular to
+        # the heading the aircraft will cross on.
+        direction = np.array([-math.sin(heading), math.cos(heading), 0.0])
+
+        return {
+            'centre': centre,
+            'direction': direction,
+            'height': self.ASSUME_BAR_HEIGHT,
+            'length': self.ASSUME_BAR_LENGTH,
+            'samples': 0,
+            'age': 0.0,
+            'assumed': True,
+        }
 
     def crossing_points(self, est):
         """(entry, exit, heading) for a bar estimate, all in NED.
@@ -777,6 +867,20 @@ class BarCross(OffboardSequence):
         self._try_latch_xy_hold()
         remaining = self.HOLD_SECONDS - self._in_stage_for()
         if remaining <= 0.0:
+            if self.flying_blind:
+                if not self.hold_xy:
+                    # The crossing is flown to a POINT, and there is no point
+                    # without a lateral estimate. Blind about the bar is fine;
+                    # blind about where the aircraft is, is not.
+                    self.get_logger().warning(
+                        "Waiting for a healthy lateral estimate before the "
+                        "blind crossing.", throttle_duration_sec=2.0)
+                    return
+                est = self.assumed_estimate()
+                if est is None:
+                    return
+                self._begin_set(est)
+                return
             self._enter_stage(self.SEARCH)
             self.get_logger().warning(
                 "SEARCH: holding the takeoff heading, looking for the "
@@ -872,8 +976,10 @@ class BarCross(OffboardSequence):
         gap = (altitude - self.body_below - (est['height'] + self.BAR_RADIUS)
                if self.pass_mode == 'over' else
                (est['height'] - self.BAR_RADIUS) - (altitude + self.body_above))
+        source = 'ASSUMED' if est.get('assumed') else 'measured'
         self.get_logger().warning(
-            f"SET: the bar is {est['height']:.2f} m up and {est['length']:.2f} m "
+            f"SET: the bar is {source} {est['height']:.2f} m up and "
+            f"{est['length']:.2f} m "
             f"long. Going {self.pass_mode.upper()} it at {altitude:.2f} m, "
             f"which leaves {gap:.2f} m between the airframe and the bar. "
             f"Flying to ({entry[0]:+.2f}, {entry[1]:+.2f}) NED on a heading of "
@@ -894,6 +1000,7 @@ class BarCross(OffboardSequence):
         # was built stationary, from the best view of the bar this flight will
         # ever have, and it is the estimate the crossing uses.
         self._aim_yaw_at(self.cross_heading)
+        self._cross_check()
 
         if not self.hold_xy:
             self.moving = False
@@ -935,6 +1042,27 @@ class BarCross(OffboardSequence):
             f"{'n/a' if alt is None else f'{alt:+.2f}'}/{self.cross_altitude:.2f} m, "
             f"{math.degrees(self._heading_error(self.cross_heading)):.0f} deg "
             "off the crossing heading.", throttle_duration_sec=1.0)
+
+    def _cross_check(self):
+        """Say what the camera thinks, when the flight is not listening to it.
+
+        Only runs on a blind crossing, and changes nothing: the point is that
+        the log carries both numbers, so after the flight you can tell whether
+        the assumed height was right without having to have trusted it in the
+        air. A disagreement here is the cheapest possible way to find out that
+        assume_bar_height is set to the wrong rules setting.
+        """
+        if not self.flying_blind or self.cross_bar is None:
+            return
+        est = self.bar_estimate()
+        if est is None:
+            return
+        error = est['height'] - self.ASSUME_BAR_HEIGHT
+        level = (self.get_logger().warning if abs(error) > 0.25
+                 else self.get_logger().info)
+        level(f"CROSS-CHECK: assumed {self.ASSUME_BAR_HEIGHT:.2f} m, camera "
+              f"measures {est['height']:.2f} m ({error:+.2f} m). Flying the "
+              "assumed height either way.", throttle_duration_sec=2.0)
 
     # -------------------------------------------------------------- CROSS
 
