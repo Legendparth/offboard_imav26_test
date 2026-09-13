@@ -1,114 +1,16 @@
-[component_container_isolated-3] [INFO] [1789246161.329740756] [zed.zed_node]:  * Plane detection: '/clicked_point'
-[bar_detect-4] [INFO] [1789246161.493404101] [bar_detect]: camera_info_topic derived from image_topic: /zed/zed_node/rgb/color/rect/camera_info
-[component_container_isolated-3] [INFO] [1789246161.523499264] [zed.zed_node]: === zed started ===
-[bar_detect-4] Traceback (most recent call last):
-[bar_detect-4]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/bar_detect", line 33, in <module>
-[bar_detect-4]     sys.exit(load_entry_point('drone_testing==0.0.0', 'console_scripts', 'bar_detect')())
-[bar_detect-4]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[bar_detect-4]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/bar_detect.py", line 556, in main
-[bar_detect-4]     node = BarDetect()
-[bar_detect-4]            ^^^^^^^^^^^
-[bar_detect-4]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/bar_detect.py", line 210, in __init__
-[bar_detect-4]     self.min_elevation = math.radians(float(self.declare_parameter(
-[bar_detect-4]                                             ^^^^^^^^^^^^^^^^^^^^^^^
-[bar_detect-4]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/node.py", line 389, in declare_parameter
-[bar_detect-4]     return self.declare_parameters('', [args], ignore_override)[0]
-[bar_detect-4]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[bar_detect-4]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/node.py", line 528, in declare_parameters
-[bar_detect-4]     self._declare_parameter_common(
-[bar_detect-4]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/node.py", line 584, in _declare_parameter_common
-[bar_detect-4]     raise InvalidParameterTypeException(
-[bar_detect-4] rclpy.exceptions.InvalidParameterTypeException: Trying to set parameter 'min_elevation_deg' to '-35' of type 'INTEGER', expecting type 'DOUBLE': min_elevation_deg
-[component_container_isolated-3] [INFO] [1789246161.813805955] [zed.zed_node]: === Starting Positional Tracking ===
-[component_container_isolated-3] [INFO] [1789246161.814120995] [zed.zed_node]:  * Waiting for valid static transformations...
-[component_container_isolated-3] [INFO] [1789246161.814411326] [zed.zed_node]:  Static transform ref. CMOS Sensor to Base [zed_left_camera_frame -> zed_camera_link]
-[component_container_isolated-3] [INFO] [1789246161.814450834] [zed.zed_node]:   * Translation: {0.011,-0.060,-0.015}
-[component_container_isolated-3] [INFO] [1789246161.814479762] [zed.zed_node]:   * Rotation: {0.000,-2.865,0.000}
-[component_container_isolated-3] [INFO] [1789246161.814579522] [zed.zed_node]:  Static transform ref. CMOS Sensor to Camera Center [zed_left_camera_frame -> zed_camera_center]
-[component_container_isolated-3] [INFO] [1789246161.814596112] [zed.zed_node]:   * Translation: {0.010,-0.060,0.000}
-[component_container_isolated-3] [INFO] [1789246161.814608770] [zed.zed_node]:   * Rotation: {0.000,-0.000,0.000}
-[component_container_isolated-3] [INFO] [1789246161.814634948] [zed.zed_node]:  Static transform Camera Center to Base [zed_camera_center -> zed_camera_link]
-[component_container_isolated-3] [INFO] [1789246161.814648341] [zed.zed_node]:   * Translation: {0.001,0.000,-0.015}
-[component_container_isolated-3] [INFO] [1789246161.814658027] [zed.zed_node]:   * Rotation: {0.000,-2.865,0.000}
-[component_container_isolated-3] [INFO] [1789246161.815766228] [zed.zed_node]: Initial ZED left camera pose (ZED pos. tracking): 
-[component_container_isolated-3] [INFO] [1789246161.815794165] [zed.zed_node]:  * T: [-0.0099875,0.06,0.0154998]
-[component_container_isolated-3] [INFO] [1789246161.815820407] [zed.zed_node]:  * Q: [0,0.0249974,0,0.999688]
-[ERROR] [bar_detect-4]: process has died [pid 4435, exit code 1, cmd '/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/bar_detect --ros-args -r __node:=bar_detect --pa
-
-[INFO] [bar_cross-5]: process started with pid [4599]
-[bar_cross-5] [WARN] [1789246168.390154520] [bar_cross]: Bar crossing on ARK FLOW: climb 1.20 m, hold 5 s, find the UNDER bar on the takeoff heading, measure it, then go under it with 0.20 m of clearance at 0.40 m/s. Anything less than 0.50 m above the arming plane is treated as the floor and refused. Hard limit 120 s from the start of the climb. Press q to abort into a descent, k to force-disarm.
-[bar_cross-5] [WARN] [1789246168.391708846] [bar_cross]: stdin is not a tty; q/k abort is unavailable.
-[bar_cross-5] [INFO] [1789246168.402420595] [bar_cross]: Waiting for VehicleStatus from PX4...
-[bar_cross-5] [INFO] [1789246168.414645281] [bar_cross]: nav_state -> OFFBOARD(14)
-[bar_cross-5] [INFO] [1789246168.418848078] [bar_cross]: PX4 failsafe (expected on this airframe, harmless): gcs_connection_lost, home_position_invalid
-[bar_cross-5] [INFO] [1789246168.466355177] [bar_cross]: alt=n/a airborne=True xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00) | hdg=+163 deg yaw_sp=+0 deg
-[bar_cross-5] [INFO] [1789246168.467669672] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246169.423815079] [bar_cross]: Setpoint stream established, position estimate healthy.
-[bar_cross-5] [INFO] [1789246169.469470805] [bar_cross]: Offboard mode active.
-[bar_cross-5] [INFO] [1789246169.562058857] [bar_cross]: Arming point captured: x=-0.10 y=0.03 z=-0.16 yaw=+163 deg. 'forward' means this heading for the whole flight.
-[bar_cross-5] [WARN] [1789246169.563415872] [bar_cross]: ARMED. Holding on the ground for 5 s.
-[bar_cross-5] [INFO] [1789246169.616905264] [bar_cross]: Armed on the ground, 5.0 s to takeoff...
-[bar_cross-5] [INFO] [1789246169.618594696] [bar_cross]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.00) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246170.469610396] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246170.621314848] [bar_cross]: Armed on the ground, 4.0 s to takeoff...
-[bar_cross-5] [INFO] [1789246170.623026146] [bar_cross]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.01,-0.04) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246171.662257528] [bar_cross]: Armed on the ground, 2.9 s to takeoff...
-[bar_cross-5] [INFO] [1789246171.663291144] [bar_cross]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.02) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246172.522350559] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246172.663560211] [bar_cross]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.01) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246172.718656256] [bar_cross]: Armed on the ground, 1.9 s to takeoff...
-[bar_cross-5] [INFO] [1789246173.667175117] [bar_cross]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.00) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246173.766937455] [bar_cross]: Armed on the ground, 0.8 s to takeoff...
-[bar_cross-5] [INFO] [1789246174.574070608] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [WARN] [1789246174.613396393] [bar_cross]: Climbing to 1.20 m (datum z=-0.16).
-[bar_cross-5] [WARN] [1789246174.665899242] [bar_cross]: Flight clock started: hard limit 120 s.
-[bar_cross-5] [INFO] [1789246174.677356626] [bar_cross]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.01) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246175.712860236] [bar_cross]: alt=+0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.05 m rng_ok=True vz=-0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.01,-0.01) | hdg=+162 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246176.623209298] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246176.719089092] [bar_cross]: alt=+0.17 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.05 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.05,-0.07) | hdg=+162 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246177.762260809] [bar_cross]: alt=+0.22 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.19 m rng_ok=True vz=-0.15 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.01,-0.02) | hdg=+162 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246178.670578645] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246178.769941404] [bar_cross]: alt=+0.30 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.22 m rng_ok=True vz=-0.27 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.06) | hdg=+164 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246179.816257827] [bar_cross]: alt=+0.44 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.37 m rng_ok=True vz=-0.32 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.26,-0.10) | hdg=+167 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246180.563143926] [bar_cross]: Flow healthy: latching x/y hold at (0.15, -0.03).
-[bar_cross-5] [WARN] [1789246180.568489536] [bar_cross]: Drifted 0.26 m during the climb; holding here rather than flying back to the arming point (takeoff_return_to_pad is false). If this number is large every flight, the drift is real: check SENS_FLOW_ROT, the flow mounting and the floor texture.
-[bar_cross-5] [INFO] [1789246180.671154554] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246180.870995925] [bar_cross]: alt=+0.56 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.52 m rng_ok=True vz=-0.28 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.08) | hdg=+167 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246181.912656658] [bar_cross]: alt=+0.74 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.70 m rng_ok=True vz=-0.26 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.03,-0.01) | hdg=+166 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246182.725680609] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246182.916653076] [bar_cross]: alt=+0.86 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.83 m rng_ok=True vz=-0.22 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,+0.00) | hdg=+165 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246183.966337658] [bar_cross]: alt=+0.94 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.91 m rng_ok=True vz=-0.18 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.02) | hdg=+164 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246184.761007304] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246185.012574420] [bar_cross]: alt=+0.99 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.97 m rng_ok=True vz=-0.15 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.01) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246186.021971909] [bar_cross]: alt=+1.02 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.01 m rng_ok=True vz=-0.13 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.00) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246186.769922425] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246187.067539394] [bar_cross]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.05 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,+0.02) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246188.069650692] [bar_cross]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=-0.11 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.03) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246188.774071862] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246189.116910786] [bar_cross]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,+0.05) | hdg=+164 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246190.162470759] [bar_cross]: alt=+1.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.06 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.03,+0.06) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246190.821666762] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246191.169957245] [bar_cross]: alt=+1.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.07 m rng_ok=True vz=-0.11 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.05,+0.05) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246192.219631532] [bar_cross]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.04,+0.05) | hdg=+164 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246192.823167525] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246193.266187022] [bar_cross]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.05 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.04,+0.07) | hdg=+164 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246194.267394364] [bar_cross]: alt=+1.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.06 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.03,+0.04) | hdg=+164 deg yaw_sp=+163 deg
-[bar_cross-5] [WARN] [1789246194.670138229] [bar_cross]: Landing: takeoff did not settle in time
-[bar_cross-5] [INFO] [1789246194.671286687] [bar_cross]: Horizontal control -> zero-velocity hold for descent.
-[bar_cross-5] [INFO] [1789246194.867905527] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246195.272948270] [bar_cross]: alt=+1.03 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.05 m rng_ok=True vz=+0.06 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.02,+0.02) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246196.317490281] [bar_cross]: alt=+0.86 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.88 m rng_ok=True vz=+0.06 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.00,-0.03) | hdg=+164 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246196.913180108] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246197.363757318] [bar_cross]: alt=+0.70 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.72 m rng_ok=True vz=+0.05 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,+0.01) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246198.414605882] [bar_cross]: alt=+0.52 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.54 m rng_ok=True vz=+0.04 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.03,-0.02) | hdg=+164 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246198.915543331] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246199.414773318] [bar_cross]: alt=+0.41 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.43 m rng_ok=True vz=+0.03 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,-0.03) | hdg=+163 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246200.418385114] [bar_cross]: alt=+0.31 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.31 m rng_ok=True vz=+0.00 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.05,-0.00) | hdg=+161 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246200.920759770] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246201.460041232] [bar_cross]: alt=+0.21 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.20 m rng_ok=True vz=-0.08 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.02,+0.03) | hdg=+161 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246202.511521700] [bar_cross]: alt=+0.22 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.21 m rng_ok=True vz=-0.08 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.01) | hdg=+161 deg yaw_sp=+163 deg
-[bar_cross-5] [WARN] [1789246202.620679893] [bar_cross]: Descent has stalled against something solid; PX4's land detector still says airborne. Confirming touchdown ourselves over 2 s.
-[bar_cross-5] [INFO] [1789246202.929523121] [bar_cross]: bar: nothing is publishing bar_geometry -- is bar_detect running?
-[bar_cross-5] [INFO] [1789246203.517489835] [bar_cross]: alt=+0.17 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.18 m rng_ok=True vz=-0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.04) | hdg=+161 deg yaw_sp=+163 deg
-[bar_cross-5] [INFO] [1789246204.522434503] [bar_cross]: alt=+0.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=+0.04 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.02) | hdg=+161 deg yaw_sp=+163 deg
-[bar_cross-5] [ERROR] [1789246204.623290101] [bar_cross]: Touchdown confirmed by stalled descent, NOT by PX4's land detector. Check MPC_LAND_SPEED against land_speed and the LNDMC_* thresholds.
+[course_fsm-5] [INFO] [1789295108.948304516] [course_fsm]: alt=+0.50 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.53 m rng_ok=False vz=+0.13 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,-0.01) | hdg=-104 deg yaw_sp=-102 deg
+[window_detect-4] [INFO] [1789295109.380463732] [window_detect]: window: YES  centre=(430,102) offset=-0.33 area=18688px dist=0.81m
+[course_fsm-5] [INFO] [1789295109.996082211] [course_fsm]: alt=+0.36 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.39 m rng_ok=False vz=+0.11 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.03,-0.02) | hdg=-104 deg yaw_sp=-102 deg
+[window_detect-4] [INFO] [1789295110.413607644] [window_detect]: window: YES  centre=(771,139) offset=+0.20 area=45310px dist=5.14m
+[course_fsm-5] [INFO] [1789295110.889238820] [course_fsm]: window: no usable pose (0/6 fresh samples, 178 accepted ever, 158 truncated; rejections: corner depths disagree x112, corners not coplanar x21, implausible window size x4)
+[course_fsm-5] [INFO] [1789295111.044657806] [course_fsm]: alt=+0.24 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.26 m rng_ok=False vz=+0.12 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.13,+0.01) | hdg=-103 deg yaw_sp=-102 deg
+[window_detect-4] [INFO] [1789295111.553945095] [window_detect]: window: YES  centre=(652,145) offset=+0.02 area=16742px dist=4.95m
+[course_fsm-5] [INFO] [1789295112.087594375] [course_fsm]: alt=+0.16 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.18 m rng_ok=False vz=-0.12 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.02) | hdg=-98 deg yaw_sp=-102 deg
+[course_fsm-5] [WARN] [1789295112.547628641] [course_fsm]: Descent has stalled against something solid; PX4's land detector still says airborne. Confirming touchdown ourselves over 2 s.
+[window_detect-4] [INFO] [1789295112.582380965] [window_detect]: window: YES  centre=(319,107) offset=-0.50 area=17261px dist=0.00m
+[course_fsm-5] [INFO] [1789295112.890589443] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 168 such frames) -- not measurable until the whole aperture is in view
+[course_fsm-5] [INFO] [1789295113.088188297] [course_fsm]: alt=+0.15 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=False vz=-0.01 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,+0.01) | hdg=-98 deg yaw_sp=-102 deg
+[window_detect-4] [INFO] [1789295113.609371766] [window_detect]: window: YES  centre=(309,129) offset=-0.52 area=17786px dist=0.00m
+[course_fsm-5] [INFO] [1789295114.089320678] [course_fsm]: alt=+0.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.14 m rng_ok=False vz=+0.03 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.01,-0.01) | hdg=-98 deg yaw_sp=-102 deg
+[course_fsm-5] [ERROR] [1789295114.550086049] [course_fsm]: Touchdown confirmed by stalled descent, NOT by PX4's land detector. Check MPC_LAND_SPEED against land_speed and the LNDMC_* thresholds.
+[course_fsm-5] [WARN] [1789295114.550986921] [course_fsm]: Touchdown detected. Disarming.
