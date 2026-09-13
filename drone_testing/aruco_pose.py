@@ -16,8 +16,39 @@ it, and with the camera read moved onto its own thread.
                                                   published only on a frame
                                                   where the pose solved
     /aruco/info         std_msgs/String           one human-readable line
+    /aruco/pad_ready    std_msgs/Bool             contrast fallback: true when
+                                                  a solid black/white mass fills
+                                                  the centre circle, PUBLISHED
+                                                  ONLY on frames where solvePnP
+                                                  did NOT solve (see below)
+    /aruco/pad_nudge    geometry_msgs/Point       body-frame correction, m:
+                                                  x forward, y right, toward
+                                                  the pad mass and away from
+                                                  whatever is not it
     browser             http://<jetson-ip>:8080/  MJPEG of the annotated
                                                   frame. stream_port:=0 off.
+
+WHY THERE IS A SECOND, CONTRAST-BASED SIGNAL
+---------------------------------------------
+solvePnP needs all four corners resolved, which is exactly what a wide
+marker under a narrow lens loses first: below about 0.66-0.88 m (see
+precision_land.py's header) the marker overflows the frame and ArUco
+decoding stops, right when the descent needs guidance most.
+
+But an ArUco marker is, physically, nothing more than a big black-and-white
+square with a quiet white border -- the same kind of target
+lend.pad_detector_node was built to track by contrast and coverage instead
+of by decoding a code. That technique does not need the whole marker in
+frame, or even a decodable pattern: it only asks whether the centre circle
+is convincingly filled with strong black/white contrast, which holds (and
+gets easier to satisfy) all the way to touchdown.
+
+So this node runs both: solvePnP first, on every frame. Only when that
+FAILS does it fall back to the contrast check on the same frame, using the
+same analysis. This keeps the accurate, ID-checked pose in charge whenever
+it is available, and offers the flight node a still-closed-loop "am I over
+it" signal for the blind stretch, rather than leaving that stretch fully
+open loop on the last held point.
 
 WHY THIS NODE PUBLISHES CAMERA-FRAME NUMBERS AND NOTHING ELSE
 -------------------------------------------------------------
@@ -84,7 +115,7 @@ import numpy as np
 
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import Point, PointStamped
 from std_msgs.msg import Bool, String
 
 
@@ -185,6 +216,87 @@ class MjpegServer:
             pass
 
 
+def analyse_contrast(gray, circle_radius_frac):
+    """How well a black/white mass fills the centre circle.
+
+    Adapted from lend.pad_detector_node.PadDetectorNode.analyse(), trimmed to
+    what a bare ArUco marker needs: no colour/hue rejection, because the
+    target here is genuinely black and white ink, not a painted pad whose
+    "white" carries a camera white-balance tint. See the module docstring
+    for why this runs at all.
+
+    Returns a dict (coverage, contrast, void_frac, nudge_x, nudge_y in body
+    frame metres-per-step, offset_norm) or None if the circle is empty.
+    """
+    h, w = gray.shape
+    radius = int(circle_radius_frac * min(h, w))
+    cy, cx = h // 2, w // 2
+    mask = np.zeros((h, w), np.uint8)
+    cv2.circle(mask, (cx, cy), radius, 255, -1)
+    mask = mask.astype(bool)
+    inside = gray[mask]
+    if inside.size == 0:
+        return None
+
+    otsu, _ = cv2.threshold(inside, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    split = max(float(otsu), (float(inside.min()) + float(inside.max())) / 2.0)
+    for _ in range(3):
+        lo, hi = inside[inside < split], inside[inside >= split]
+        if lo.size == 0 or hi.size == 0:
+            break
+        split = (float(lo.mean()) + float(hi.mean())) / 2.0
+
+    dark = inside < split
+    light = ~dark
+    black_frac = float(dark.mean())
+    white_frac = float(light.mean())
+    mean_dark = float(inside[dark].mean()) if dark.any() else 0.0
+    mean_light = float(inside[light].mean()) if light.any() else 0.0
+    contrast = mean_light - mean_dark
+
+    # A pixel counts as "pad" only near one of the two population means, not
+    # merely on one side of the split -- see pad_detector_node.analyse() for
+    # why (floor next to the marker otherwise reads as marker).
+    gap = max(1.0, contrast)
+    band = min(gap * 0.30, gap * 0.45)
+    near_dark = np.abs(inside.astype(np.int16) - mean_dark) <= band
+    near_light = np.abs(inside.astype(np.int16) - mean_light) <= band
+    decided = near_dark | near_light
+    coverage = float(decided.mean())
+
+    pad_sel = np.zeros(gray.shape, bool)
+    pad_sel[mask] = decided
+    void_sel = mask & ~pad_sel
+    void_frac = float(void_sel.sum()) / float(mask.sum())
+
+    # Which side is empty -> move toward the mass, away from the void. Image
+    # +x is body +y (right); image +y is body -x (backward, i.e. -forward).
+    top = float(void_sel[:cy, :].sum())
+    bottom = float(void_sel[cy:, :].sum())
+    left = float(void_sel[:, :cx].sum())
+    right = float(void_sel[:, cx:].sum())
+    nudge_x = nudge_y = 0.0
+    if abs(bottom - top) > 0.15 * (bottom + top + 1):
+        nudge_x = 1.0 if bottom > top else -1.0
+    if abs(right - left) > 0.15 * (right + left + 1):
+        nudge_y = 1.0 if left > right else -1.0
+
+    ys, xs = np.nonzero(pad_sel)
+    if xs.size:
+        offset_x = float(xs.mean()) - cx
+        offset_y = float(ys.mean()) - cy
+    else:
+        offset_x = offset_y = 0.0
+    offset_norm = math.hypot(offset_x, offset_y) / max(radius, 1)
+
+    return {
+        'coverage': coverage, 'contrast': contrast,
+        'black_frac': black_frac, 'white_frac': white_frac,
+        'void_frac': void_frac, 'nudge_x': nudge_x, 'nudge_y': nudge_y,
+        'offset_norm': offset_norm, 'radius': radius,
+    }
+
+
 def body_words(forward, right):
     """'FORWARD 0.20 m, RIGHT 0.30 m' -- the sign check a human can read."""
     return (f"{'FORWARD' if forward >= 0 else 'BACK'} {abs(forward):.2f} m, "
@@ -221,6 +333,14 @@ class ArucoPose(Node):
     LOST_FRAMES = 5             # consecutive misses before it goes false again
 
     # ---- output -----------------------------------------------------------
+    # ---- contrast fallback (used only when solvePnP does not solve) ------
+    PAD_FALLBACK_ENABLED = True
+    PAD_CIRCLE_RADIUS = 0.40    # fraction of the smaller frame dimension
+    PAD_COVERAGE_THRESHOLD = 0.75
+    PAD_MIN_CONTRAST = 40.0
+    PAD_HOLD_FRAMES = 3         # consecutive good contrast frames before ready
+    PAD_NUDGE_STEP = 0.05       # m per correction step
+
     STREAM_PORT = 8080          # 0 disables the browser stream
     STREAM_SCALE = 0.6
     JPEG_QUALITY = 70
@@ -266,6 +386,20 @@ class ArucoPose(Node):
         self.image_rotate = int(self.declare_parameter(
             'image_rotate', self.IMAGE_ROTATE).value)
         self.show_gui = bool(self.declare_parameter('show_gui', False).value)
+
+        self.pad_fallback_enabled = bool(self.declare_parameter(
+            'pad_fallback_enabled', self.PAD_FALLBACK_ENABLED).value)
+        self.pad_circle_radius = float(self.declare_parameter(
+            'pad_circle_radius', self.PAD_CIRCLE_RADIUS).value)
+        self.pad_coverage_threshold = float(self.declare_parameter(
+            'pad_coverage_threshold', self.PAD_COVERAGE_THRESHOLD).value)
+        self.pad_min_contrast = float(self.declare_parameter(
+            'pad_min_contrast', self.PAD_MIN_CONTRAST).value)
+        self.pad_hold_frames = int(self.declare_parameter(
+            'pad_hold_frames', self.PAD_HOLD_FRAMES).value)
+        self.pad_nudge_step = float(self.declare_parameter(
+            'pad_nudge_step', self.PAD_NUDGE_STEP).value)
+        self._pad_good_run = 0
 
         # Optional real calibration. Left empty by default, in which case fx
         # comes from hfov_deg and distortion is assumed zero -- see the header
@@ -315,6 +449,8 @@ class ArucoPose(Node):
         self.detected_pub = self.create_publisher(Bool, '/aruco/detected', 10)
         self.point_pub = self.create_publisher(PointStamped, '/aruco/point', 10)
         self.info_pub = self.create_publisher(String, '/aruco/info', 10)
+        self.pad_ready_pub = self.create_publisher(Bool, '/aruco/pad_ready', 10)
+        self.pad_nudge_pub = self.create_publisher(Point, '/aruco/pad_nudge', 10)
 
         self.cap = cv2.VideoCapture(self.camera_index)
         if not self.cap.isOpened():
@@ -439,14 +575,53 @@ class ArucoPose(Node):
             line = (f"id {self.marker_id} SEEN  cam x={x:+.3f} y={y:+.3f} "
                     f"z={z:+.3f} m  height={-z:.3f} m  |  marker is "
                     f"{body_words(y, x)} of the camera")
+            # A decoded pose is strictly better evidence than the contrast
+            # guess, so reset its run counter -- a stale "ready" latched from
+            # before the marker was last decodable must not survive into the
+            # next time it drops out.
+            self._pad_good_run = 0
         else:
             line = f"id {self.marker_id} not visible (seen: {seen or '-'})"
+            if self.pad_fallback_enabled:
+                line += self._run_pad_fallback(gray)
 
         self.detected_pub.publish(Bool(data=self.detected))
         self.info_pub.publish(String(data=line))
         self.get_logger().info(line, throttle_duration_sec=1.0)
 
         self._render(frame, quad, line)
+
+    def _run_pad_fallback(self, gray):
+        """Contrast/coverage check, run only because solvePnP just failed.
+
+        Publishes /aruco/pad_ready and /aruco/pad_nudge and returns a short
+        string to append to the info line. Never touches /aruco/detected or
+        /aruco/point -- those stay the decoded-pose signal only, so a
+        consumer that ignores the fallback topics sees exactly the old
+        behaviour.
+        """
+        m = analyse_contrast(gray, self.pad_circle_radius)
+        if (m is None or m['contrast'] < self.pad_min_contrast
+                or m['coverage'] < self.pad_coverage_threshold):
+            self._pad_good_run = 0
+            self.pad_ready_pub.publish(Bool(data=False))
+            self.pad_nudge_pub.publish(Point(x=0.0, y=0.0, z=0.0))
+            if m is None:
+                return '  |  pad-fallback: empty circle'
+            return (f"  |  pad-fallback: cov={m['coverage'] * 100:.0f}% "
+                    f"contrast={m['contrast']:.0f} - not enough")
+
+        self._pad_good_run += 1
+        ready = self._pad_good_run >= self.pad_hold_frames
+        self.pad_ready_pub.publish(Bool(data=ready))
+
+        step = self.pad_nudge_step
+        nudge = Point(x=m['nudge_x'] * step, y=m['nudge_y'] * step, z=0.0)
+        self.pad_nudge_pub.publish(nudge)
+
+        return (f"  |  pad-fallback: cov={m['coverage'] * 100:.0f}% "
+                f"contrast={m['contrast']:.0f} "
+                f"{'READY' if ready else f'({self._pad_good_run}/{self.pad_hold_frames})'}")
 
     def _update_debounce(self, hit):
         """Same debounce shape as window_detect: N hits on, M misses off.

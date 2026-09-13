@@ -120,6 +120,12 @@ def generate_launch_description():
                     'stream_scale': LaunchConfiguration('stream_scale'),
                     'jpeg_quality': LaunchConfiguration('jpeg_quality'),
                     'show_gui': LaunchConfiguration('show_gui'),
+                    'pad_fallback_enabled': LaunchConfiguration('pad_fallback_enabled'),
+                    'pad_circle_radius': LaunchConfiguration('pad_circle_radius'),
+                    'pad_coverage_threshold': LaunchConfiguration('pad_coverage_threshold'),
+                    'pad_min_contrast': LaunchConfiguration('pad_min_contrast'),
+                    'pad_hold_frames': LaunchConfiguration('pad_hold_frames'),
+                    'pad_nudge_step': LaunchConfiguration('pad_nudge_step'),
                 }],
             )
         ],
@@ -159,6 +165,9 @@ def generate_launch_description():
                     'marker_lost_seconds': LaunchConfiguration('marker_lost_seconds'),
                     'precision_descent': LaunchConfiguration('precision_descent'),
                     'blind_commit_altitude': LaunchConfiguration('blind_commit_altitude'),
+                    'use_pad_fallback': LaunchConfiguration('use_pad_fallback'),
+                    'pad_max_age': LaunchConfiguration('pad_max_age'),
+                    'pad_leash': LaunchConfiguration('pad_leash'),
                     'on_fail': LaunchConfiguration('on_fail'),
                     'request_offboard_from_ros': LaunchConfiguration(
                         'request_offboard_from_ros'),
@@ -287,6 +296,22 @@ def generate_launch_description():
             'blind_commit_altitude', default_value='1.0',
             description='m below which the marker is expected to be out of '
                         'frame. Logged, not enforced. MEASURE IT on the bench.'),
+        DeclareLaunchArgument(
+            'use_pad_fallback', default_value='true',
+            description='Use the contrast/coverage fallback (the marker is '
+                        'a big black/white square, so the pad-detection '
+                        'trick works on it) to keep nudging the hold point '
+                        'once ArUco stops decoding during the descent, '
+                        'instead of going fully open loop.'),
+        DeclareLaunchArgument(
+            'pad_max_age', default_value='0.5',
+            description='s after which the last pad-fallback reading is not '
+                        'evidence of anything. Same reasoning as marker_max_age.'),
+        DeclareLaunchArgument(
+            'pad_leash', default_value='0.30',
+            description='m the pad-fallback correction may move the held '
+                        'point from where the blind descent began. Kept '
+                        'tight: this is a coarse signal, not a real pose.'),
 
         # ---- the camera ----
         DeclareLaunchArgument(
@@ -331,6 +356,37 @@ def generate_launch_description():
             'show_gui', default_value='false',
             description='cv2.imshow the frame. Needs a display; leave false '
                         'on a headless Jetson.'),
+        DeclareLaunchArgument(
+            'pad_fallback_enabled', default_value='true',
+            description='On a frame where solvePnP fails to decode the '
+                        'marker, fall back to the contrast/coverage check '
+                        '(same technique as lend.pad_detector_node) on the '
+                        'same frame, publishing /aruco/pad_ready and '
+                        '/aruco/pad_nudge. Leaves /aruco/detected and '
+                        '/aruco/point untouched either way.'),
+        DeclareLaunchArgument(
+            'pad_circle_radius', default_value='0.40',
+            description='Fraction of the smaller frame dimension the '
+                        'pad-fallback decision circle covers.'),
+        DeclareLaunchArgument(
+            'pad_coverage_threshold', default_value='0.75',
+            description='Fraction of the circle that must read as solid '
+                        'black/white before the fallback calls it good.'),
+        DeclareLaunchArgument(
+            'pad_min_contrast', default_value='40.0',
+            description='Minimum separation between the dark and light '
+                        'populations inside the circle. Guards against '
+                        'calling a uniform grey floor a marker.'),
+        DeclareLaunchArgument(
+            'pad_hold_frames', default_value='3',
+            description='Consecutive good contrast frames before '
+                        '/aruco/pad_ready latches true. Kills single-frame '
+                        'flicker.'),
+        DeclareLaunchArgument(
+            'pad_nudge_step', default_value='0.05',
+            description='m per correction step the fallback emits on '
+                        '/aruco/pad_nudge, toward the black/white mass and '
+                        'away from whatever is not it.'),
 
         # ---- misc ----
         DeclareLaunchArgument(

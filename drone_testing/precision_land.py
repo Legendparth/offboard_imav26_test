@@ -113,7 +113,7 @@ import time
 
 import rclpy
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import Point, PointStamped
 from std_msgs.msg import Bool, String
 from px4_msgs.msg import VehicleAttitude, VehicleStatus
 
@@ -190,6 +190,23 @@ class PrecisionLand(OffboardSequence):
                                 # walk the airframe down over the marker and
                                 # note where /aruco/detected goes false.
 
+    # ---- contrast fallback during the blind descent ------------------------
+    # aruco_pose publishes /aruco/pad_ready + /aruco/pad_nudge only on frames
+    # where solvePnP fails to decode the marker -- exactly the frames the
+    # descent above BLIND_COMMIT_ALTITUDE stops getting anything from. The
+    # marker IS a big black/white square, so the same contrast/coverage trick
+    # lend.pad_detector_node uses for a painted pad works on it directly, with
+    # no second target. This does not replace the ArUco lock -- it only fills
+    # in the stretch where decoding has stopped but the marker mass is still
+    # visible, closing a loop that would otherwise be fully open.
+    USE_PAD_FALLBACK = True
+    PAD_MAX_AGE = 0.5           # s. Same reasoning as MARKER_MAX_AGE: silence
+                                # reads as "no signal", never as a lock.
+    PAD_LEASH = 0.30            # m the pad-corrected hold point may wander
+                                # from where the blind descent started. Kept
+                                # tight -- this is a coarse, uncalibrated
+                                # signal, not a substitute for the real pose.
+
     def __init__(self):
         super().__init__('precision_land')
 
@@ -225,6 +242,12 @@ class PrecisionLand(OffboardSequence):
             'precision_descent', self.PRECISION_DESCENT).value)
         self.BLIND_COMMIT_ALTITUDE = float(self._declare_number(
             'blind_commit_altitude', self.BLIND_COMMIT_ALTITUDE))
+        self.USE_PAD_FALLBACK = bool(self.declare_parameter(
+            'use_pad_fallback', self.USE_PAD_FALLBACK).value)
+        self.PAD_MAX_AGE = float(self._declare_number(
+            'pad_max_age', self.PAD_MAX_AGE))
+        self.PAD_LEASH = float(self._declare_number(
+            'pad_leash', self.PAD_LEASH))
         self.ON_FAIL = str(self.declare_parameter(
             'on_fail', self.ON_FAIL).value).strip().lower()
         if self.ON_FAIL not in ('land', 'hold'):
@@ -250,6 +273,18 @@ class PrecisionLand(OffboardSequence):
                                  self.marker_point_callback, 10)
         self.create_subscription(String, '/aruco/info',
                                  self.marker_info_callback, 10)
+
+        # ---- contrast fallback (see PAD_* above) ----
+        self.pad_ready = False
+        self.pad_nudge = (0.0, 0.0)
+        self.pad_nudge_time = None
+        self._pad_leash_origin = None
+        self._pad_last_applied_time = None
+        if self.USE_PAD_FALLBACK:
+            self.create_subscription(Bool, '/aruco/pad_ready',
+                                     self.pad_ready_callback, 10)
+            self.create_subscription(Point, '/aruco/pad_nudge',
+                                     self.pad_nudge_callback, 10)
 
         # ---- attitude ----
         # The full quaternion, not just heading: this is what makes the marker
@@ -321,6 +356,13 @@ class PrecisionLand(OffboardSequence):
     def marker_info_callback(self, msg):
         self.marker_info = msg.data
 
+    def pad_ready_callback(self, msg):
+        self.pad_ready = bool(msg.data)
+
+    def pad_nudge_callback(self, msg):
+        self.pad_nudge = (float(msg.x), float(msg.y))
+        self.pad_nudge_time = time.monotonic()
+
     def attitude_callback(self, msg):
         q = [float(v) for v in msg.q]
         if len(q) == 4 and all(math.isfinite(v) for v in q):
@@ -373,6 +415,30 @@ class PrecisionLand(OffboardSequence):
                     "that vehicle_attitude is in the PX4 DDS topic list.")
             return None
         return quat_rotate(self.attitude_q, self.marker_body())
+
+    def pad_is_fresh(self):
+        """A live contrast reading. Same debounce reasoning as marker_is_fresh."""
+        if self.pad_nudge_time is None:
+            return False
+        return time.monotonic() - self.pad_nudge_time <= self.PAD_MAX_AGE
+
+    def pad_nudge_ned(self):
+        """(north, east) from the contrast fallback, tilt-compensated, or None.
+
+        pad_nudge arrives as (forward, right) in the same raw body-frame
+        convention marker_body() uses -- see aruco_pose's docstring, which
+        keeps the fallback's image-space axes aligned with the real marker
+        vector on purpose so this rotation is the only one ever needed.
+        Not scaled to a real distance: it is a unit-ish direction times
+        pad_nudge_step, meant to nudge a hold point, never to replace an
+        actual position error the way marker_offset_ned's does.
+        """
+        if not self.pad_is_fresh() or self.attitude_q is None:
+            return None
+        forward, right = self.pad_nudge
+        if forward == 0.0 and right == 0.0:
+            return None
+        return quat_rotate(self.attitude_q, (forward, right, 0.0))
 
     def marker_summary(self):
         if not self.marker_ever_seen:
@@ -705,6 +771,7 @@ class PrecisionLand(OffboardSequence):
         if had_hold and self.PRECISION_DESCENT:
             self.hold_x, self.hold_y = hold_x, hold_y
             self.hold_xy = True
+            self._pad_leash_origin = (hold_x, hold_y)
             self.get_logger().warning(
                 f"Precision descent: holding ({hold_x:.2f}, {hold_y:.2f}) NED "
                 f"all the way down. The marker is expected to leave the frame "
@@ -722,6 +789,8 @@ class PrecisionLand(OffboardSequence):
                 "Flow no longer healthy: dropping the aligned point and "
                 "finishing the descent on zero-velocity hold.")
 
+        self._apply_pad_fallback()
+
         alt = self.relative_altitude()
         if (not self._warned_blind and alt is not None
                 and alt <= self.BLIND_COMMIT_ALTITUDE):
@@ -731,6 +800,43 @@ class PrecisionLand(OffboardSequence):
                 "of frame from here. Descent is open loop.")
 
         super()._handle_landing()
+
+    def _apply_pad_fallback(self):
+        """Fold the contrast fallback into the held point while ArUco is out.
+
+        Only runs when the real marker has nothing to say -- a decoded pose
+        is always better evidence and is never overridden by this. Applies
+        each new pad_nudge message once (gated on its timestamp changing,
+        not on the control tick) and leashes the correction to where the
+        blind descent began, exactly the way the parent's own carrot is
+        leashed to the measured position: a coarse, uncalibrated signal
+        should be able to nudge the touchdown point, not walk it away
+        indefinitely.
+        """
+        if (not self.USE_PAD_FALLBACK or not self.hold_xy
+                or self.marker_is_fresh() or self._pad_leash_origin is None):
+            return
+        if self.pad_nudge_time is None or self.pad_nudge_time == self._pad_last_applied_time:
+            return
+        if not self.pad_ready or not self.pad_is_fresh():
+            return
+        ned = self.pad_nudge_ned()
+        self._pad_last_applied_time = self.pad_nudge_time
+        if ned is None:
+            return
+        north, east = ned[0], ned[1]
+        self.hold_x += north
+        self.hold_y += east
+        ox, oy = self._pad_leash_origin
+        dx, dy = self.hold_x - ox, self.hold_y - oy
+        drift = math.hypot(dx, dy)
+        if drift > self.PAD_LEASH:
+            self.hold_x = ox + dx / drift * self.PAD_LEASH
+            self.hold_y = oy + dy / drift * self.PAD_LEASH
+        self.get_logger().info(
+            f"Pad-fallback nudge applied ({north:+.3f}, {east:+.3f}) NED, "
+            f"{drift:.2f} m from descent start.",
+            throttle_duration_sec=1.0)
 
     def _give_up(self, reason):
         if self.ON_FAIL == 'hold':
