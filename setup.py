@@ -43,8 +43,11 @@ setup(
             'window_traverse = drone_testing.window_traverse:main',
             'bar_detect = drone_testing.bar_detect:main',
             'bar_cross = drone_testing.bar_cross:main',
+            'course_fsm = drone_testing.course_fsm:main',
             'aruco_pose = drone_testing.aruco_pose:main',
             'precision_land = drone_testing.precision_land:main',
+            'thermal_sensor = drone_testing.thermal_sensor:main',
+            'thermal_drop = drone_testing.thermal_drop:main',
         ],
     },
 )

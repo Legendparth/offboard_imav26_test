@@ -729,8 +729,10 @@ class WindowTraverse(WindowScan):
     # would land the aircraft in the middle of the approach.
     FLIGHT_SECONDS = 150.0
 
-    def __init__(self):
-        super().__init__('window_traverse')
+    def __init__(self, node_name='window_traverse'):
+        # node_name for the same reason WindowScan takes one: course_fsm runs
+        # this whole mission as its first leg under its own name.
+        super().__init__(node_name)
 
         self.STANDOFF_DISTANCE = float(self._declare_number(
             'standoff_distance', self.STANDOFF_DISTANCE))

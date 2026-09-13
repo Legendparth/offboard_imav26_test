@@ -397,6 +397,44 @@ class BarCross(OffboardSequence):
         self.YAW_CONE = math.radians(float(self._declare_number(
             'yaw_cone_deg', self.YAW_CONE_DEG)))
 
+        # ---- searching by climbing ----
+        # The aircraft cannot back up to see the bar. On the full course this
+        # stage starts about a metre past the window, with the next obstacle
+        # right there, and there is nowhere to retreat to.
+        #
+        # Up is the direction that IS available, and it is the one that helps.
+        # What stops a tall bar being measured from close range is that it
+        # sits above the top of the image: a 1.98 m bar seen from 1 m away at
+        # 1.2 m altitude is 38 degrees up, and the camera has about 30. Every
+        # 10 cm of climb takes several degrees off that angle. From 1.5 m the
+        # same bar is 26 degrees up and comfortably in frame.
+        #
+        # So SEARCH is a ladder: hold, look for search_dwell_seconds, climb a
+        # step, look again. At the top it wraps back to the bottom and climbs
+        # again, because a bar that was missed once at a given height may
+        # simply have needed a steadier hover. The whole thing is bounded by
+        # search_timeout, and when that expires the attempt is abandoned into
+        # a normal descent rather than left hovering.
+        #
+        # The dwell has a floor to it that is worth respecting: the detector
+        # debounces over detect_frames at max_fps, this node requires
+        # detect_seconds on top of that, and the estimator needs
+        # pose_min_samples inside its buffer. Below about three seconds a rung
+        # cannot produce a detection even with the bar in plain view, so a
+        # short dwell does not search faster -- it just climbs past the answer.
+        self.SEARCH_CLIMB_STEP = float(self._declare_number('search_climb_step', 0.30))
+        self.SEARCH_DWELL_SECONDS = float(self._declare_number(
+            'search_dwell_seconds', 5.0))
+        self.SEARCH_MAX_ALTITUDE = float(self._declare_number(
+            'search_max_altitude', 1.80))
+        self.SEARCH_TIMEOUT = float(self._declare_number('search_timeout', 45.0))
+        if self.SEARCH_DWELL_SECONDS < 3.0:
+            self.get_logger().warning(
+                f"search_dwell_seconds is {self.SEARCH_DWELL_SECONDS:.1f} s, "
+                "which is less than the detector and the estimator need to "
+                "call a bar that is in plain view. The ladder will climb past "
+                "detections it could have made.")
+
         # ---- flying it blind ----
         # The rules give the bar's height: 1200, 1600 or 1980 mm for the red
         # one, 400, 800 or 1200 for the blue. When the setting is known there
@@ -491,6 +529,10 @@ class BarCross(OffboardSequence):
         self.cross_altitude = None
         self.cross_bar = None
         self.set_in_band_since = None
+        self.search_altitude = None
+        self.search_rung_since = None
+        self.search_started = None
+        self.search_rungs = 0
         self.flight_start = None
         self.outcome = 'not attempted'
 
@@ -892,11 +934,37 @@ class BarCross(OffboardSequence):
 
     # ------------------------------------------------------------- SEARCH
 
+    def _set_search_altitude(self, altitude):
+        """Command a new hover height without touching x/y.
+
+        Deliberately not _set_target: that starts a horizontal move, and the
+        whole point of searching by climbing is that the aircraft holds its
+        ground while it does it. Nothing about the search should carry the
+        vehicle towards an obstacle it has not measured yet.
+        """
+        altitude = min(altitude, self.MAX_ALTITUDE)
+        self.search_altitude = altitude
+        self.commanded_altitude = altitude
+        self.target_z = self.home_z - altitude
+        self.search_rung_since = time.monotonic()
+        self.search_rungs += 1
+
     def _handle_search(self):
+        """Look for the bar, climbing a rung at a time until it is found.
+
+        See the note by SEARCH_CLIMB_STEP in __init__ for why climbing is the
+        move here rather than backing off.
+        """
         if not self._still_flyable():
             return
         self._try_latch_xy_hold()
         self.log_flight_state()
+
+        now = time.monotonic()
+        if self.search_started is None:
+            self.search_started = now
+            self._set_search_altitude(self.commanded_altitude)
+            self.search_rungs = 1
 
         if self.bar_is_confirmed() and self.bar_estimate() is not None:
             if not self.hold_xy:
@@ -905,11 +973,60 @@ class BarCross(OffboardSequence):
                     "enough to fly on. Waiting.", throttle_duration_sec=2.0)
                 return
             self._enter_stage(self.LOCK)
-            self.get_logger().warning(f"LOCK: {self.pose_summary()}.")
+            self.get_logger().warning(
+                f"LOCK: found it from {self.search_altitude:.2f} m on rung "
+                f"{self.search_rungs}. {self.pose_summary()}.")
+            return
+
+        searched = now - self.search_started
+        if searched > self.SEARCH_TIMEOUT:
+            self._abandon(
+                f"no bar found in {self.SEARCH_TIMEOUT:.0f} s of searching, "
+                f"over {self.search_rungs} hover heights up to "
+                f"{self.search_altitude:.2f} m. {self.pose_summary()}")
+            return
+
+        # A rung is only spent once the aircraft has actually ARRIVED at it.
+        # Timing the dwell from the moment the setpoint moved would spend most
+        # of it climbing, looking at the bar through a moving camera, which is
+        # the condition the detector is worst in.
+        alt = self.relative_altitude()
+        if alt is None or abs(alt - self.search_altitude) > self.SET_ALT_TOLERANCE:
+            self.search_rung_since = now
+            self.get_logger().info(
+                f"SEARCH: climbing to {self.search_altitude:.2f} m to look "
+                f"from higher up. {self.pose_summary()}",
+                throttle_duration_sec=1.0)
+            return
+
+        if now - self.search_rung_since >= self.SEARCH_DWELL_SECONDS:
+            if self.search_altitude >= self.SEARCH_MAX_ALTITUDE - 1e-3:
+                # Top of the ladder. Drop back to where the climb started and
+                # go up again -- a bar missed once at a height may only have
+                # needed a steadier hover, and search_timeout is what bounds
+                # the whole thing.
+                self._set_search_altitude(self.TAKEOFF_ALTITUDE)
+                self.get_logger().warning(
+                    f"SEARCH: nothing at any height up to "
+                    f"{self.SEARCH_MAX_ALTITUDE:.2f} m. Back to "
+                    f"{self.TAKEOFF_ALTITUDE:.2f} m and climbing again; "
+                    f"{self.SEARCH_TIMEOUT - searched:.0f} s of search left.")
+            else:
+                nxt = min(self.search_altitude + self.SEARCH_CLIMB_STEP,
+                          self.SEARCH_MAX_ALTITUDE)
+                self._set_search_altitude(nxt)
+                self.get_logger().warning(
+                    f"SEARCH: no bar after {self.SEARCH_DWELL_SECONDS:.0f} s; "
+                    f"climbing to {self.search_altitude:.2f} m. A tall bar "
+                    "sits above the top of the image from close range, and "
+                    "height is what brings it down into frame.")
             return
 
         self.get_logger().info(
-            f"SEARCH: {self.pose_summary()}", throttle_duration_sec=1.0)
+            f"SEARCH: looking from {self.search_altitude:.2f} m, "
+            f"{self.SEARCH_DWELL_SECONDS - (now - self.search_rung_since):.1f} s "
+            f"left on this rung, {self.SEARCH_TIMEOUT - searched:.0f} s of "
+            f"search. {self.pose_summary()}", throttle_duration_sec=1.0)
 
     # --------------------------------------------------------------- LOCK
 

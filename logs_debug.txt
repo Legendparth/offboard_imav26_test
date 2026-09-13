@@ -1,0 +1,1 @@
+ros2 launch drone_testing bar_mission.launch.py color:=blue min_elevation_deg:=-35.0 pass_mode:=under agent_only:=false request_offboard_from_ros:=false

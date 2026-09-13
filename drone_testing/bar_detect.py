@@ -185,6 +185,21 @@ class BarDetect(Node):
     STREAM_PORT = 8081          # NOT 8080: window_detect owns that one, and
                                 # both may be up at once during a full course.
 
+    def _num(self, name, default):
+        """Declare a numeric parameter that accepts an int or a float.
+
+        Launch arguments arrive typed by how they were written, so
+        `min_elevation_deg:=-35` is an INTEGER. A plain declare_parameter with
+        a float default is strictly DOUBLE and rclpy kills the node at startup
+        rather than convert -- which is exactly how this node died with the
+        blue-bar command. Dynamic typing plus a conversion at the call site
+        makes `-35` and `-35.0` the same thing. Same contract as
+        OffboardSequence._declare_number.
+        """
+        from rcl_interfaces.msg import ParameterDescriptor
+        return self.declare_parameter(
+            name, default, ParameterDescriptor(dynamic_typing=True)).value
+
     def __init__(self):
         super().__init__('bar_detect')
 
@@ -204,29 +219,26 @@ class BarDetect(Node):
             raise SystemExit(
                 f"Unknown color '{self.color}'; expected one of {sorted(HSV_RANGES)}")
 
-        self.min_area = float(self.declare_parameter('min_area', float(self.MIN_AREA)).value)
-        self.min_aspect = float(self.declare_parameter('min_aspect', self.MIN_ASPECT).value)
-        self.max_tilt_deg = float(self.declare_parameter('max_tilt_deg', self.MAX_TILT_DEG).value)
-        self.min_elevation = math.radians(float(self.declare_parameter(
-            'min_elevation_deg', self.MIN_ELEVATION_DEG).value))
-        self.samples_along = int(self.declare_parameter('samples_along', self.SAMPLES_ALONG).value)
-        self.border_margin = float(self.declare_parameter(
-            'border_margin', float(self.BORDER_MARGIN)).value)
-        self.detect_frames = int(self.declare_parameter('detect_frames', self.DETECT_FRAMES).value)
-        self.lost_frames = int(self.declare_parameter('lost_frames', self.LOST_FRAMES).value)
-        self.depth_min = float(self.declare_parameter('depth_min', self.DEPTH_MIN).value)
-        self.depth_max = float(self.declare_parameter('depth_max', self.DEPTH_MAX).value)
-        self.fallback_hfov = math.radians(float(self.declare_parameter(
-            'fallback_hfov_deg', self.FALLBACK_HFOV_DEG).value))
-        self.max_fps = float(self.declare_parameter('max_fps', self.MAX_FPS).value)
+        self.min_area = float(self._num('min_area', float(self.MIN_AREA)))
+        self.min_aspect = float(self._num('min_aspect', self.MIN_ASPECT))
+        self.max_tilt_deg = float(self._num('max_tilt_deg', self.MAX_TILT_DEG))
+        self.min_elevation = math.radians(float(self._num('min_elevation_deg', self.MIN_ELEVATION_DEG)))
+        self.samples_along = int(self._num('samples_along', self.SAMPLES_ALONG))
+        self.border_margin = float(self._num('border_margin', float(self.BORDER_MARGIN)))
+        self.detect_frames = int(self._num('detect_frames', self.DETECT_FRAMES))
+        self.lost_frames = int(self._num('lost_frames', self.LOST_FRAMES))
+        self.depth_min = float(self._num('depth_min', self.DEPTH_MIN))
+        self.depth_max = float(self._num('depth_max', self.DEPTH_MAX))
+        self.fallback_hfov = math.radians(float(self._num('fallback_hfov_deg', self.FALLBACK_HFOV_DEG)))
+        self.max_fps = float(self._num('max_fps', self.MAX_FPS))
         self.min_frame_interval = (1.0 / self.max_fps) if self.max_fps > 0.0 else 0.0
 
         self.publish_image = bool(self.declare_parameter('publish_image', True).value)
         self.publish_compressed = bool(self.declare_parameter('publish_compressed', True).value)
         self.publish_mask = bool(self.declare_parameter('publish_mask', False).value)
-        self.jpeg_quality = int(self.declare_parameter('jpeg_quality', self.JPEG_QUALITY).value)
-        self.stream_port = int(self.declare_parameter('stream_port', self.STREAM_PORT).value)
-        self.stream_scale = float(self.declare_parameter('stream_scale', 0.5).value)
+        self.jpeg_quality = int(self._num('jpeg_quality', self.JPEG_QUALITY))
+        self.stream_port = int(self._num('stream_port', self.STREAM_PORT))
+        self.stream_scale = float(self._num('stream_scale', 0.5))
 
         self.create_subscription(Image, self.image_topic,
                                  self.image_callback, qos_profile_sensor_data)

@@ -180,67 +180,20 @@ class MLX90640Reader:
 if __name__ == "__main__":
     import cv2
     import numpy as np
-    import math
     
     reader = MLX90640Reader()
     reader.start()
     
-    # Initialize the RGB camera
-    cam = cv2.VideoCapture(0)
-
-    # --- Sensor Fusion Configuration ---
-    # MLX90640 FOV
-    FOV_X_THM = 110.0
-    FOV_Y_THM = 75.0
-    
-    # Zebronics 480p Webcam Estimated FOV 
-    FOV_X_RGB = 52.0
-    FOV_Y_RGB = 40.0
-    
-    # Physical setup (RGB is 30mm right of MLX)
-    OFFSET_X_MM = -30.0 
-    
-    # Parallax target distance
-    TARGET_DIST_MM = 1000.0  # 1 meter
-    
     try:
-        print("Starting fused thermal/RGB feed. Press 'q' in the window to quit.")
+        print("Starting fused thermal feed. Press 'q' in the window to quit.")
         while True:
-            # ret, rgb_frame = cam.read()
-            # if not ret:
-                # continue
-
-            # Flip vertically for upside-down mount
-            # (Use -1 instead of 0 if you also need to correct horizontal mirroring)
-            # rgb_frame = cv2.flip(rgb_frame, 0)
             
             frame = reader.get_latest_frame()
             if frame is not None:
-                # rgb_h, rgb_w = rgb_frame.shape[:2]
+
                 hot_y_thermal, hot_x_thermal = frame.max_pixel
+                print(f"max Temp: {frame.max_temp}")
 
-                # print(f'Hot pixel: {hot_x_thermal}, {hot_y_thermal}, Temperature: {frame.max_temp:.1f} C')
-                phi_x = FOV_X_THM / 32.0 * hot_x_thermal
-                phi_y = FOV_Y_THM / 24.0 * hot_y_thermal
-
-                phi_rgb_x = phi_x - (FOV_X_THM - FOV_X_RGB) / 2.0
-                phi_rgb_y = phi_y - (FOV_Y_THM - FOV_Y_RGB) / 2.0
-
-                # center_x = int(rgb_w / FOV_X_RGB * phi_rgb_x)
-                # center_y = int(rgb_h / FOV_Y_RGB * phi_rgb_y)
-
-                # 6. Draw the bounding box
-                box_size = 80
-                half_box = box_size // 2
-                # top_left = (max(center_x - half_box, 0), max(center_y - half_box, 0))
-                # bottom_right = (min(center_x + half_box, rgb_w), min(center_y + half_box, rgb_h))
-                
-                # cv2.rectangle(rgb_frame, top_left, bottom_right, (0, 0, 255), 3)
-                # label = f"HOT: {frame.max_temp:.1f} C"
-                # cv2.putText(rgb_frame, label, (top_left[0], top_left[1] - 10), 
-                #             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-                # --- Generate Thermal Visual ---
                 grid = frame.grid
                 grid_min, grid_max = np.min(grid), np.max(grid)
                 if grid_max == grid_min: grid_max += 0.1 
@@ -248,9 +201,7 @@ if __name__ == "__main__":
                 norm_grid = np.uint8((grid - grid_min) * 255 / (grid_max - grid_min))
                 heatmap = cv2.applyColorMap(norm_grid, cv2.COLORMAP_INFERNO)
                 heatmap_resized = cv2.resize(heatmap, (640, 480), interpolation=cv2.INTER_CUBIC)
-                
-                # Display both feeds
-                # cv2.imshow('RGB Camera - Fused Track', rgb_frame)
+
                 cv2.imshow('MLX90640 Thermal Feed', heatmap_resized)
                 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -261,6 +212,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
-        cam.release()
         cv2.destroyAllWindows()
         reader.close()

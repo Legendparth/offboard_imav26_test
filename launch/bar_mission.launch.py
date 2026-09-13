@@ -272,9 +272,15 @@ def generate_launch_description():
                     'max_altitude': LaunchConfiguration('max_altitude'),
                     'yaw_cone_deg': LaunchConfiguration('yaw_cone_deg'),
                     'flight_seconds': LaunchConfiguration('flight_seconds'),
+                    'request_offboard_from_ros': LaunchConfiguration(
+                        'request_offboard_from_ros'),
 
                     # ---- the crossing ----
                     'pass_mode': LaunchConfiguration('pass_mode'),
+                    'search_climb_step': LaunchConfiguration('search_climb_step'),
+                    'search_dwell_seconds': LaunchConfiguration('search_dwell_seconds'),
+                    'search_max_altitude': LaunchConfiguration('search_max_altitude'),
+                    'search_timeout': LaunchConfiguration('search_timeout'),
                     'assume_bar_height': LaunchConfiguration('assume_bar_height'),
                     'assume_bar_distance': LaunchConfiguration('assume_bar_distance'),
                     'assume_bar_length': LaunchConfiguration('assume_bar_length'),
@@ -457,12 +463,58 @@ def generate_launch_description():
             description='Seconds from the START OF THE CLIMB to the descent. '
                         'Never fires during the crossing itself.'),
 
+        DeclareLaunchArgument(
+            'request_offboard_from_ros', default_value='true',
+            description='true: the flight node switches PX4 into Offboard '
+                        'itself. false: it streams setpoints and waits for you '
+                        'to flip Offboard on the RC switch. Same parameter and '
+                        'default as window_traverse.launch.py and '
+                        'sequence_test.launch.py.'),
+
         # ---- the crossing ----
         DeclareLaunchArgument(
             'pass_mode', default_value='over',
             description='over = the red bar, under = the blue ones. This is '
                         'the ONLY logical difference between the two '
                         'missions; do not fork the node for it.'),
+        DeclareLaunchArgument(
+            'search_climb_step', default_value='0.30',
+            description='m the aircraft climbs between looks while searching '
+                        'for the bar. Only used when measuring (that is, when '
+                        'assume_bar_height is 0).\n'
+                        'Climbing is the search, because backing off is not '
+                        'available: on the full course this stage starts about '
+                        'a metre past the window with the bar right there. A '
+                        '1.98 m bar seen from 1 m away at 1.2 m altitude sits '
+                        '38 degrees above the optical axis and the camera has '
+                        'about 30, so it is off the top of the image. From '
+                        '1.5 m the same bar is 26 degrees up and in frame.'),
+        DeclareLaunchArgument(
+            'search_dwell_seconds', default_value='5.0',
+            description='s spent looking at each height before climbing to '
+                        'the next. Timed from ARRIVAL at the height, not from '
+                        'the setpoint moving, so the whole dwell is a steady '
+                        'hover rather than mostly a climb.\n'
+                        'Do not go below about 3: the detector debounces over '
+                        'detect_frames at max_fps, this node wants '
+                        'detect_seconds on top, and the estimator needs '
+                        'pose_min_samples in its buffer. A shorter dwell does '
+                        'not search faster, it climbs past the answer.'),
+        DeclareLaunchArgument(
+            'search_max_altitude', default_value='1.20',
+            description='m, the top of the search ladder. On reaching it the '
+                        'aircraft drops back to takeoff_altitude and climbs '
+                        'again until search_timeout. Keep it below '
+                        'max_altitude, and think about where the bar is: '
+                        'searching from ABOVE a low bar means looking down at '
+                        'a red floor, which is the one view the detector '
+                        'cannot use.'),
+        DeclareLaunchArgument(
+            'search_timeout', default_value='45.0',
+            description='s of searching, across all heights and repeats, '
+                        'before the attempt is abandoned into a normal '
+                        'descent. Must leave room inside flight_seconds for '
+                        'the crossing that follows it.'),
         DeclareLaunchArgument(
             'assume_bar_height', default_value='0.0',
             description='FLY BLIND at this bar height, in metres, instead of '
@@ -506,14 +558,14 @@ def generate_launch_description():
             'exit_distance', default_value='1.20',
             description='m past the bar the crossing ends.'),
         DeclareLaunchArgument(
-            'cross_clearance', default_value='0.25',
+            'cross_clearance', default_value='0.20',
             description='m of air between the airframe and the bar. Over a '
                         'bar there is only sky on the other side, so this is '
                         'nearly free -- be generous. Going UNDER, it is the '
                         'gap between the top of the aircraft and the bar, and '
                         'the floor is what limits how much you can spend.'),
         DeclareLaunchArgument(
-            'bar_radius', default_value='0.05',
+            'bar_radius', default_value='0.02',
             description='m, half the bar thickness. The estimate measures the '
                         'centreline of what the mask saw, so the surface is '
                         'this much nearer than the measurement.'),
@@ -540,14 +592,14 @@ def generate_launch_description():
 
         # ---- the estimate ----
         DeclareLaunchArgument(
-            'min_bar_height', default_value='0.60',
+            'min_bar_height', default_value='0.50',
             description='m above the arming plane. THE gate that separates '
                         'the bar from the red floor: the floor is at zero by '
                         'construction and cannot pass. The rules put the bar '
                         'at 1.2 m at the lowest, so this has a factor of two '
                         'of margin. Raise it, never lower it.'),
         DeclareLaunchArgument(
-            'max_bar_height', default_value='2.60',
+            'max_bar_height', default_value='1.10',
             description='m. Covers the 1980 mm setting with room for '
                         'measurement error. Raise for a blue bar hung high.'),
         DeclareLaunchArgument('min_length', default_value='0.60'),
