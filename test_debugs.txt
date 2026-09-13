@@ -1,16 +1,67 @@
-[course_fsm-5] [INFO] [1789295108.948304516] [course_fsm]: alt=+0.50 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.53 m rng_ok=False vz=+0.13 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,-0.01) | hdg=-104 deg yaw_sp=-102 deg
-[window_detect-4] [INFO] [1789295109.380463732] [window_detect]: window: YES  centre=(430,102) offset=-0.33 area=18688px dist=0.81m
-[course_fsm-5] [INFO] [1789295109.996082211] [course_fsm]: alt=+0.36 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.39 m rng_ok=False vz=+0.11 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.03,-0.02) | hdg=-104 deg yaw_sp=-102 deg
-[window_detect-4] [INFO] [1789295110.413607644] [window_detect]: window: YES  centre=(771,139) offset=+0.20 area=45310px dist=5.14m
-[course_fsm-5] [INFO] [1789295110.889238820] [course_fsm]: window: no usable pose (0/6 fresh samples, 178 accepted ever, 158 truncated; rejections: corner depths disagree x112, corners not coplanar x21, implausible window size x4)
-[course_fsm-5] [INFO] [1789295111.044657806] [course_fsm]: alt=+0.24 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.26 m rng_ok=False vz=+0.12 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.13,+0.01) | hdg=-103 deg yaw_sp=-102 deg
-[window_detect-4] [INFO] [1789295111.553945095] [window_detect]: window: YES  centre=(652,145) offset=+0.02 area=16742px dist=4.95m
-[course_fsm-5] [INFO] [1789295112.087594375] [course_fsm]: alt=+0.16 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.18 m rng_ok=False vz=-0.12 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.02) | hdg=-98 deg yaw_sp=-102 deg
-[course_fsm-5] [WARN] [1789295112.547628641] [course_fsm]: Descent has stalled against something solid; PX4's land detector still says airborne. Confirming touchdown ourselves over 2 s.
-[window_detect-4] [INFO] [1789295112.582380965] [window_detect]: window: YES  centre=(319,107) offset=-0.50 area=17261px dist=0.00m
-[course_fsm-5] [INFO] [1789295112.890589443] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 168 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-5] [INFO] [1789295113.088188297] [course_fsm]: alt=+0.15 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=False vz=-0.01 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,+0.01) | hdg=-98 deg yaw_sp=-102 deg
-[window_detect-4] [INFO] [1789295113.609371766] [window_detect]: window: YES  centre=(309,129) offset=-0.52 area=17786px dist=0.00m
-[course_fsm-5] [INFO] [1789295114.089320678] [course_fsm]: alt=+0.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.14 m rng_ok=False vz=+0.03 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.01,-0.01) | hdg=-98 deg yaw_sp=-102 deg
-[course_fsm-5] [ERROR] [1789295114.550086049] [course_fsm]: Touchdown confirmed by stalled descent, NOT by PX4's land detector. Check MPC_LAND_SPEED against land_speed and the LNDMC_* thresholds.
-[course_fsm-5] [WARN] [1789295114.550986921] [course_fsm]: Touchdown detected. Disarming.
+[course_fsm-5] [WARN] [1789300861.130915111] [course_fsm]: RED_CROSS: over the red bar, 1.00 m to the next midpoint at 0.35 m/s, altitude 2.46 m.
+[course_fsm-5] [INFO] [1789300861.175861093] [course_fsm]: RED_CROSS: 0.95 m to go, -0.02 m off the line.
+[window_detect-4] [INFO] [1789300861.483474982] [window_detect]: window: no   (streak 37 misses, 558 frames processed, 1050 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300861.584180540] [course_fsm]: window: no usable pose (0/6 fresh samples, 261 accepted ever, 55 truncated; rejections: corner depths disagree x67, implausible window size x21)
+[course_fsm-5] [INFO] [1789300861.680684589] [course_fsm]: RED_CROSS: 1.02 m to go, -0.00 m off the line.
+[course_fsm-5] [INFO] [1789300861.926953000] [course_fsm]: alt=+2.42 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.44 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.06,-0.03) | hdg=-130 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300862.182360232] [course_fsm]: RED_CROSS: 1.05 m to go, +0.01 m off the line.
+[window_detect-4] [INFO] [1789300862.544119288] [window_detect]: window: no   (streak 46 misses, 567 frames processed, 1066 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300862.725490669] [course_fsm]: RED_CROSS: 1.04 m to go, +0.03 m off the line.
+[course_fsm-5] [INFO] [1789300862.971155509] [course_fsm]: alt=+2.41 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.41 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.08,-0.10) | hdg=-130 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300863.249050878] [course_fsm]: RED_CROSS: 1.02 m to go, +0.05 m off the line.
+[course_fsm-5] [INFO] [1789300863.625014815] [course_fsm]: window: no usable pose (0/6 fresh samples, 261 accepted ever, 55 truncated; rejections: corner depths disagree x67, implausible window size x21)
+[window_detect-4] [INFO] [1789300863.721707481] [window_detect]: window: no   (streak 53 misses, 574 frames processed, 1081 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300863.778878504] [course_fsm]: RED_CROSS: 0.99 m to go, +0.05 m off the line.
+[course_fsm-5] [INFO] [1789300863.976725748] [course_fsm]: alt=+2.43 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.42 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.12,-0.14) | hdg=-128 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300864.281072376] [course_fsm]: RED_CROSS: 0.92 m to go, +0.07 m off the line.
+[window_detect-4] [INFO] [1789300864.725500494] [window_detect]: window: no   (streak 60 misses, 581 frames processed, 1096 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300864.831811180] [course_fsm]: RED_CROSS: 0.86 m to go, +0.09 m off the line.
+[course_fsm-5] [INFO] [1789300865.021279370] [course_fsm]: alt=+2.36 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.35 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.12,-0.14) | hdg=-128 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300865.380691855] [course_fsm]: RED_CROSS: 0.78 m to go, +0.09 m off the line.
+[course_fsm-5] [INFO] [1789300865.642686433] [course_fsm]: window: no usable pose (0/6 fresh samples, 261 accepted ever, 55 truncated; rejections: corner depths disagree x67, implausible window size x21)
+[window_detect-4] [INFO] [1789300865.792277943] [window_detect]: window: no   (streak 69 misses, 590 frames processed, 1111 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300865.884572353] [course_fsm]: RED_CROSS: 0.70 m to go, +0.08 m off the line.
+[course_fsm-5] [INFO] [1789300866.022955070] [course_fsm]: alt=+2.43 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.44 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.12,-0.18) | hdg=-127 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300866.426091616] [course_fsm]: RED_CROSS: 0.59 m to go, +0.09 m off the line.
+[course_fsm-5] [WARN] [1789300866.912030075] [course_fsm]: Course outcome: through, 1.92 m flown of 2.10 m.
+[course_fsm-5] [WARN] [1789300866.912950102] [course_fsm]: Traverse outcome: through, 1.92 m flown of 2.10 m. 261 geometry samples accepted of 404 received; rejections: corner depths disagree x67, implausible window size x21.
+[window_detect-4] [INFO] [1789300866.994040426] [window_detect]: window: no   (streak 77 misses, 598 frames processed, 1129 skipped by max_fps=10)
+[course_fsm-5] Traceback (most recent call last):
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/course_fsm", line 33, in <module>
+[course_fsm-5]     sys.exit(load_entry_point('drone_testing==0.0.0', 'console_scripts', 'course_fsm')())
+[course_fsm-5]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/course_fsm.py", line 714, in main
+[course_fsm-5]     spin_node(node)
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_sequence.py", line 2109, in spin_node
+[course_fsm-5]     executor.spin()
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 359, in spin
+[course_fsm-5]     self._spin_once_impl()
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 1009, in _spin_once_impl
+[course_fsm-5]     future.result()  # raise any exceptions
+[course_fsm-5]     ^^^^^^^^^^^^^^^
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/task.py", line 109, in result
+[course_fsm-5]     raise self.exception()
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/task.py", line 286, in _execute_coroutine_step
+[course_fsm-5]     result = coro.send(None)
+[course_fsm-5]              ^^^^^^^^^^^^^^^
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 592, in handler
+[course_fsm-5]     await call_coroutine()
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 480, in _execute
+[course_fsm-5]     await await_or_execute(sub.callback, *msg_tuple)
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 115, in await_or_execute
+[course_fsm-5]     return callback(*args)
+[course_fsm-5]            ^^^^^^^^^^^^^^^
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_sequence.py", line 647, in local_position_callback
+[course_fsm-5]     self._handle_estimator_resets(msg)
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_sequence.py", line 667, in _handle_estimator_resets
+[course_fsm-5]     self._apply_heading_reset(float(msg.delta_heading))
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_sequence.py", line 717, in _apply_heading_reset
+[course_fsm-5]     self._on_heading_reset(delta)
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_traverse.py", line 1410, in _on_heading_reset
+[course_fsm-5]     self.move_start_x, self.move_start_y = turn(
+[course_fsm-5]                                            ^^^^^
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_traverse.py", line 1400, in turn
+[course_fsm-5]     dx, dy = x - pivot[0], y - pivot[1]
+[course_fsm-5]              ~~^~~~~~~~~~
+[course_fsm-5] TypeError: unsupported operand type(s) for -: 'NoneType' and 'float'
+[ERROR] [course_fsm-5]: process has died [pid 3910, exit code 1, cmd '/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/course_fsm --ros-args -r __node:=course_fsm --params-file /tmp/launch_params_2c6g2kty'].
