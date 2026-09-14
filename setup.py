@@ -44,6 +44,8 @@ setup(
             'bar_detect = drone_testing.bar_detect:main',
             'bar_cross = drone_testing.bar_cross:main',
             'course_fsm = drone_testing.course_fsm:main',
+            'tube_detect = drone_testing.tube_detect:main',
+            'tube_cross = drone_testing.tube_cross:main',
             'aruco_pose = drone_testing.aruco_pose:main',
             'precision_land = drone_testing.precision_land:main',
             'thermal_sensor = drone_testing.thermal_sensor:main',

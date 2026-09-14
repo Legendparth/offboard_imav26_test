@@ -1,304 +1,67 @@
-[window_detect-4] [INFO] [1789415214.065140945] [window_detect]: CameraInfo from /zed/zed_node/rgb/color/rect/camera_info: fx=703.9 fy=703.9 cx=591.7 cy=375.7 (1280x720). /window_geometry angles are now metric.
-[window_detect-4] [INFO] [1789415214.218047012] [window_detect]: First frame from /zed/zed_node/rgb/color/rect/image: 1280x720.
-[window_detect-4] [INFO] [1789415214.259420578] [window_detect]: window: no   (streak 1 misses, 1 frames processed, 0 skipped by max_fps=10)
-[INFO] [course_fsm-5]: process started with pid [3957]
-[window_detect-4] [INFO] [1789415215.261139623] [window_detect]: window: no   (streak 9 misses, 9 frames processed, 16 skipped by max_fps=10)
-[course_fsm-5] [WARN] [1789415215.795393613] [course_fsm]: stdin is not a tty; q/k abort is unavailable.
-[course_fsm-5] [INFO] [1789415215.796591891] [course_fsm]: Airframe: 0.260 m tall, 0.260 m wide, extending 0.160 m below and 0.100 m above the commanded point. A window must measure at least 0.32 x 0.32 m to be flown.
-[course_fsm-5] [WARN] [1789415215.810926478] [course_fsm]: Window traversal on ARK FLOW: climb 1.20 m, hold 5 s, sweep +/-10 deg for the window, lock, line up 1.60 m in front of it and fly through to 0.50 m beyond, then land. Approach 0.30 m/s, traverse 0.45 m/s. Hard limit 240 s from the start of the climb. Press q to abort into a descent, k to force-disarm.
-[course_fsm-5] [WARN] [1789415215.820453239] [course_fsm]: COURSE: window, then OVER the red bar (1.98 m, cross at 2.46 m), then UNDER the blue bar (0.80 m, cross at 0.48 m), then land 0.80 m past it. Gaps 1.00 / 1.00 m; every vertical move happens at a gap midpoint. Bars are flown on the known geometry along the window's traverse line. READY.
-[course_fsm-5] [INFO] [1789415215.834723256] [course_fsm]: Waiting for VehicleStatus from PX4...
-[course_fsm-5] [INFO] [1789415215.848906825] [course_fsm]: nav_state -> MANUAL(0)
-[course_fsm-5] [INFO] [1789415215.853693448] [course_fsm]: PX4 failsafe (expected on this airframe, harmless): gcs_connection_lost, home_position_invalid
-[course_fsm-5] [ERROR] [1789415215.878050317] [course_fsm]: Not arming: rangefinder unusable: dist_bottom_valid is false and /fmu/out/estimator_status_flags is not being published, so there is no second opinion.
-[course_fsm-5] [INFO] [1789415215.880176609] [course_fsm]: alt=n/a airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.00) | hdg=+0 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415215.882009733] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[window_detect-4] [INFO] [1789415216.369759564] [window_detect]: window: no   (streak 18 misses, 18 frames processed, 32 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415216.881357966] [course_fsm]: alt=n/a airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.00) | hdg=+0 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415217.385535066] [course_fsm]: Setpoint stream established, position estimate healthy.
-[course_fsm-5] [INFO] [1789415217.430545698] [course_fsm]: Requesting Offboard mode...
-[window_detect-4] [INFO] [1789415217.469882737] [window_detect]: window: no   (streak 28 misses, 28 frames processed, 50 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415217.589331436] [course_fsm]: nav_state -> OFFBOARD(14)
-[course_fsm-5] [INFO] [1789415217.626412428] [course_fsm]: Offboard mode active.
-[course_fsm-5] [INFO] [1789415217.835233744] [course_fsm]: Arming point captured: x=0.10 y=0.00 z=-0.15 yaw=+0 deg. 'forward' means this heading for the whole flight.
-[course_fsm-5] [WARN] [1789415217.836296004] [course_fsm]: ARMED. Holding on the ground for 5 s.
-[course_fsm-5] [INFO] [1789415217.875294725] [course_fsm]: Armed on the ground, 5.0 s to takeoff...
-[course_fsm-5] [INFO] [1789415217.933659114] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00) | hdg=+0 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415217.934815735] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[window_detect-4] [INFO] [1789415218.569857097] [window_detect]: window: no   (streak 37 misses, 37 frames processed, 72 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415218.878183112] [course_fsm]: Armed on the ground, 4.0 s to takeoff...
-[course_fsm-5] [INFO] [1789415218.977104031] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.03) | hdg=+0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415219.646468728] [window_detect]: window: no   (streak 46 misses, 46 frames processed, 83 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415219.881755796] [course_fsm]: Armed on the ground, 3.0 s to takeoff...
-[course_fsm-5] [INFO] [1789415219.977683897] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[course_fsm-5] [INFO] [1789415220.026647377] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.01) | hdg=+0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415220.679202494] [window_detect]: window: no   (streak 55 misses, 55 frames processed, 100 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415220.927333069] [course_fsm]: Armed on the ground, 1.9 s to takeoff...
-[course_fsm-5] [INFO] [1789415221.028204515] [course_fsm]: alt=-0.01 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=+0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.00) | hdg=+0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415221.709177541] [window_detect]: window: no   (streak 62 misses, 62 frames processed, 116 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415221.973150404] [course_fsm]: Armed on the ground, 0.9 s to takeoff...
-[course_fsm-5] [INFO] [1789415221.983906537] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[course_fsm-5] [INFO] [1789415222.073928844] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.00) | hdg=+0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415222.716359702] [window_detect]: window: no   (streak 70 misses, 70 frames processed, 135 skipped by max_fps=10)
-[course_fsm-5] [WARN] [1789415222.874536147] [course_fsm]: Climbing to 1.20 m (datum z=-0.15).
-[course_fsm-5] [WARN] [1789415222.932727388] [course_fsm]: Flight clock started: landing in 240 s.
-[course_fsm-5] [INFO] [1789415223.129709094] [course_fsm]: alt=+0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00) | hdg=+0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415223.819459770] [window_detect]: window: no   (streak 79 misses, 79 frames processed, 157 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415224.030174852] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[course_fsm-5] [INFO] [1789415224.132490255] [course_fsm]: alt=+0.05 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.13 m rng_ok=True vz=-0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,+0.03) | hdg=+0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415224.879551937] [window_detect]: window: no   (streak 88 misses, 88 frames processed, 177 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415225.173387797] [course_fsm]: alt=+0.17 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=True vz=-0.05 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.03,+0.10) | hdg=+0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415225.918922811] [window_detect]: window: no   (streak 97 misses, 97 frames processed, 193 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415226.032362102] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[course_fsm-5] [INFO] [1789415226.173729451] [course_fsm]: alt=+0.22 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.18 m rng_ok=True vz=-0.14 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.04) | hdg=+0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415226.959036184] [window_detect]: window: no   (streak 105 misses, 105 frames processed, 214 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415227.176028596] [course_fsm]: alt=+0.28 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.22 m rng_ok=True vz=-0.25 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.19,+0.15) | hdg=+4 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415228.053141658] [window_detect]: window: no   (streak 113 misses, 113 frames processed, 231 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415228.073444503] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[course_fsm-5] [INFO] [1789415228.177492246] [course_fsm]: alt=+0.42 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.35 m rng_ok=True vz=-0.31 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.21,+0.01) | hdg=+5 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415228.922892028] [course_fsm]: Flow healthy: latching x/y hold at (0.02, 0.18).
-[course_fsm-5] [WARN] [1789415228.923788194] [course_fsm]: Drifted 0.20 m during the climb; holding here rather than flying back to the arming point (takeoff_return_to_pad is false). If this number is large every flight, the drift is real: check SENS_FLOW_ROT, the flow mounting and the floor texture.
-[window_detect-4] [INFO] [1789415229.123185499] [window_detect]: window: no   (streak 121 misses, 121 frames processed, 240 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415229.236282560] [course_fsm]: alt=+0.55 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.51 m rng_ok=True vz=-0.29 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.02) | hdg=+4 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415230.077462751] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[window_detect-4] [INFO] [1789415230.248665869] [window_detect]: window: no   (streak 129 misses, 129 frames processed, 253 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415230.277997650] [course_fsm]: alt=+0.71 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.68 m rng_ok=True vz=-0.27 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.04) | hdg=+2 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415231.334708693] [course_fsm]: alt=+0.86 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.84 m rng_ok=True vz=-0.19 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.06) | hdg=+1 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415231.425316201] [window_detect]: window: no   (streak 135 misses, 135 frames processed, 258 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415232.077928563] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[course_fsm-5] [INFO] [1789415232.375716163] [course_fsm]: alt=+0.95 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.93 m rng_ok=True vz=-0.13 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,-0.03) | hdg=+1 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415232.523638628] [window_detect]: window: no   (streak 144 misses, 144 frames processed, 274 skipped by max_fps=10)
-[window_detect-4] [WARN] [1789415233.323897231] [window_detect]: WINDOW DETECTED  (centre=(397,237) offset=-0.38 area=243176px dist=0.00m)
-[course_fsm-5] [INFO] [1789415233.422354261] [course_fsm]: alt=+0.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.96 m rng_ok=True vz=-0.14 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.01) | hdg=-0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415233.555591780] [window_detect]: window: YES  centre=(402,245) offset=-0.37 area=243452px dist=7.98m
-[course_fsm-5] [INFO] [1789415234.131922035] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 5 truncated; rejections: none)
-[course_fsm-5] [INFO] [1789415234.472967448] [course_fsm]: alt=+1.03 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.02 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.04) | hdg=-0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415234.655991265] [window_detect]: window: YES  centre=(421,317) offset=-0.34 area=239473px dist=0.00m
-[course_fsm-5] [INFO] [1789415235.474089448] [course_fsm]: alt=+1.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.08 m rng_ok=True vz=-0.11 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,+0.03) | hdg=+1 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415235.696380225] [window_detect]: window: YES  centre=(406,365) offset=-0.36 area=229240px dist=0.00m
-[course_fsm-5] [INFO] [1789415236.174134335] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 5 truncated; rejections: none)
-[course_fsm-5] [INFO] [1789415236.474744439] [course_fsm]: alt=+1.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.12 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.03,-0.05) | hdg=+1 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415236.732418313] [window_detect]: window: YES  centre=(444,374) offset=-0.31 area=199920px dist=5.59m
-[course_fsm-5] [INFO] [1789415237.478069098] [course_fsm]: alt=+1.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.11 m rng_ok=True vz=-0.09 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.02) | hdg=-0 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415237.818815185] [window_detect]: window: YES  centre=(471,356) offset=-0.26 area=191330px dist=6.96m
-[course_fsm-5] [INFO] [1789415238.179038557] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 5 truncated; rejections: none)
-[course_fsm-5] [INFO] [1789415238.525108768] [course_fsm]: alt=+1.10 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.08 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,+0.02) | hdg=+1 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415238.951879221] [window_detect]: window: YES  centre=(444,318) offset=-0.31 area=204010px dist=6.95m
-[course_fsm-5] [INFO] [1789415239.574677347] [course_fsm]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.13 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,-0.03) | hdg=+2 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415240.079496699] [window_detect]: window: YES  centre=(452,290) offset=-0.29 area=210340px dist=6.93m
-[course_fsm-5] [INFO] [1789415240.228031907] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 5 truncated; rejections: none)
-[course_fsm-5] [INFO] [1789415240.625021914] [course_fsm]: alt=+1.03 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.01 m rng_ok=True vz=-0.14 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.03) | hdg=+1 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415241.126849672] [window_detect]: window: YES  centre=(488,287) offset=-0.24 area=203152px dist=6.91m
-[course_fsm-5] [INFO] [1789415241.677567472] [course_fsm]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.13 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,-0.00) | hdg=+1 deg yaw_sp=+0 deg
-[window_detect-4] [INFO] [1789415242.155235147] [window_detect]: window: YES  centre=(500,312) offset=-0.22 area=200384px dist=6.98m
-[course_fsm-5] [INFO] [1789415242.230372087] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 5 truncated; rejections: none)
-[course_fsm-5] [INFO] [1789415242.727318882] [course_fsm]: alt=+1.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.08 m rng_ok=True vz=-0.11 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.05,-0.01) | hdg=-0 deg yaw_sp=+0 deg
-[course_fsm-5] [WARN] [1789415242.875657334] [course_fsm]: Takeoff never held the +/-0.08 m band for 0.5 s, but the aircraft is airborne at 1.09 m of 1.20 m. Accepting it and holding rather than landing a vehicle that is flying.
-[course_fsm-5] [INFO] [1789415242.927555419] [course_fsm]: Holding, 5.0 s to the sweep... (window IN SIGHT)
-[window_detect-4] [INFO] [1789415243.181794493] [window_detect]: window: YES  centre=(484,332) offset=-0.24 area=221134px dist=6.94m
-[course_fsm-5] [INFO] [1789415243.773176308] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.08 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.00) | hdg=-0 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415243.933109772] [course_fsm]: Holding, 3.9 s to the sweep... (window IN SIGHT)
-[window_detect-4] [INFO] [1789415244.207474806] [window_detect]: window: YES  centre=(491,332) offset=-0.23 area=238850px dist=6.93m
-[course_fsm-5] [INFO] [1789415244.276544752] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 5 truncated; rejections: none)
-[course_fsm-5] [INFO] [1789415244.776531024] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.09 m rng_ok=True vz=-0.11 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,+0.01) | hdg=+0 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415244.974477732] [course_fsm]: Holding, 2.9 s to the sweep... (window IN SIGHT)
-[window_detect-4] [INFO] [1789415245.268817134] [window_detect]: window: YES  centre=(476,363) offset=-0.26 area=239673px dist=6.90m
-[course_fsm-5] [INFO] [1789415245.822570107] [course_fsm]: alt=+1.14 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.14 m rng_ok=True vz=-0.09 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.05) | hdg=+0 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415245.974932438] [course_fsm]: Holding, 1.9 s to the sweep... (window IN SIGHT)
-[course_fsm-5] [INFO] [1789415246.277126824] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 5 truncated; rejections: none)
-[window_detect-4] [INFO] [1789415246.295145941] [window_detect]: window: YES  centre=(402,402) offset=-0.37 area=243282px dist=0.00m
-[course_fsm-5] [INFO] [1789415246.823462478] [course_fsm]: alt=+1.15 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.15 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,-0.02) | hdg=-1 deg yaw_sp=+0 deg
-[course_fsm-5] [INFO] [1789415246.975104026] [course_fsm]: Holding, 0.9 s to the sweep... (window IN SIGHT)
-[window_detect-4] [INFO] [1789415247.394571005] [window_detect]: window: YES  centre=(445,361) offset=-0.30 area=227696px dist=0.00m
-[course_fsm-5] [INFO] [1789415247.824687555] [course_fsm]: alt=+1.10 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.09 m rng_ok=True vz=-0.08 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.04) | hdg=-2 deg yaw_sp=+0 deg
-[course_fsm-5] [WARN] [1789415247.925277181] [course_fsm]: WINDOW LOCKED (already in sight at the end of the hold). Yaw stopped at -1 deg, holding position. 454.7|346.4|-0.290|224655|0.93|0.88|0.87|0.92|0.00|full. Landing in 215 s.
-[course_fsm-5] [INFO] [1789415247.994951249] [course_fsm]: Locked, holding. window IN SIGHT. 215 s to landing.
-[course_fsm-5] [INFO] [1789415247.995721373] [course_fsm]: Locked, building the window pose: no usable pose (1/6 fresh samples, 1 accepted ever, 5 truncated; rejections: none)
-[course_fsm-5] [INFO] [1789415248.322810799] [course_fsm]: window: no usable pose (3/6 fresh samples, 3 accepted ever, 5 truncated; rejections: none)
-[window_detect-4] [INFO] [1789415248.589913290] [window_detect]: window: YES  centre=(466,360) offset=-0.27 area=227528px dist=0.00m
-[course_fsm-5] [WARN] [1789415248.778507069] [course_fsm]: AIM: turning to +3 deg to face the window square-on, holding position. window at (+1.06, +0.05, -1.24) NED, facing -177 deg, 0.66x0.56 m, 6 samples, 11 ms old.
-[course_fsm-5] [INFO] [1789415248.830342622] [course_fsm]: alt=+1.11 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.11 m rng_ok=True vz=-0.08 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.03,-0.00) | hdg=-2 deg yaw_sp=-1 deg
-[course_fsm-5] [INFO] [1789415248.832662432] [course_fsm]: AIM: 5 deg to turn. window at (+1.06, +0.05, -1.24) NED, facing -177 deg, 0.66x0.56 m, 6 samples, 65 ms old
-[course_fsm-5] [WARN] [1789415248.974733978] [course_fsm]: ALIGN: flying to (-0.54, -0.02) NED, 1.60 m in front of the window on its axis, at 0.30 m/s. window at (+1.06, +0.05, -1.24) NED, facing -177 deg, 0.66x0.56 m, 6 samples, 207 ms old.
-[course_fsm-5] [INFO] [1789415249.044256050] [course_fsm]: ALIGN: -0.63 m along / +0.25 m across to the approach point (tolerances 0.25/0.06), 5 deg off the normal, alt +1.12/1.18 m. window at (+1.06, +0.05, -1.24) NED, facing -178 deg, 0.66x0.56 m, 7 samples, 12 ms old
-[window_detect-4] [INFO] [1789415249.729285779] [window_detect]: window: YES  centre=(427,414) offset=-0.33 area=249048px dist=0.00m
-[course_fsm-5] [INFO] [1789415249.873783873] [course_fsm]: alt=+1.15 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.16 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.12,-0.05) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415250.080761987] [course_fsm]: ALIGN: -0.58 m along / +0.22 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.15/1.18 m. window at (+1.06, +0.05, -1.24) NED, facing -177 deg, 0.67x0.57 m, 13 samples, 222 ms old
-[course_fsm-5] [INFO] [1789415250.333744041] [course_fsm]: window: window at (+1.06, +0.05, -1.23) NED, facing -177 deg, 0.67x0.57 m, 14 samples, 131 ms old
-[window_detect-4] [INFO] [1789415250.823589745] [window_detect]: window: YES  centre=(424,380) offset=-0.34 area=206672px dist=6.89m
-[course_fsm-5] [INFO] [1789415250.930459848] [course_fsm]: alt=+1.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.12 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.14,-0.10) | hdg=+5 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415251.129134897] [course_fsm]: ALIGN: -0.45 m along / +0.16 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.11/1.17 m. window at (+1.04, +0.05, -1.23) NED, facing -176 deg, 0.67x0.57 m, 15 samples, 103 ms old
-[window_detect-4] [INFO] [1789415251.963245465] [window_detect]: window: YES  centre=(491,351) offset=-0.23 area=154248px dist=7.20m
-[course_fsm-5] [INFO] [1789415251.974765501] [course_fsm]: alt=+1.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.05 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.19,-0.08) | hdg=+6 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415252.131458691] [course_fsm]: ALIGN: -0.39 m along / +0.10 m across to the approach point (tolerances 0.25/0.06), 3 deg off the normal, alt +1.07/1.18 m. window at (+0.98, +0.02, -1.24) NED, facing -177 deg, 0.65x0.55 m, 16 samples, 63 ms old
-[course_fsm-5] [INFO] [1789415252.383966134] [course_fsm]: window: window at (+0.98, +0.02, -1.24) NED, facing -177 deg, 0.65x0.55 m, 16 samples, 23 ms old
-[course_fsm-5] [INFO] [1789415252.977760973] [course_fsm]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.15 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.19,-0.18) | hdg=+8 deg yaw_sp=+4 deg
-[window_detect-4] [INFO] [1789415253.048846629] [window_detect]: window: YES  centre=(532,341) offset=-0.17 area=100111px dist=7.47m
-[course_fsm-5] [INFO] [1789415253.187293079] [course_fsm]: ALIGN: -0.16 m along / -0.03 m across to the approach point (tolerances 0.25/0.06), 3 deg off the normal, alt +1.07/1.18 m. window at (+0.97, +0.02, -1.24) NED, facing -177 deg, 0.65x0.55 m, 18 samples, 134 ms old
-[course_fsm-5] [INFO] [1789415253.980294775] [course_fsm]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.08,-0.01) | hdg=+2 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415254.227879700] [course_fsm]: ALIGN: -0.04 m along / -0.06 m across to the approach point (tolerances 0.25/0.06), 3 deg off the normal, alt +1.05/1.18 m. window at (+0.98, +0.02, -1.24) NED, facing -177 deg, 0.64x0.54 m, 17 samples, 269 ms old
-[window_detect-4] [INFO] [1789415254.255730113] [window_detect]: window: YES  centre=(647,332) offset=+0.01 area=75672px dist=7.67m
-[course_fsm-5] [INFO] [1789415254.427969460] [course_fsm]: window: window at (+0.98, +0.02, -1.25) NED, facing -177 deg, 0.64x0.54 m, 18 samples, 71 ms old
-[course_fsm-5] [INFO] [1789415255.023800265] [course_fsm]: alt=+1.04 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.02 m rng_ok=True vz=-0.15 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,-0.01) | hdg=+1 deg yaw_sp=+2 deg
-[course_fsm-5] [INFO] [1789415255.239227770] [course_fsm]: ALIGN: +0.02 m along / -0.12 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.05/1.19 m. window at (+1.01, +0.02, -1.25) NED, facing -178 deg, 0.64x0.54 m, 16 samples, 115 ms old
-[window_detect-4] [INFO] [1789415255.494542438] [window_detect]: window: YES  centre=(688,351) offset=+0.07 area=69364px dist=6.50m
-[course_fsm-5] [INFO] [1789415256.023948192] [course_fsm]: alt=+1.10 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.10 m rng_ok=True vz=-0.09 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.05) | hdg=+1 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415256.296408880] [course_fsm]: ALIGN: +0.08 m along / -0.11 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.10/1.17 m. window at (+1.08, +0.07, -1.23) NED, facing -177 deg, 0.64x0.54 m, 16 samples, 14 ms old
-[course_fsm-5] [INFO] [1789415256.477342727] [course_fsm]: window: window at (+1.08, +0.07, -1.23) NED, facing -177 deg, 0.64x0.54 m, 15 samples, 198 ms old
-[window_detect-4] [INFO] [1789415256.581965216] [window_detect]: window: YES  centre=(652,378) offset=+0.02 area=70690px dist=6.84m
-[course_fsm-5] [INFO] [1789415257.029997822] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.10 m rng_ok=True vz=-0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.03,+0.10) | hdg=+4 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415257.327254953] [course_fsm]: ALIGN: +0.04 m along / -0.03 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.09/1.15 m. window at (+1.08, +0.09, -1.21) NED, facing -176 deg, 0.64x0.54 m, 18 samples, 117 ms old
-[window_detect-4] [INFO] [1789415257.744061653] [window_detect]: window: YES  centre=(573,389) offset=-0.10 area=76177px dist=7.57m
-[course_fsm-5] [INFO] [1789415258.031847552] [course_fsm]: alt=+1.10 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.10 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.03,+0.14) | hdg=+4 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415258.329651298] [course_fsm]: ALIGN: +0.03 m along / +0.15 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.09/1.14 m. window at (+1.08, +0.08, -1.20) NED, facing -176 deg, 0.65x0.55 m, 17 samples, 319 ms old
-[course_fsm-5] [INFO] [1789415258.480064597] [course_fsm]: window: window at (+1.08, +0.08, -1.20) NED, facing -175 deg, 0.65x0.55 m, 16 samples, 86 ms old
-[window_detect-4] [INFO] [1789415258.873444730] [window_detect]: window: YES  centre=(490,357) offset=-0.23 area=77314px dist=7.31m
-[course_fsm-5] [INFO] [1789415259.075117865] [course_fsm]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.06 m rng_ok=True vz=-0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.03,-0.03) | hdg=+3 deg yaw_sp=+5 deg
-[course_fsm-5] [INFO] [1789415259.333924385] [course_fsm]: ALIGN: +0.02 m along / +0.22 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.05/1.14 m. window at (+1.07, +0.07, -1.20) NED, facing -176 deg, 0.65x0.55 m, 17 samples, 91 ms old
-[window_detect-4] [INFO] [1789415260.084680593] [window_detect]: window: YES  centre=(448,338) offset=-0.30 area=82323px dist=7.32m
-[course_fsm-5] [INFO] [1789415260.126293701] [course_fsm]: alt=+1.02 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.01 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.08) | hdg=+4 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415260.334282127] [course_fsm]: ALIGN: -0.00 m along / +0.27 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.02/1.15 m. window at (+1.07, +0.02, -1.21) NED, facing -176 deg, 0.66x0.56 m, 16 samples, 123 ms old
-[course_fsm-5] [INFO] [1789415260.536889548] [course_fsm]: window: window at (+1.07, +0.02, -1.21) NED, facing -176 deg, 0.66x0.56 m, 16 samples, 88 ms old
-[course_fsm-5] [INFO] [1789415261.128139921] [course_fsm]: alt=+1.03 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=-0.08 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.11) | hdg=+5 deg yaw_sp=+4 deg
-[window_detect-4] [INFO] [1789415261.241355355] [window_detect]: window: YES  centre=(481,344) offset=-0.25 area=80319px dist=0.00m
-[course_fsm-5] [INFO] [1789415261.393754629] [course_fsm]: ALIGN: +0.01 m along / +0.19 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.04/1.15 m. window at (+1.06, +0.02, -1.21) NED, facing -177 deg, 0.65x0.55 m, 18 samples, 14 ms old
-[course_fsm-5] [INFO] [1789415262.174902558] [course_fsm]: alt=+1.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.06 m rng_ok=True vz=-0.09 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.09) | hdg=+6 deg yaw_sp=+3 deg
-[window_detect-4] [INFO] [1789415262.337711456] [window_detect]: window: YES  centre=(503,360) offset=-0.21 area=76040px dist=7.50m
-[course_fsm-5] [INFO] [1789415262.434504877] [course_fsm]: ALIGN: +0.04 m along / +0.11 m across to the approach point (tolerances 0.25/0.06), 3 deg off the normal, alt +1.07/1.15 m. window at (+1.05, +0.03, -1.21) NED, facing -177 deg, 0.65x0.55 m, 18 samples, 92 ms old
-[course_fsm-5] [INFO] [1789415262.583142564] [course_fsm]: window: window at (+1.05, +0.04, -1.21) NED, facing -177 deg, 0.65x0.55 m, 20 samples, 12 ms old
-[course_fsm-5] [INFO] [1789415263.230393188] [course_fsm]: alt=+1.04 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=-0.05 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.07) | hdg=+6 deg yaw_sp=+4 deg
-[window_detect-4] [INFO] [1789415263.436937719] [window_detect]: window: YES  centre=(536,329) offset=-0.16 area=71716px dist=7.55m
-[course_fsm-5] [INFO] [1789415263.442320790] [course_fsm]: ALIGN: +0.06 m along / +0.05 m across to the approach point (tolerances 0.25/0.06), 3 deg off the normal, alt +1.03/1.15 m. window at (+1.05, +0.05, -1.21) NED, facing -176 deg, 0.65x0.55 m, 19 samples, 100 ms old
-[course_fsm-5] [INFO] [1789415264.275868888] [course_fsm]: alt=+1.01 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.99 m rng_ok=True vz=-0.11 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.06,-0.02) | hdg=+5 deg yaw_sp=+3 deg
-[window_detect-4] [INFO] [1789415264.468466460] [window_detect]: window: YES  centre=(590,327) offset=-0.08 area=72098px dist=7.61m
-[course_fsm-5] [INFO] [1789415264.487086137] [course_fsm]: ALIGN: +0.06 m along / -0.02 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.01/1.17 m. window at (+1.06, +0.06, -1.23) NED, facing -176 deg, 0.65x0.55 m, 20 samples, 15 ms old
-[course_fsm-5] [INFO] [1789415264.628789961] [course_fsm]: window: window at (+1.06, +0.06, -1.23) NED, facing -176 deg, 0.65x0.55 m, 20 samples, 15 ms old
-[course_fsm-5] [INFO] [1789415265.276309824] [course_fsm]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.03,-0.02) | hdg=+4 deg yaw_sp=+3 deg
-[window_detect-4] [INFO] [1789415265.476172010] [window_detect]: window: YES  centre=(638,353) offset=-0.00 area=75232px dist=7.53m
-[course_fsm-5] [INFO] [1789415265.496464579] [course_fsm]: ALIGN: +0.05 m along / -0.08 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.06/1.17 m. window at (+1.07, +0.06, -1.23) NED, facing -177 deg, 0.65x0.55 m, 20 samples, 16 ms old
-[course_fsm-5] [INFO] [1789415266.323237233] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.08 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.05,-0.02) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415266.533078950] [course_fsm]: ALIGN: -0.01 m along / -0.13 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.09/1.17 m. window at (+1.06, +0.07, -1.23) NED, facing -176 deg, 0.65x0.55 m, 18 samples, 85 ms old
-[course_fsm-5] [INFO] [1789415266.633270522] [course_fsm]: window: window at (+1.06, +0.07, -1.23) NED, facing -176 deg, 0.65x0.55 m, 18 samples, 185 ms old
-[window_detect-4] [INFO] [1789415266.679152054] [window_detect]: window: YES  centre=(676,365) offset=+0.06 area=82272px dist=7.80m
-[course_fsm-5] [INFO] [1789415267.325600990] [course_fsm]: alt=+1.10 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.09 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,+0.03) | hdg=+3 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415267.534235421] [course_fsm]: ALIGN: -0.06 m along / -0.19 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.09/1.17 m. window at (+1.06, +0.09, -1.23) NED, facing -176 deg, 0.65x0.55 m, 18 samples, 87 ms old
-[window_detect-4] [INFO] [1789415267.773263221] [window_detect]: window: YES  centre=(718,363) offset=+0.12 area=90903px dist=6.44m
-[course_fsm-5] [INFO] [1789415268.327307013] [course_fsm]: alt=+1.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.07 m rng_ok=True vz=-0.08 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,+0.02) | hdg=+0 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415268.547759422] [course_fsm]: ALIGN: -0.08 m along / -0.23 m across to the approach point (tolerances 0.25/0.06), 4 deg off the normal, alt +1.07/1.17 m. window at (+1.05, +0.09, -1.23) NED, facing -177 deg, 0.66x0.55 m, 18 samples, 60 ms old
-[course_fsm-5] [INFO] [1789415268.681117991] [course_fsm]: window: window at (+1.05, +0.09, -1.23) NED, facing -177 deg, 0.66x0.55 m, 18 samples, 98 ms old
-[window_detect-4] [INFO] [1789415268.902471380] [window_detect]: window: YES  centre=(768,364) offset=+0.20 area=97680px dist=6.36m
-[course_fsm-5] [INFO] [1789415269.390004353] [course_fsm]: alt=+1.11 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.11 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.06,+0.18) | hdg=+2 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415269.584138838] [course_fsm]: ALIGN: -0.09 m along / -0.14 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.13/1.17 m. window at (+1.04, +0.08, -1.23) NED, facing -177 deg, 0.66x0.55 m, 18 samples, 108 ms old
-[window_detect-4] [INFO] [1789415269.966687847] [window_detect]: window: YES  centre=(648,414) offset=+0.01 area=92090px dist=6.31m
-[course_fsm-5] [INFO] [1789415270.425403004] [course_fsm]: alt=+1.15 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.17 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.04,-0.03) | hdg=+5 deg yaw_sp=+5 deg
-[course_fsm-5] [INFO] [1789415270.688859569] [course_fsm]: window: window at (+1.01, +0.09, -1.22) NED, facing -174 deg, 0.65x0.55 m, 19 samples, 7 ms old
-[window_detect-4] [INFO] [1789415271.034419616] [window_detect]: window: YES  centre=(588,406) offset=-0.08 area=85330px dist=7.53m
-[course_fsm-5] [INFO] [1789415271.480466504] [course_fsm]: alt=+1.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.13 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.03,-0.02) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-5] [INFO] [1789415271.543423649] [course_fsm]: ALIGN: -0.04 m along / -0.02 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.12/1.15 m. window at (+1.01, +0.08, -1.21) NED, facing -174 deg, 0.65x0.55 m, 19 samples, 32 ms old
-[window_detect-4] [INFO] [1789415272.067151424] [window_detect]: window: YES  centre=(581,384) offset=-0.09 area=82840px dist=7.57m
-[course_fsm-5] [INFO] [1789415272.529444108] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.09 m rng_ok=True vz=-0.05 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.00,+0.05) | hdg=+7 deg yaw_sp=+5 deg
-[course_fsm-5] [INFO] [1789415272.587372494] [course_fsm]: ALIGN: -0.06 m along / +0.09 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.09/1.14 m. window at (+1.02, +0.05, -1.20) NED, facing -175 deg, 0.65x0.55 m, 17 samples, 51 ms old
-[course_fsm-5] [INFO] [1789415272.726987842] [course_fsm]: window: window at (+1.02, +0.05, -1.21) NED, facing -175 deg, 0.65x0.55 m, 17 samples, 84 ms old
-[window_detect-4] [INFO] [1789415273.180254759] [window_detect]: window: YES  centre=(511,381) offset=-0.20 area=85538px dist=7.54m
-[course_fsm-5] [INFO] [1789415273.580940592] [course_fsm]: alt=+1.10 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.09 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,-0.03) | hdg=+7 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415273.647708678] [course_fsm]: ALIGN: -0.06 m along / +0.09 m across to the approach point (tolerances 0.25/0.06), 3 deg off the normal, alt +1.10/1.15 m. window at (+1.03, +0.06, -1.21) NED, facing -176 deg, 0.65x0.55 m, 16 samples, 186 ms old
-[window_detect-4] [INFO] [1789415274.199077486] [window_detect]: window: YES  centre=(527,368) offset=-0.18 area=87589px dist=7.52m
-[course_fsm-5] [INFO] [1789415274.583470544] [course_fsm]: alt=+1.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.06 m rng_ok=True vz=-0.08 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,+0.00) | hdg=+3 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415274.687812435] [course_fsm]: ALIGN: -0.08 m along / +0.02 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.07/1.15 m. window at (+1.04, +0.06, -1.21) NED, facing -176 deg, 0.65x0.55 m, 18 samples, 116 ms old
-[course_fsm-5] [INFO] [1789415274.784096737] [course_fsm]: window: window at (+1.04, +0.06, -1.22) NED, facing -176 deg, 0.65x0.55 m, 18 samples, 76 ms old
-[window_detect-4] [INFO] [1789415275.200453919] [window_detect]: window: YES  centre=(611,365) offset=-0.05 area=91357px dist=7.47m
-[course_fsm-5] [INFO] [1789415275.627394134] [course_fsm]: alt=+1.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.07 m rng_ok=True vz=-0.08 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,+0.03) | hdg=+0 deg yaw_sp=+2 deg
-[course_fsm-5] [INFO] [1789415275.690250765] [course_fsm]: ALIGN: -0.11 m along / -0.00 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.08/1.16 m. window at (+1.05, +0.06, -1.22) NED, facing -178 deg, 0.65x0.55 m, 19 samples, 23 ms old
-[window_detect-4] [INFO] [1789415276.298055085] [window_detect]: window: YES  centre=(642,384) offset=+0.00 area=92976px dist=7.36m
-[course_fsm-5] [INFO] [1789415276.642975707] [course_fsm]: alt=+1.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.11 m rng_ok=True vz=-0.09 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.04) | hdg=-1 deg yaw_sp=+2 deg
-[course_fsm-5] [INFO] [1789415276.734669736] [course_fsm]: ALIGN: -0.12 m along / -0.02 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.12/1.16 m. window at (+1.05, +0.05, -1.22) NED, facing -178 deg, 0.65x0.55 m, 19 samples, 100 ms old
-[course_fsm-5] [INFO] [1789415276.784135519] [course_fsm]: window: window at (+1.05, +0.05, -1.22) NED, facing -178 deg, 0.65x0.55 m, 20 samples, 12 ms old
-[window_detect-4] [INFO] [1789415277.337989006] [window_detect]: window: YES  centre=(600,415) offset=-0.06 area=96386px dist=7.44m
-[course_fsm-5] [INFO] [1789415277.691224338] [course_fsm]: alt=+1.15 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.14 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.04,+0.15) | hdg=+2 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415277.785513137] [course_fsm]: ALIGN: -0.12 m along / +0.12 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.15/1.16 m. window at (+1.05, +0.06, -1.22) NED, facing -177 deg, 0.65x0.55 m, 20 samples, 9 ms old
-[window_detect-4] [INFO] [1789415278.396987950] [window_detect]: window: YES  centre=(511,410) offset=-0.20 area=94736px dist=7.35m
-[course_fsm-5] [INFO] [1789415278.731228707] [course_fsm]: alt=+1.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.12 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.20) | hdg=+6 deg yaw_sp=+5 deg
-[course_fsm-5] [INFO] [1789415278.787516549] [course_fsm]: window: window at (+1.06, +0.09, -1.21) NED, facing -175 deg, 0.66x0.55 m, 20 samples, 49 ms old
-[course_fsm-5] [INFO] [1789415278.799144454] [course_fsm]: ALIGN: -0.11 m along / +0.08 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.11/1.15 m. window at (+1.06, +0.09, -1.21) NED, facing -175 deg, 0.66x0.55 m, 20 samples, 60 ms old
-[window_detect-4] [INFO] [1789415279.502063026] [window_detect]: window: YES  centre=(579,406) offset=-0.10 area=91289px dist=7.52m
-[course_fsm-5] [INFO] [1789415279.776723921] [course_fsm]: alt=+1.11 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.12 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,-0.03) | hdg=+7 deg yaw_sp=+5 deg
-[course_fsm-5] [INFO] [1789415280.083288518] [course_fsm]: ALIGN: -0.08 m along / +0.00 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.11/1.14 m. window at (+1.07, +0.07, -1.20) NED, facing -175 deg, 0.66x0.55 m, 20 samples, 20 ms old
-[window_detect-4] [INFO] [1789415280.544754471] [window_detect]: window: YES  centre=(203,402) offset=-0.68 area=107728px dist=3.11m
-[course_fsm-5] [INFO] [1789415280.776793354] [course_fsm]: alt=+1.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.07 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.08,+0.04) | hdg=+7 deg yaw_sp=+5 deg
-[course_fsm-5] [INFO] [1789415280.830616873] [course_fsm]: window: window at (+1.07, +0.06, -1.20) NED, facing -175 deg, 0.65x0.55 m, 18 samples, 85 ms old
-[course_fsm-5] [INFO] [1789415281.129527352] [course_fsm]: ALIGN: -0.02 m along / +0.04 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.06/1.14 m. window at (+1.08, +0.06, -1.20) NED, facing -175 deg, 0.65x0.55 m, 17 samples, 118 ms old
-[window_detect-4] [INFO] [1789415281.635763781] [window_detect]: window: YES  centre=(554,349) offset=-0.14 area=78841px dist=7.61m
-[course_fsm-5] [INFO] [1789415281.783795155] [course_fsm]: alt=+1.03 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.01 m rng_ok=True vz=-0.13 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,-0.12) | hdg=+8 deg yaw_sp=+6 deg
-[course_fsm-5] [INFO] [1789415282.144192478] [course_fsm]: ALIGN: +0.03 m along / +0.06 m across to the approach point (tolerances 0.25/0.06), 3 deg off the normal, alt +1.03/1.16 m. window at (+1.10, +0.07, -1.22) NED, facing -171 deg, 0.66x0.56 m, 17 samples, 73 ms old
-[window_detect-4] [INFO] [1789415282.703761680] [window_detect]: window: YES  centre=(624,341) offset=-0.03 area=71742px dist=7.35m
-[course_fsm-5] [INFO] [1789415282.828636168] [course_fsm]: alt=+1.02 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.00 m rng_ok=True vz=-0.13 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.13) | hdg=+7 deg yaw_sp=+8 deg
-[course_fsm-5] [INFO] [1789415282.837611214] [course_fsm]: window: window at (+1.11, +0.07, -1.23) NED, facing -172 deg, 0.66x0.56 m, 18 samples, 125 ms old
-[course_fsm-5] [INFO] [1789415283.150171203] [course_fsm]: ALIGN: +0.07 m along / -0.06 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.02/1.17 m. window at (+1.11, +0.07, -1.23) NED, facing -172 deg, 0.66x0.56 m, 18 samples, 138 ms old
-[window_detect-4] [INFO] [1789415283.805187364] [window_detect]: window: YES  centre=(646,359) offset=+0.01 area=66291px dist=6.74m
-[course_fsm-5] [INFO] [1789415283.838559892] [course_fsm]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.05 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,+0.06) | hdg=+6 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415284.182142419] [course_fsm]: ALIGN: +0.10 m along / -0.20 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.06/1.15 m. window at (+1.11, +0.10, -1.21) NED, facing -176 deg, 0.64x0.54 m, 19 samples, 12 ms old
-[course_fsm-5] [INFO] [1789415284.879357561] [course_fsm]: alt=+1.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.07 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.04,+0.01) | hdg=+4 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415284.884152419] [course_fsm]: window: window at (+1.12, +0.11, -1.20) NED, facing -177 deg, 0.64x0.54 m, 19 samples, 112 ms old
-[window_detect-4] [INFO] [1789415284.925746413] [window_detect]: window: YES  centre=(687,370) offset=+0.07 area=63252px dist=8.00m
-[course_fsm-5] [INFO] [1789415285.199454791] [course_fsm]: ALIGN: +0.16 m along / -0.25 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.06/1.13 m. window at (+1.13, +0.11, -1.19) NED, facing -177 deg, 0.64x0.54 m, 20 samples, 26 ms old
-[course_fsm-5] [INFO] [1789415285.880953165] [course_fsm]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.07 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,+0.12) | hdg=+2 deg yaw_sp=+3 deg
-[window_detect-4] [INFO] [1789415285.938885171] [window_detect]: window: YES  centre=(697,372) offset=+0.09 area=60079px dist=6.69m
-[course_fsm-5] [INFO] [1789415286.248971481] [course_fsm]: ALIGN: +0.21 m along / -0.19 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.08/1.13 m. window at (+1.13, +0.11, -1.19) NED, facing -177 deg, 0.64x0.54 m, 20 samples, 45 ms old
-[course_fsm-5] [INFO] [1789415286.882870379] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.10 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.06,+0.03) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415286.887626154] [course_fsm]: window: window at (+1.13, +0.11, -1.17) NED, facing -177 deg, 0.64x0.54 m, 21 samples, 8 ms old
-[window_detect-4] [INFO] [1789415287.034921627] [window_detect]: window: YES  centre=(660,381) offset=+0.03 area=61034px dist=7.43m
-[course_fsm-5] [INFO] [1789415287.289075509] [course_fsm]: ALIGN: +0.17 m along / -0.16 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.08/1.11 m. window at (+1.13, +0.10, -1.17) NED, facing -177 deg, 0.64x0.54 m, 19 samples, 127 ms old
-[course_fsm-5] [INFO] [1789415287.930936464] [course_fsm]: alt=+1.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.08 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.08,+0.12) | hdg=+0 deg yaw_sp=+4 deg
-[window_detect-4] [INFO] [1789415288.135338946] [window_detect]: window: YES  centre=(646,384) offset=+0.01 area=68782px dist=7.57m
-[course_fsm-5] [INFO] [1789415288.294586432] [course_fsm]: ALIGN: +0.09 m along / -0.03 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.08/1.11 m. window at (+1.13, +0.08, -1.17) NED, facing -176 deg, 0.64x0.54 m, 20 samples, 27 ms old
-[course_fsm-5] [INFO] [1789415288.892509680] [course_fsm]: window: window at (+1.13, +0.06, -1.17) NED, facing -176 deg, 0.65x0.54 m, 19 samples, 21 ms old
-[course_fsm-5] [INFO] [1789415288.933710208] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.10 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.00,+0.01) | hdg=+4 deg yaw_sp=+4 deg
-[window_detect-4] [INFO] [1789415289.231360956] [window_detect]: window: YES  centre=(546,395) offset=-0.15 area=77642px dist=7.65m
-[course_fsm-5] [INFO] [1789415289.351807513] [course_fsm]: ALIGN: +0.04 m along / +0.07 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.09/1.11 m. window at (+1.13, +0.05, -1.17) NED, facing -176 deg, 0.65x0.55 m, 19 samples, 7 ms old
-[course_fsm-5] [INFO] [1789415289.979683762] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.09 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.03,+0.01) | hdg=+5 deg yaw_sp=+4 deg
-[window_detect-4] [INFO] [1789415290.298826902] [window_detect]: window: YES  centre=(508,370) offset=-0.21 area=78293px dist=7.59m
-[course_fsm-5] [INFO] [1789415290.379637069] [course_fsm]: ALIGN: +0.01 m along / +0.14 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.07/1.11 m. window at (+1.11, +0.04, -1.16) NED, facing -176 deg, 0.65x0.55 m, 19 samples, 80 ms old
-[course_fsm-5] [INFO] [1789415290.933440973] [course_fsm]: window: window at (+1.11, +0.04, -1.17) NED, facing -176 deg, 0.65x0.55 m, 20 samples, 73 ms old
-[course_fsm-5] [INFO] [1789415291.025482215] [course_fsm]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.05 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.03,-0.04) | hdg=+7 deg yaw_sp=+4 deg
-[window_detect-4] [INFO] [1789415291.369987016] [window_detect]: window: YES  centre=(482,350) offset=-0.25 area=77221px dist=7.42m
-[course_fsm-5] [INFO] [1789415291.392206672] [course_fsm]: ALIGN: +0.03 m along / +0.13 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.04/1.11 m. window at (+1.11, +0.03, -1.17) NED, facing -176 deg, 0.65x0.55 m, 20 samples, 16 ms old
-[course_fsm-5] [INFO] [1789415292.028958676] [course_fsm]: alt=+1.02 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.01 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.04,-0.08) | hdg=+5 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415292.443773692] [course_fsm]: ALIGN: +0.08 m along / +0.09 m across to the approach point (tolerances 0.25/0.06), 1 deg off the normal, alt +1.02/1.13 m. window at (+1.11, +0.01, -1.19) NED, facing -176 deg, 0.65x0.55 m, 20 samples, 71 ms old
-[window_detect-4] [INFO] [1789415292.496569637] [window_detect]: window: YES  centre=(534,328) offset=-0.17 area=71060px dist=7.53m
-[course_fsm-5] [INFO] [1789415292.934988230] [course_fsm]: window: window at (+1.11, +0.00, -1.20) NED, facing -176 deg, 0.65x0.55 m, 20 samples, 68 ms old
-[course_fsm-5] [INFO] [1789415293.035324617] [course_fsm]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=-0.13 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,-0.06) | hdg=+5 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415293.452290422] [course_fsm]: ALIGN: +0.09 m along / +0.02 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.06/1.14 m. window at (+1.11, +0.00, -1.20) NED, facing -176 deg, 0.65x0.54 m, 20 samples, 46 ms old
-[window_detect-4] [INFO] [1789415293.529763821] [window_detect]: window: YES  centre=(592,346) offset=-0.07 area=69552px dist=7.67m
-[course_fsm-5] [INFO] [1789415294.075054802] [course_fsm]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.09 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,+0.04) | hdg=+4 deg yaw_sp=+3 deg
-[course_fsm-5] [INFO] [1789415294.452687468] [course_fsm]: ALIGN: +0.08 m along / -0.00 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.06/1.15 m. window at (+1.11, +0.00, -1.21) NED, facing -177 deg, 0.65x0.54 m, 19 samples, 73 ms old
-[window_detect-4] [INFO] [1789415294.661535429] [window_detect]: window: YES  centre=(633,361) offset=-0.01 area=70373px dist=7.65m
-[course_fsm-5] [INFO] [1789415294.936617874] [course_fsm]: window: window at (+1.11, +0.02, -1.22) NED, facing -176 deg, 0.65x0.54 m, 18 samples, 143 ms old
-[course_fsm-5] [INFO] [1789415295.080854849] [course_fsm]: alt=+1.04 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.07 m rng_ok=True vz=+0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.06,-0.03) | hdg=+2 deg yaw_sp=+4 deg
-[course_fsm-5] [INFO] [1789415295.489959318] [course_fsm]: ALIGN: +0.12 m along / -0.01 m across to the approach point (tolerances 0.25/0.06), 4 deg off the normal, alt +0.97/1.16 m. window at (+1.12, +0.03, -1.22) NED, facing -174 deg, 0.65x0.55 m, 17 samples, 124 ms old
-[window_detect-4] [INFO] [1789415295.692603709] [window_detect]: window: YES  centre=(633,392) offset=-0.01 area=69906px dist=7.68m
-[course_fsm-5] [INFO] [1789415296.128060314] [course_fsm]: alt=+0.78 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.83 m rng_ok=True vz=+0.14 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.10,-0.16) | hdg=+2 deg yaw_sp=+7 deg
-[course_fsm-5] [INFO] [1789415296.528923232] [course_fsm]: ALIGN: +0.15 m along / +0.03 m across to the approach point (tolerances 0.25/0.06), 14 deg off the normal, alt +0.77/1.15 m. window at (+1.12, +0.03, -1.21) NED, facing -173 deg, 0.66x0.55 m, 13 samples, 509 ms old
-[window_detect-4] [INFO] [1789415296.720384749] [window_detect]: window: YES  centre=(795,375) offset=+0.24 area=69476px dist=7.29m
-[course_fsm-5] [INFO] [1789415296.975636388] [course_fsm]: window: window at (+1.11, +0.02, -1.20) NED, facing -173 deg, 0.65x0.55 m, 10 samples, 956 ms old
-[course_fsm-5] [INFO] [1789415297.130879240] [course_fsm]: alt=+0.82 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.83 m rng_ok=True vz=+0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.33,-0.01) | hdg=-17 deg yaw_sp=+7 deg
-[course_fsm-5] [INFO] [1789415297.530273996] [course_fsm]: ALIGN: pose stale, holding the last target. no usable pose (6/6 fresh samples, 350 accepted ever, 6 truncated; rejections: corner depths disagree x8)
-[course_fsm-5] [INFO] [1789415297.533066329] [course_fsm]: ALIGN: -0.08 m along / +0.07 m across to the approach point (tolerances 0.25/0.06), 6 deg off the normal, alt +0.82/1.11 m. no usable pose (6/6 fresh samples, 350 accepted ever, 6 truncated; rejections: corner depths disagree x8)
-[window_detect-4] [INFO] [1789415297.800608194] [window_detect]: window: YES  centre=(458,250) offset=-0.28 area=96747px dist=6.67m
-[course_fsm-5] [INFO] [1789415298.179888913] [course_fsm]: alt=+0.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=+0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.14,+0.05) | hdg=+30 deg yaw_sp=+7 deg
-[window_detect-4] [WARN] [1789415298.414841290] [window_detect]: Window LOST.
-[course_fsm-5] [INFO] [1789415298.531253719] [course_fsm]: ALIGN: pose stale, holding the last target. no usable pose (1/6 fresh samples, 351 accepted ever, 6 truncated; rejections: corner depths disagree x8)
-[course_fsm-5] [INFO] [1789415298.533110503] [course_fsm]: ALIGN: -0.09 m along / -0.01 m across to the approach point (tolerances 0.25/0.06), 22 deg off the normal, alt +1.05/1.06 m. no usable pose (1/6 fresh samples, 351 accepted ever, 6 truncated; rejections: corner depths disagree x8)
-[window_detect-4] [INFO] [1789415298.824068961] [window_detect]: window: no   (streak 0 misses, 628 frames processed, 1116 skipped by max_fps=10)
-[course_fsm-5] [INFO] [1789415298.977335883] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 7 such frames) -- not measurable until the whole aperture is in view
-[window_detect-4] [WARN] [1789415299.129493366] [window_detect]: WINDOW DETECTED  (centre=(237,435) offset=-0.63 area=125187px dist=6.79m)
-[course_fsm-5] [INFO] [1789415299.179904219] [course_fsm]: alt=+1.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.05 m rng_ok=True vz=+0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.06,-0.11) | hdg=+27 deg yaw_sp=+7 deg
-[course_fsm-5] [INFO] [1789415299.580216449] [course_fsm]: ALIGN: pose stale, holding the last target. window in sight but TRUNCATED (0 px to the frame edge, 11 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-5] [INFO] [1789415299.584006018] [course_fsm]: ALIGN: -0.10 m along / -0.06 m across to the approach point (tolerances 0.25/0.06), 23 deg off the normal, alt +1.08/1.06 m. window in sight but TRUNCATED (0 px to the frame edge, 11 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-5] [WARN] [1789415299.821607413] [course_fsm]: Vehicle disarmed by PX4. Stopping.
-[course_fsm-5] [INFO] [1789415299.872957182] [course_fsm]: Idle. Ctrl-C to exit.
-[window_detect-4] [INFO] [1789415299.947686706] [window_detect]: window: YES  centre=(232,395) offset=-0.64 area=129248px dist=6.74m
-[window_detect-4] [WARN] [1789415300.081275357] [window_detect]: Window LOST.
-[window_detect-4] [INFO] [1789415300.948179716] [window_detect]: window: no   (streak 12 misses, 644 frames processed, 1146 skipped by max_fps=10)
-[course_fsm-5] [ERROR] [1789415301.548760407] [course_fsm]: PX4 failsafe SET: offboard_control_signal_lost
-[window_detect-4] [INFO] [1789415301.978766707] [window_detect]: window: no   (streak 20 misses, 652 frames processed, 1163 skipped by max_fps=10)
-[window_detect-4] [INFO] [1789415303.081073095] [window_detect]: window: no   (streak 0 misses, 659 frames processed, 1174 skipped by max_fps=10)
+[course_fsm-5] [WARN] [1789300861.130915111] [course_fsm]: RED_CROSS: over the red bar, 1.00 m to the next midpoint at 0.35 m/s, altitude 2.46 m.
+[course_fsm-5] [INFO] [1789300861.175861093] [course_fsm]: RED_CROSS: 0.95 m to go, -0.02 m off the line.
+[window_detect-4] [INFO] [1789300861.483474982] [window_detect]: window: no   (streak 37 misses, 558 frames processed, 1050 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300861.584180540] [course_fsm]: window: no usable pose (0/6 fresh samples, 261 accepted ever, 55 truncated; rejections: corner depths disagree x67, implausible window size x21)
+[course_fsm-5] [INFO] [1789300861.680684589] [course_fsm]: RED_CROSS: 1.02 m to go, -0.00 m off the line.
+[course_fsm-5] [INFO] [1789300861.926953000] [course_fsm]: alt=+2.42 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.44 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.06,-0.03) | hdg=-130 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300862.182360232] [course_fsm]: RED_CROSS: 1.05 m to go, +0.01 m off the line.
+[window_detect-4] [INFO] [1789300862.544119288] [window_detect]: window: no   (streak 46 misses, 567 frames processed, 1066 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300862.725490669] [course_fsm]: RED_CROSS: 1.04 m to go, +0.03 m off the line.
+[course_fsm-5] [INFO] [1789300862.971155509] [course_fsm]: alt=+2.41 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.41 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.08,-0.10) | hdg=-130 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300863.249050878] [course_fsm]: RED_CROSS: 1.02 m to go, +0.05 m off the line.
+[course_fsm-5] [INFO] [1789300863.625014815] [course_fsm]: window: no usable pose (0/6 fresh samples, 261 accepted ever, 55 truncated; rejections: corner depths disagree x67, implausible window size x21)
+[window_detect-4] [INFO] [1789300863.721707481] [window_detect]: window: no   (streak 53 misses, 574 frames processed, 1081 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300863.778878504] [course_fsm]: RED_CROSS: 0.99 m to go, +0.05 m off the line.
+[course_fsm-5] [INFO] [1789300863.976725748] [course_fsm]: alt=+2.43 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.42 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.12,-0.14) | hdg=-128 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300864.281072376] [course_fsm]: RED_CROSS: 0.92 m to go, +0.07 m off the line.
+[window_detect-4] [INFO] [1789300864.725500494] [window_detect]: window: no   (streak 60 misses, 581 frames processed, 1096 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300864.831811180] [course_fsm]: RED_CROSS: 0.86 m to go, +0.09 m off the line.
+[course_fsm-5] [INFO] [1789300865.021279370] [course_fsm]: alt=+2.36 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.35 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.12,-0.14) | hdg=-128 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300865.380691855] [course_fsm]: RED_CROSS: 0.78 m to go, +0.09 m off the line.
+[course_fsm-5] [INFO] [1789300865.642686433] [course_fsm]: window: no usable pose (0/6 fresh samples, 261 accepted ever, 55 truncated; rejections: corner depths disagree x67, implausible window size x21)
+[window_detect-4] [INFO] [1789300865.792277943] [window_detect]: window: no   (streak 69 misses, 590 frames processed, 1111 skipped by max_fps=10)
+[course_fsm-5] [INFO] [1789300865.884572353] [course_fsm]: RED_CROSS: 0.70 m to go, +0.08 m off the line.
+[course_fsm-5] [INFO] [1789300866.022955070] [course_fsm]: alt=+2.43 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.44 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.12,-0.18) | hdg=-127 deg yaw_sp=-128 deg
+[course_fsm-5] [INFO] [1789300866.426091616] [course_fsm]: RED_CROSS: 0.59 m to go, +0.09 m off the line.
+[course_fsm-5] [WARN] [1789300866.912030075] [course_fsm]: Course outcome: through, 1.92 m flown of 2.10 m.
+[course_fsm-5] [WARN] [1789300866.912950102] [course_fsm]: Traverse outcome: through, 1.92 m flown of 2.10 m. 261 geometry samples accepted of 404 received; rejections: corner depths disagree x67, implausible window size x21.
+[window_detect-4] [INFO] [1789300866.994040426] [window_detect]: window: no   (streak 77 misses, 598 frames processed, 1129 skipped by max_fps=10)
+[course_fsm-5] Traceback (most recent call last):
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/course_fsm", line 33, in <module>
+[course_fsm-5]     sys.exit(load_entry_point('drone_testing==0.0.0', 'console_scripts', 'course_fsm')())
+[course_fsm-5]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/course_fsm.py", line 714, in main
+[course_fsm-5]     spin_node(node)
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_sequence.py", line 2109, in spin_node
+[course_fsm-5]     executor.spin()
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 359, in spin
+[course_fsm-5]     self._spin_once_impl()
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 1009, in _spin_once_impl
+[course_fsm-5]     future.result()  # raise any exceptions
+[course_fsm-5]     ^^^^^^^^^^^^^^^
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/task.py", line 109, in result
+[course_fsm-5]     raise self.exception()
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/task.py", line 286, in _execute_coroutine_step
+[course_fsm-5]     result = coro.send(None)
+[course_fsm-5]              ^^^^^^^^^^^^^^^
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 592, in handler
+[course_fsm-5]     await call_coroutine()
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 480, in _execute
+[course_fsm-5]     await await_or_execute(sub.callback, *msg_tuple)
+[course_fsm-5]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 115, in await_or_execute
+[course_fsm-5]     return callback(*args)
+[course_fsm-5]            ^^^^^^^^^^^^^^^
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_sequence.py", line 647, in local_position_callback
+[course_fsm-5]     self._handle_estimator_resets(msg)
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_sequence.py", line 667, in _handle_estimator_resets
+[course_fsm-5]     self._apply_heading_reset(float(msg.delta_heading))
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/offboard_sequence.py", line 717, in _apply_heading_reset
+[course_fsm-5]     self._on_heading_reset(delta)
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_traverse.py", line 1410, in _on_heading_reset
+[course_fsm-5]     self.move_start_x, self.move_start_y = turn(
+[course_fsm-5]                                            ^^^^^
+[course_fsm-5]   File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/window_traverse.py", line 1400, in turn
+[course_fsm-5]     dx, dy = x - pivot[0], y - pivot[1]
+[course_fsm-5]              ~~^~~~~~~~~~
+[course_fsm-5] TypeError: unsupported operand type(s) for -: 'NoneType' and 'float'
+[ERROR] [course_fsm-5]: process has died [pid 3910, exit code 1, cmd '/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/course_fsm --ros-args -r __node:=course_fsm --params-file /tmp/launch_params_2c6g2kty'].

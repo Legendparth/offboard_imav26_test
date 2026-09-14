@@ -264,6 +264,11 @@ def generate_launch_description():
                     'lateral_clearance': LaunchConfiguration('lateral_clearance'),
                     'hard_clearance': LaunchConfiguration('hard_clearance'),
                     'sill_bias': LaunchConfiguration('sill_bias'),
+                    'window_width': LaunchConfiguration('window_width'),
+                    'window_height': LaunchConfiguration('window_height'),
+                    'lintel_clearance': LaunchConfiguration('lintel_clearance'),
+                    'align_alt_below_tolerance': LaunchConfiguration('align_alt_below_tolerance'),
+                    'traverse_sag_limit': LaunchConfiguration('traverse_sag_limit'),
                     'align_alt_tolerance': LaunchConfiguration('align_alt_tolerance'),
                     'approach_speed': LaunchConfiguration('approach_speed'),
                     'traverse_speed': LaunchConfiguration('traverse_speed'),
@@ -574,6 +579,30 @@ def generate_launch_description():
             'hard_clearance', default_value='0.030',
             description='m. An aperture leaving less than this around the '
                         'airframe is abandoned rather than flown.'),
+        DeclareLaunchArgument(
+            'window_width', default_value='0.60',
+            description='m, the KNOWN window width. Used instead of the camera '
+                        'measurement for the clearance plan. 0 = use the '
+                        'measurement.'),
+        DeclareLaunchArgument(
+            'window_height', default_value='0.50',
+            description='m, the KNOWN window height (aperture, sill to lintel). '
+                        'This is the number the gear-to-sill clearance is '
+                        'solved from. 0 = use the measurement.'),
+        DeclareLaunchArgument(
+            'lintel_clearance', default_value='0.06',
+            description='m between the top of the airframe and the lintel. '
+                        'Less than vertical_clearance (under the gear) on '
+                        'purpose: a brushed lintel is survivable, a caught '
+                        'sill tips the aircraft over.'),
+        DeclareLaunchArgument(
+            'align_alt_below_tolerance', default_value='0.03',
+            description='m the aircraft may be below the traverse altitude and '
+                        'still commit. Above it, align_alt_tolerance applies.'),
+        DeclareLaunchArgument(
+            'traverse_sag_limit', default_value='0.06',
+            description='m below the traverse altitude, before reaching the '
+                        'window, at which the run pauses until it recovers.'),
         DeclareLaunchArgument(
             'sill_bias', default_value='0.100',
             description='m of extra height above the airframe-centred '

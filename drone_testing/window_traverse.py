@@ -632,6 +632,26 @@ class WindowTraverse(WindowScan):
     ALIGN_SETTLE_SECONDS = 1.5  # all three held simultaneously for this long
     AIM_YAW_TOLERANCE = math.radians(12.0)
 
+    # ---- the gear and the sill, after two tip-overs --------------------------
+    # The window is a known object: the rules give its size. The camera's
+    # measurement of that size has been up to 30% off (0.78 x 0.68 m measured
+    # against a 0.60 x 0.50 m window), and the vertical budget in this window
+    # is 12 cm a side, so the clearance solve uses the known size. 0 = trust
+    # the measurement, as before.
+    WINDOW_WIDTH = 0.60
+    WINDOW_HEIGHT = 0.50
+    LINTEL_CLEARANCE = 0.06     # m wanted between the top of the airframe and
+                                # the lintel. Deliberately less than the 0.15 m
+                                # under the gear: brushing the lintel with a
+                                # prop guard is a bad traverse, catching the
+                                # gear on the sill is a tip-over.
+    ALIGN_ALT_BELOW_TOLERANCE = 0.03    # m the aircraft may be BELOW the traverse
+                                # altitude and still commit. The upper side
+                                # keeps ALIGN_ALT_TOLERANCE: high is safe.
+    TRAVERSE_SAG_LIMIT = 0.06   # m below the traverse altitude, before the
+                                # airframe reaches the window, at which the run
+                                # stops moving forward until altitude recovers
+
     # ---- re-centring on a truncated window --------------------------------
     # window_detect flags a quad with a corner at the image edge as TRUNCATED:
     # the aperture it measured is the visible PART of a window, narrower than
@@ -753,6 +773,15 @@ class WindowTraverse(WindowScan):
         self.HARD_CLEARANCE = float(self._declare_number(
             'hard_clearance', self.HARD_CLEARANCE))
         self.SILL_BIAS = float(self._declare_number('sill_bias', self.SILL_BIAS))
+        self.WINDOW_WIDTH = float(self._declare_number('window_width', self.WINDOW_WIDTH))
+        self.WINDOW_HEIGHT = float(self._declare_number('window_height', self.WINDOW_HEIGHT))
+        self.LINTEL_CLEARANCE = float(self._declare_number(
+            'lintel_clearance', self.LINTEL_CLEARANCE))
+        self.ALIGN_ALT_BELOW_TOLERANCE = float(self._declare_number(
+            'align_alt_below_tolerance', self.ALIGN_ALT_BELOW_TOLERANCE))
+        self.TRAVERSE_SAG_LIMIT = float(self._declare_number(
+            'traverse_sag_limit', self.TRAVERSE_SAG_LIMIT))
+        self.traverse_paused = False
         self.ALIGN_ALT_TOLERANCE = float(self._declare_number(
             'align_alt_tolerance', self.ALIGN_ALT_TOLERANCE))
         self.APPROACH_SPEED = float(self._declare_number(
@@ -1014,6 +1043,16 @@ class WindowTraverse(WindowScan):
             self.truncated_frames += 1
             return
 
+        # Only once the aircraft is actually looking for the window. On the
+        # ground, climbing and holding, the camera sees whatever else is the
+        # window's colour -- on the course, the BLUE BAR, which is the same
+        # blue and sits straight down the same line. Samples of it used to go
+        # into the estimator before takeoff, and every real window sample after
+        # that was refused as "centre jumped" until 25 in a row forced a
+        # rebuild: a slow approach, flown partly on the wrong object.
+        if self.current_stage not in (self.SCAN, self.LOCK) + self.TRAVERSE_STAGES:
+            return
+
         lp = self.local_position
         if lp is None or not lp.xy_valid or not lp.z_valid:
             return
@@ -1156,6 +1195,27 @@ class WindowTraverse(WindowScan):
         heading = math.atan2(-normal[1], -normal[0])
         return entry, exit_point, heading
 
+    def aperture_size(self, est):
+        """(width, height) to plan the traverse on: known if configured.
+
+        The measured size is still compared against it, loudly, because a big
+        disagreement means either the wrong window is being measured or the
+        configured size is wrong -- and both are worth stopping to look at.
+        """
+        m_w = float(est.get('width') or 0.0)
+        m_h = float(est.get('height') or 0.0)
+        width = self.WINDOW_WIDTH if self.WINDOW_WIDTH > 0.0 else m_w
+        height = self.WINDOW_HEIGHT if self.WINDOW_HEIGHT > 0.0 else m_h
+        for name, known, measured in (('width', self.WINDOW_WIDTH, m_w),
+                                      ('height', self.WINDOW_HEIGHT, m_h)):
+            if known > 0.0 and measured > 0.0 and abs(measured - known) > 0.25 * known:
+                self.get_logger().warning(
+                    f"Window {name}: measured {measured:.2f} m, configured "
+                    f"{known:.2f} m. Planning on the configured size. If this "
+                    f"persists, check window_{name} and which window is "
+                    "being detected.", throttle_duration_sec=5.0)
+        return width, height
+
     def window_altitude(self, est):
         """Height above the arming point to fly the traverse at, clamped.
 
@@ -1191,12 +1251,13 @@ class WindowTraverse(WindowScan):
         # Height of the window centre above the arming point, and the sill and
         # lintel either side of it.
         centre = self.home_z - est['centre'][2]
-        half = 0.5 * float(est.get('height') or 0.0)
+        half = 0.5 * self.aperture_size(est)[1]
         sill = centre - half
         lintel = centre + half
 
+        # Unequal on purpose: see LINTEL_CLEARANCE.
         lower = sill + self.body_below + self.VERTICAL_CLEARANCE
-        upper = lintel - self.body_above - self.VERTICAL_CLEARANCE
+        upper = lintel - self.body_above - self.LINTEL_CLEARANCE
 
         # Airframe centred in the aperture: the commanded point sits
         # (body_below - body_above)/2 above the window centre.
@@ -1288,8 +1349,7 @@ class WindowTraverse(WindowScan):
 
         Both can be negative, which means the airframe does not fit.
         """
-        height = float(est.get('height') or 0.0)
-        width = float(est.get('width') or 0.0)
+        width, height = self.aperture_size(est)
         alt = self.window_altitude(est)
         if alt is None:
             vertical = 0.5 * (height - self.DRONE_HEIGHT)
@@ -1407,6 +1467,11 @@ class WindowTraverse(WindowScan):
         if self.move_target_x is not None:
             self.move_target_x, self.move_target_y = turn(
                 self.move_target_x, self.move_target_y)
+        # Separately: _set_target never sets move_start, so it is None for
+        # every move this class and course_fsm make. Rotating it
+        # unconditionally killed the node over the red bar when EKF2 reset its
+        # heading mid-crossing.
+        if self.move_start_x is not None:
             self.move_start_x, self.move_start_y = turn(
                 self.move_start_x, self.move_start_y)
 
@@ -1902,7 +1967,15 @@ class WindowTraverse(WindowScan):
         if abs(along) > self.ALIGN_ALONG_TOLERANCE:
             return False
         alt = self.relative_altitude()
-        if alt is None or abs(alt - self.commanded_altitude) > self.ALIGN_ALT_TOLERANCE:
+        # Asymmetric: committing low spends the sill clearance before the run
+        # has started. Committing high spends the LINTEL clearance, which is
+        # only lintel_clearance (6 cm) -- so the upper tolerance can never be
+        # allowed to exceed it, or a "high is safe" commit puts the props into
+        # the top of the frame.
+        above = min(self.ALIGN_ALT_TOLERANCE, max(0.02, self.LINTEL_CLEARANCE - 0.02))
+        if (alt is None
+                or alt < self.commanded_altitude - self.ALIGN_ALT_BELOW_TOLERANCE
+                or alt > self.commanded_altitude + above):
             return False
         return self._heading_error(self._target_heading()) <= self.ALIGN_YAW_TOLERANCE
 
@@ -2056,6 +2129,36 @@ class WindowTraverse(WindowScan):
         if along >= total - self.ALIGN_TOLERANCE:
             self._begin_clear(f"through, {along:.2f} m flown of {total:.2f} m")
             return
+
+        alt = self.relative_altitude()
+        lp = self.local_position
+        self.get_logger().info(
+            f"TRAVERSE alt {'n/a' if alt is None else f'{alt:.2f}'}/"
+            f"{self.commanded_altitude:.2f} m, lidar "
+            f"{'n/a' if lp is None else f'{lp.dist_bottom:.2f}'} m, "
+            f"{along:.2f} m along (window plane at {self.STANDOFF_DISTANCE:.2f}).",
+            throttle_duration_sec=0.2)
+
+        # Until the airframe's leading edge reaches the window plane, a sag
+        # below the traverse altitude is recoverable by stopping. After it,
+        # stopping would park the aircraft in the aperture, so it flies on.
+        before_plane = along < self.STANDOFF_DISTANCE - 0.5 * self.DRONE_WIDTH - 0.10
+        sagging = alt is not None and alt < self.commanded_altitude - self.TRAVERSE_SAG_LIMIT
+        if sagging and before_plane:
+            if not self.traverse_paused:
+                self.traverse_paused = True
+                self.moving = False
+                if lp is not None:
+                    self.hold_x, self.hold_y = lp.x, lp.y
+                self.get_logger().warning(
+                    f"TRAVERSE: {self.commanded_altitude - alt:.2f} m below the "
+                    "traverse altitude before the window. Stopping until it "
+                    "recovers rather than flying the gear into the sill.")
+            return
+        if self.traverse_paused:
+            self.traverse_paused = False
+            self.moving = True
+            self.get_logger().warning("TRAVERSE: altitude recovered; continuing.")
 
         if self._in_stage_for() > self.TRAVERSE_TIMEOUT:
             self._abandon(

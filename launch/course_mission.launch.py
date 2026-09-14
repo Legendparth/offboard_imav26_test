@@ -186,6 +186,11 @@ def generate_launch_description():
                     'lateral_clearance': LaunchConfiguration('lateral_clearance'),
                     'hard_clearance': LaunchConfiguration('hard_clearance'),
                     'sill_bias': LaunchConfiguration('sill_bias'),
+                    'window_width': LaunchConfiguration('window_width'),
+                    'window_height': LaunchConfiguration('window_height'),
+                    'lintel_clearance': LaunchConfiguration('lintel_clearance'),
+                    'align_alt_below_tolerance': LaunchConfiguration('align_alt_below_tolerance'),
+                    'traverse_sag_limit': LaunchConfiguration('traverse_sag_limit'),
                     'align_alt_tolerance': LaunchConfiguration('align_alt_tolerance'),
                     'approach_speed': LaunchConfiguration('approach_speed'),
                     'traverse_speed': LaunchConfiguration('traverse_speed'),
@@ -233,6 +238,9 @@ def generate_launch_description():
                     'course_vertical_timeout': LaunchConfiguration('course_vertical_timeout'),
                     'course_cross_timeout': LaunchConfiguration('course_cross_timeout'),
                     'course_flow_timeout': LaunchConfiguration('course_flow_timeout'),
+                    'course_arrive_tolerance': LaunchConfiguration('course_arrive_tolerance'),
+                    'blue_check_margin': LaunchConfiguration('blue_check_margin'),
+                    'course_range_wait': LaunchConfiguration('course_range_wait'),
                     # ---- the estimator ----
                     'depth_min': LaunchConfiguration('depth_min'),
                     'depth_max': LaunchConfiguration('depth_max'),
@@ -400,7 +408,13 @@ def generate_launch_description():
                         'to be, clamped into min/max_altitude.'),
         DeclareLaunchArgument('hold_seconds', default_value='5.0'),
         DeclareLaunchArgument('ground_wait_seconds', default_value='5.0'),
-        DeclareLaunchArgument('climb_speed', default_value='0.35'),
+        DeclareLaunchArgument(
+            'climb_speed', default_value='0.70',
+            description='m/s for the takeoff climb. Below 0.30 m the optical '
+                        'flow is not fused, so the aircraft holds zero velocity '
+                        'with no position correction and drifts on any tilt. '
+                        'At 0.35 it spent about a second in that zone; at 0.70 '
+                        'half that.'),
         DeclareLaunchArgument(
             'land_speed', default_value='0.15',
             description='Keep MPC_LAND_SPEED at about 0.2 so PX4 agrees this is '
@@ -515,6 +529,30 @@ def generate_launch_description():
             'hard_clearance', default_value='0.030',
             description='m. An aperture leaving less than this around the '
                         'airframe is abandoned rather than flown.'),
+        DeclareLaunchArgument(
+            'window_width', default_value='0.60',
+            description='m, the KNOWN window width. Used instead of the camera '
+                        'measurement for the clearance plan. 0 = use the '
+                        'measurement.'),
+        DeclareLaunchArgument(
+            'window_height', default_value='0.50',
+            description='m, the KNOWN window height (aperture, sill to lintel). '
+                        'This is the number the gear-to-sill clearance is '
+                        'solved from. 0 = use the measurement.'),
+        DeclareLaunchArgument(
+            'lintel_clearance', default_value='0.06',
+            description='m between the top of the airframe and the lintel. '
+                        'Less than vertical_clearance (under the gear) on '
+                        'purpose: a brushed lintel is survivable, a caught '
+                        'sill tips the aircraft over.'),
+        DeclareLaunchArgument(
+            'align_alt_below_tolerance', default_value='0.03',
+            description='m the aircraft may be below the traverse altitude and '
+                        'still commit. Above it, align_alt_tolerance applies.'),
+        DeclareLaunchArgument(
+            'traverse_sag_limit', default_value='0.06',
+            description='m below the traverse altitude, before reaching the '
+                        'window, at which the run pauses until it recovers.'),
         DeclareLaunchArgument(
             'sill_bias', default_value='0.100',
             description='m of extra height above the airframe-centred '
@@ -684,7 +722,7 @@ def generate_launch_description():
             'bar_radius', default_value='0.02',
             description='m, half the bar thickness. Same value for both bars.'),
         DeclareLaunchArgument(
-            'red_clearance', default_value='0.25',
+            'red_clearance', default_value='0.30',
             description='m between the landing gear and the top of the red bar. '
                         'Crossing altitude = height + radius + this + gear.'),
         DeclareLaunchArgument(
@@ -703,8 +741,11 @@ def generate_launch_description():
                         'crossing starts. Short because the gates are tight.'),
         DeclareLaunchArgument('course_climb_speed', default_value='0.40'),
         DeclareLaunchArgument(
-            'course_descent_speed', default_value='0.30',
-            description='m/s for the blue drop. The normal descent rate is '
+            'course_descent_speed', default_value='0.55',
+            description='m/s for the blue drop. Above 0.5 on purpose: that is '
+                        'the only vertical speed at which EKF2 re-earns the '
+                        'rangefinder consistency flag the red bar trips. The '
+                        'normal descent rate is '
                         'land_speed (0.15), which would spend ~13 s on a 1.9 m '
                         'repositioning descent. Restored for the landing.'),
         DeclareLaunchArgument('bar_cross_speed', default_value='0.35'),
@@ -719,6 +760,20 @@ def generate_launch_description():
             'course_flow_timeout', default_value='8.0',
             description='s without optical flow during a rise or drop before '
                         'landing on the midpoint.'),
+
+        DeclareLaunchArgument(
+            'course_arrive_tolerance', default_value='0.06',
+            description='m along-track a bar crossing must arrive within, and '
+                        'hold, before the next vertical move starts.'),
+        DeclareLaunchArgument(
+            'blue_check_margin', default_value='0.50',
+            description='m between the gear and the top of the blue bar where '
+                        'the blue drop pauses to confirm EKF2 is fusing the '
+                        'rangefinder before going under.'),
+        DeclareLaunchArgument(
+            'course_range_wait', default_value='3.0',
+            description='s at that height for the rangefinder to be fused '
+                        'again before landing on the midpoint instead.'),
 
         # ---- the rest ----
         DeclareLaunchArgument(

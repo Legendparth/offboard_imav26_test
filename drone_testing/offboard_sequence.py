@@ -360,6 +360,11 @@ class OffboardSequence(Node):
     OFFBOARD_TIMEOUT = 10.0
     ARMING_TIMEOUT = 10.0
     TAKEOFF_TIMEOUT = 20.0
+    SETTLE_GRACE_SECONDS = 0.3      # a dip out of the arrival band shorter than
+                                    # this does not restart the settle timer
+    TAKEOFF_ACCEPT_TOLERANCE = 0.25 # m. At the timeout, an aircraft that is
+                                    # airborne and this close to the target is
+                                    # accepted rather than landed
     LANDING_TIMEOUT = 30.0
     DISARM_TIMEOUT = 5.0
     LANDED_CONFIRM_SECONDS = 1.0    # land-detector must agree this long
@@ -550,6 +555,7 @@ class OffboardSequence(Node):
                                     # are currently asking for. Altitude steps
                                     # move this; the overshoot guard reads it.
         self.in_band_since = None
+        self.band_exit_since = None
         self.landed_since = None
         self.stall_since = None
 
@@ -687,6 +693,11 @@ class OffboardSequence(Node):
             if self.move_target_x is not None:
                 self.move_target_x += msg.delta_xy[0]
                 self.move_target_y += msg.delta_xy[1]
+            # Checked separately: subclasses that drive the carrot through
+            # their own _set_target (window_traverse, bar_cross, course_fsm)
+            # never set move_start, and an EKF2 reset during one of their moves
+            # used to be a TypeError that killed the node in the air.
+            if self.move_start_x is not None:
                 self.move_start_x += msg.delta_xy[0]
                 self.move_start_y += msg.delta_xy[1]
             if self.hold_x is not None:
@@ -1216,20 +1227,49 @@ class OffboardSequence(Node):
                 f"climb overshot: {alt:.2f} m vs {self.commanded_altitude:.2f} m target")
             return
 
+        now = time.monotonic()
         if self._at_commanded_altitude():
+            self.band_exit_since = None
             if self.in_band_since is None:
-                self.in_band_since = time.monotonic()
-            elif time.monotonic() - self.in_band_since >= self.SETTLE_SECONDS:
+                self.in_band_since = now
+            elif now - self.in_band_since >= self.SETTLE_SECONDS:
                 alt = self.relative_altitude()
                 self.get_logger().warning(
                     f"Reached {alt:.2f} m. Holding for {self.HOLD_SECONDS:.0f} s.")
                 self._enter_stage(self.HOLD)
             return
 
-        self.in_band_since = None
+        # Out of the band. A hover hunting +/-8 cm while the flow settles in
+        # used to reset the settle timer on every single tick outside it, and
+        # could fail to hold 0.5 s continuously for the whole 20 s -- which
+        # landed an aircraft that was flying perfectly well at 1.2 m. Brief
+        # excursions are now forgiven.
+        if self.in_band_since is not None:
+            if self.band_exit_since is None:
+                self.band_exit_since = now
+            if now - self.band_exit_since > self.SETTLE_GRACE_SECONDS:
+                self.in_band_since = None
+                self.band_exit_since = None
 
         if self._in_stage_for() > self.TAKEOFF_TIMEOUT:
-            self._begin_landing("takeoff did not settle in time")
+            alt = self.relative_altitude()
+            agl = self.agl()
+            airborne = self.is_airborne()
+            if (airborne and alt is not None
+                    and abs(alt - self.commanded_altitude) <= self.TAKEOFF_ACCEPT_TOLERANCE):
+                self.get_logger().warning(
+                    f"Takeoff never held the +/-{self.ALTITUDE_TOLERANCE:.2f} m band "
+                    f"for {self.SETTLE_SECONDS:.1f} s, but the aircraft is airborne at "
+                    f"{alt:.2f} m of {self.commanded_altitude:.2f} m. Accepting it "
+                    "and holding rather than landing a vehicle that is flying.")
+                self._enter_stage(self.HOLD)
+                return
+            self._begin_landing(
+                f"takeoff did not settle in {self.TAKEOFF_TIMEOUT:.0f} s: "
+                f"airborne={airborne}, ekf alt="
+                f"{'n/a' if alt is None else f'{alt:.2f}'} m, lidar agl="
+                f"{'n/a' if agl is None else f'{agl:.2f}'} m, target "
+                f"{self.commanded_altitude:.2f} m")
 
     def _at_commanded_altitude(self):
         """Three independent things must agree before we believe we arrived.

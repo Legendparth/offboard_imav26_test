@@ -78,6 +78,27 @@ WHY IT DOES NOT GO BACK TO 1.2 m BETWEEN OBSTACLES
     less. Each vertical move here goes directly from one obstacle's altitude
     to the next.
 
+THE LIDAR OVER THE RED BAR
+    Flying over the red bar puts a 2 m-tall obstacle under a downward lidar:
+    dist_bottom steps from 2.4 m to 0.4 m and back in a fraction of a second.
+    EKF2's rangefinder kinematic-consistency check reads that as vertical
+    motion that did not happen and drops cs_rng_kin_consistent -- and that
+    flag only re-earns itself while |vz| > 0.5 m/s, so it NEVER recovers in a
+    hover. The base class requires it for "flow healthy", so the aircraft lost
+    position hold right after the red bar and the course landed it.
+
+    Two things fix that without pretending the problem away:
+
+      * during the bar stages, horizontal hold is judged on what horizontal
+        hold actually needs -- EKF2 fusing optical flow (cs_opt_flow and not
+        dead-reckoning) -- not on the lidar height flag;
+      * height DOES need the lidar, and the blue crossing is flown 0.3 m off
+        the floor under a bar. So BLUE_DROP descends first, fast enough to
+        re-earn the flag, to blue_check_margin above the blue bar, and does not
+        go any lower until EKF2 is fusing the rangefinder again. If it is not
+        within course_range_wait, the aircraft lands on the midpoint instead
+        of flying under a bar on a free-running height estimate.
+
 WHEN OPTICAL FLOW DROPS OUT
     What is safe depends entirely on where the aircraft is, so it is decided
     per stage rather than once:
@@ -125,7 +146,8 @@ class CourseFSM(WindowTraverse):
     RED_BAR_HEIGHT = 1.98
     BLUE_BAR_HEIGHT = 0.80
     BAR_RADIUS = 0.02
-    RED_CLEARANCE = 0.25        # m between the landing gear and the red bar
+    RED_CLEARANCE = 0.30        # m between the landing gear and the red bar.
+                                # Raised from 0.25 after a prop strike.
     BLUE_CLEARANCE = 0.20       # m between the top of the aircraft and the
                                 # blue bar. Tighter than red on purpose: every
                                 # centimetre here comes out of the height above
@@ -139,7 +161,11 @@ class CourseFSM(WindowTraverse):
                                 # tight, so a vehicle that passes them for half
                                 # a second is genuinely there.
     COURSE_CLIMB_SPEED = 0.40   # m/s for the red rise
-    COURSE_DESCENT_SPEED = 0.30 # m/s for the blue drop. The inherited descent
+    COURSE_DESCENT_SPEED = 0.55 # m/s for the blue drop. Above 0.5 on purpose:
+                                # that is the only vertical speed at which EKF2
+                                # re-earns cs_rng_kin_consistent after the red
+                                # bar tripped it (see THE LIDAR OVER THE RED
+                                # BAR). The inherited descent
                                 # rate is LAND_SPEED (0.15), sized for a
                                 # touchdown; using it for a 1.9 m repositioning
                                 # descent would cost ~13 s of hover. Restored
@@ -148,6 +174,17 @@ class CourseFSM(WindowTraverse):
 
     COURSE_XY_TOLERANCE = 0.12  # m, along and across, before a vertical move
                                 # counts as settled on its midpoint
+    COURSE_ARRIVE_TOLERANCE = 0.06  # m along-track a crossing must ARRIVE
+                                # within, and hold for course_settle_seconds,
+                                # before the next vertical move. It used to end
+                                # the moment the target was 12 cm ahead, while
+                                # still moving -- so the drop after the red bar
+                                # could start with the rear props short of the
+                                # midpoint, and that is where one touched it.
+    BLUE_CHECK_MARGIN = 0.50    # m of air between the gear and the top of the
+                                # blue bar at the lidar check height
+    COURSE_RANGE_WAIT = 3.0     # s at the check height for EKF2 to be fusing
+                                # the rangefinder before landing instead
     COURSE_ALT_TOLERANCE = 0.08
     COURSE_VERTICAL_TIMEOUT = 25.0
     COURSE_CROSS_TIMEOUT = 15.0
@@ -187,11 +224,20 @@ class CourseFSM(WindowTraverse):
         self.COURSE_CROSS_TIMEOUT = float(n(
             'course_cross_timeout', self.COURSE_CROSS_TIMEOUT))
         self.COURSE_FLOW_TIMEOUT = float(n('course_flow_timeout', self.COURSE_FLOW_TIMEOUT))
+        self.COURSE_ARRIVE_TOLERANCE = float(n(
+            'course_arrive_tolerance', self.COURSE_ARRIVE_TOLERANCE))
+        self.BLUE_CHECK_MARGIN = float(n('blue_check_margin', self.BLUE_CHECK_MARGIN))
+        self.COURSE_RANGE_WAIT = float(n('course_range_wait', self.COURSE_RANGE_WAIT))
 
         self.red_altitude = (self.RED_BAR_HEIGHT + self.BAR_RADIUS
                              + self.RED_CLEARANCE + self.body_below)
         self.blue_altitude = (self.BLUE_BAR_HEIGHT - self.BAR_RADIUS
                               - self.BLUE_CLEARANCE - self.body_above)
+        # Where the blue drop pauses to confirm EKF2 is fusing the lidar again.
+        # Never above the red crossing altitude it is descending from.
+        self.blue_check_altitude = min(
+            self.BLUE_BAR_HEIGHT + self.BAR_RADIUS + self.BLUE_CHECK_MARGIN
+            + self.body_below, self.red_altitude)
 
         # The traverse must end on the first midpoint. Anything further is
         # closer to the red bar than the course allows a vertical move to be.
@@ -214,6 +260,8 @@ class CourseFSM(WindowTraverse):
         self.course_flow_lost_since = None
         self.bar_push_since = None
         self.bar_push_seconds = 0.0
+        self.blue_drop_phase = None
+        self.range_wait_since = None
         self.window_blind_capped = False
 
         self.get_logger().warning(
@@ -251,6 +299,26 @@ class CourseFSM(WindowTraverse):
                 f"{half - 0.5 * self.DRONE_WIDTH:.2f} m from a prop tip to an "
                 "obstacle at the midpoint")
         return problems
+
+    def flow_is_healthy(self):
+        """Horizontal hold health, judged on flow during the bar stages.
+
+        Everywhere else this is the base class's answer, which also requires
+        the rangefinder to be consistent. Over and after the red bar that flag
+        is expected to drop (see THE LIDAR OVER THE RED BAR) while flow fusion
+        is perfectly fine, and dropping the position hold there is what made
+        the aircraft drift and land. Height is guarded separately, before the
+        blue crossing, where it matters.
+        """
+        if self.current_stage not in self.COURSE_STAGES:
+            return super().flow_is_healthy()
+        lp = self.local_position
+        f = self.estimator_flags
+        if f is None:
+            return super().flow_is_healthy()
+        return (lp is not None and lp.xy_valid and lp.v_xy_valid
+                and lp.dist_bottom > self.FLOW_MIN_AGL
+                and f.cs_opt_flow and not f.cs_inertial_dead_reckoning)
 
     # ---------------------------------------------------------- geometry
 
@@ -320,6 +388,7 @@ class CourseFSM(WindowTraverse):
         self.course_settle_since = None
         self.course_flow_lost_since = None
         self.bar_push_since = None
+        self.range_wait_since = None
 
     def _begin_red_rise(self):
         # P0: the end of the traverse line. Using the frozen exit point rather
@@ -357,12 +426,15 @@ class CourseFSM(WindowTraverse):
         self.course_saved_land_speed = self.LAND_SPEED
         self.LAND_SPEED = self.COURSE_DESCENT_SPEED
         self.MOVE_SPEED = self.APPROACH_SPEED
-        self._set_target(x, y, self.blue_altitude)
+        self._set_target(x, y, self.blue_check_altitude)
         self._enter_course_stage(self.BLUE_DROP)
+        self.blue_drop_phase = 'check'
         self.get_logger().warning(
-            f"BLUE_DROP: descending straight down to {self.blue_altitude:.2f} m "
-            f"on the midpoint at {self.COURSE_DESCENT_SPEED:.2f} m/s, "
-            f"{0.5 * self.RED_TO_BLUE:.2f} m clear of both bars.")
+            f"BLUE_DROP: descending straight down on the midpoint at "
+            f"{self.COURSE_DESCENT_SPEED:.2f} m/s to {self.blue_check_altitude:.2f} m "
+            "to confirm the lidar is being fused, then to "
+            f"{self.blue_altitude:.2f} m. {0.5 * self.RED_TO_BLUE:.2f} m clear "
+            "of both bars.")
 
     def _begin_blue_cross(self):
         self._restore_land_speed()
@@ -450,7 +522,35 @@ class CourseFSM(WindowTraverse):
         self._handle_vertical(self._begin_red_cross, "the red rise")
 
     def _handle_blue_drop(self):
-        self._handle_vertical(self._begin_blue_cross, "the blue drop")
+        if self.blue_drop_phase == 'check':
+            self._handle_vertical(self._blue_check_reached, "the descent to the lidar check")
+        else:
+            self._handle_vertical(self._begin_blue_cross, "the blue drop")
+
+    def _blue_check_reached(self):
+        """Settled above the blue bar: is height being measured, or guessed?"""
+        if self.rangefinder_is_healthy():
+            self.blue_drop_phase = 'final'
+            self.course_settle_since = None
+            self._set_target(self.move_target_x, self.move_target_y, self.blue_altitude)
+            self.get_logger().warning(
+                f"BLUE_DROP: EKF2 is fusing the rangefinder. Continuing down to "
+                f"{self.blue_altitude:.2f} m for the crossing.")
+            return
+        now = time.monotonic()
+        if self.range_wait_since is None:
+            self.range_wait_since = now
+            self.get_logger().error(
+                "BLUE_DROP: EKF2 is NOT fusing the rangefinder "
+                "(cs_rng_kin_consistent / cs_rng_hgt false), so the height "
+                "estimate is free-running. Not going under the blue bar on it; "
+                f"waiting {self.COURSE_RANGE_WAIT:.0f} s.")
+        elif now - self.range_wait_since > self.COURSE_RANGE_WAIT:
+            self._abandon(
+                "EKF2 never resumed fusing the rangefinder before the blue "
+                "crossing; landing on the midpoint rather than flying 0.3 m off "
+                "the floor under a bar on a free-running height estimate. Set "
+                "EKF2_RNG_DELAY / EKF2_RNG_K_GATE (see the README)")
 
     def _handle_red_cross(self):
         if not self._still_flyable():
@@ -501,9 +601,15 @@ class CourseFSM(WindowTraverse):
 
     def _handle_crossing(self, done, what):
         along, cross = self._target_errors()
-        if along is not None and along <= self.COURSE_XY_TOLERANCE:
-            done()
+        if (along is not None and abs(along) <= self.COURSE_ARRIVE_TOLERANCE
+                and abs(cross) <= self.COURSE_XY_TOLERANCE):
+            now = time.monotonic()
+            if self.course_settle_since is None:
+                self.course_settle_since = now
+            elif now - self.course_settle_since >= self.COURSE_SETTLE_SECONDS:
+                done()
             return
+        self.course_settle_since = None
         if self._in_stage_for() > self.COURSE_CROSS_TIMEOUT:
             self._abandon(f"{what} timed out {along or 0.0:.2f} m short")
             return

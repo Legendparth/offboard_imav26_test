@@ -113,6 +113,29 @@ def get_median_depth(depth_img, u, v, box=3):
     return 0.0
 
 
+def smooth_corners(previous, corners, alpha, jump_px):
+    """Exponentially smooth quad corners, unless the quad is a different one.
+
+    Smoothing is for jitter on ONE object. When the largest contour of the
+    window's colour switches to another object -- the blue bar and the window
+    are the same blue -- blending the two produces several frames of a quad
+    that is neither, positioned between them, and those frames are measured
+    and flown at like any other. A jump in centroid or a large change in size
+    means a new object, so start from it instead of averaging into it.
+    """
+    if previous is None:
+        return corners
+    shift = float(np.linalg.norm(corners.mean(axis=0) - previous.mean(axis=0)))
+
+    def perimeter(q):
+        return float(np.sum(np.linalg.norm(q - np.roll(q, 1, axis=0), axis=1)))
+
+    ratio = perimeter(corners) / max(perimeter(previous), 1e-6)
+    if shift > jump_px or ratio > 1.5 or ratio < 1.0 / 1.5:
+        return corners
+    return alpha * corners + (1.0 - alpha) * previous
+
+
 def sample_corner_depth(depth_img, u, v, center, inset=10, box=4):
     """Depth of the window FRAME at one corner, not of what is behind it.
 
@@ -188,18 +211,56 @@ def approx_quad(contour):
     return None
 
 
-def window_detection(mask, min_area=1500):
+def quad_aspect(quad):
+    """Width/height ratio of a 4-corner quad, >= 1, from its opposite sides."""
+    q = np.asarray(quad, dtype=float).reshape(-1, 2)
+    sides = np.linalg.norm(q - np.roll(q, -1, axis=0), axis=1)
+    a = 0.5 * (sides[0] + sides[2])
+    b = 0.5 * (sides[1] + sides[3])
+    return max(a, b) / max(min(a, b), 1e-6)
+
+
+def window_detection(mask, min_area=1500, max_aspect=2.5, min_solidity=0.85):
+    """The largest WINDOW-SHAPED contour in the mask, or None.
+
+    This used to be simply the largest contour of the window's colour. On the
+    course that is not safe: the blue bar is the same blue, sits behind the
+    window on the same line, and stays in view from the air. Whenever it was
+    the bigger blob -- or the mask bridged it to the window -- the "window"
+    for that frame was the bar, or one quad stretched over both, and those
+    frames went into the pose estimate. The approach then chased a moving
+    target (slow to centre) and committed to a biased centre (hit the edge).
+
+    Every candidate now has to be a convex quad whose width/height ratio is at
+    most max_aspect. A window seen square-on is close to 1 and stays well
+    under 2.5 even from an angle; a bar is ten to thirty times longer than it
+    is tall and cannot pass. Of the quads that do, the largest wins.
+
+    The aspect test alone misses one case: the bar TOUCHING the window in the
+    mask, so the two are a single blob whose convex hull is a fat quad that
+    passes. A window's outer boundary is itself convex -- its area is ~100%
+    of its hull's, square-on or seen at an angle -- while a window with a bar
+    stuck to it is badly non-convex. So the contour must fill at least
+    min_solidity of its hull. A merged frame then yields no detection, which
+    the estimator simply does without, instead of a wrong one it would use.
+    """
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        return None
-    largest = max(contours, key=cv2.contourArea)
-    if cv2.contourArea(largest) < min_area:
-        return None
-    hull = cv2.convexHull(largest)
-    approx = approx_quad(hull)
-    if approx is None or not cv2.isContourConvex(approx):
-        return None
-    return approx
+    best = None
+    best_area = 0.0
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < min_area or area <= best_area:
+            continue
+        hull = cv2.convexHull(contour)
+        if area / max(cv2.contourArea(hull), 1e-6) < min_solidity:
+            continue
+        approx = approx_quad(hull)
+        if approx is None or not cv2.isContourConvex(approx):
+            continue
+        if quad_aspect(approx) > max_aspect:
+            continue
+        best, best_area = approx, area
+    return best
 
 
 def border_margin_px(quad, shape):
@@ -441,6 +502,10 @@ class WindowDetect(Node):
     LOST_FRAMES = 5
 
     MIN_AREA = 1500             # px^2, smallest contour taken seriously
+    MAX_WINDOW_ASPECT = 2.5     # width/height of a candidate quad. Rejects bars
+                                # of the window's colour -- see window_detection
+    MIN_WINDOW_SOLIDITY = 0.85  # contour area / hull area. Rejects a window and
+                                # a bar merged into one blob
     PADDING = 5                 # px each corner is pulled inwards by
     BORDER_MARGIN = 12          # px. A quad with a corner closer than this to
                                 # the image edge is reported TRUNCATED -- see
@@ -449,6 +514,8 @@ class WindowDetect(Node):
                                 # really is clear of the edge is not flagged by
                                 # its own morphology.
     CORNER_ALPHA = 0.4          # corner position smoothing
+    CORNER_JUMP_PX = 60.0       # px of centroid jump that means a different
+                                # object, not jitter: smoothing restarts
     DEPTH_ALPHA = 0.3           # corner depth smoothing
     DEPTH_MAX_AGE = 0.5         # s a depth frame stays usable for
     DEPTH_SCALE = 1.0           # multiplier on the raw depth. ROS depth is in
@@ -479,6 +546,13 @@ class WindowDetect(Node):
         self.stream_scale = float(self.declare_parameter('stream_scale', 0.5).value)
         self.color = str(self.declare_parameter('color', 'green').value).strip().lower()
         self.min_area = float(self.declare_parameter('min_area', float(self.MIN_AREA)).value)
+        from rcl_interfaces.msg import ParameterDescriptor
+        self.max_window_aspect = float(self.declare_parameter(
+            'max_window_aspect', self.MAX_WINDOW_ASPECT,
+            ParameterDescriptor(dynamic_typing=True)).value)
+        self.min_window_solidity = float(self.declare_parameter(
+            'min_window_solidity', self.MIN_WINDOW_SOLIDITY,
+            ParameterDescriptor(dynamic_typing=True)).value)
         self.border_margin = float(self.declare_parameter(
             'border_margin', float(self.BORDER_MARGIN)).value)
         self.detect_frames = int(self.declare_parameter('detect_frames', self.DETECT_FRAMES).value)
@@ -514,6 +588,10 @@ class WindowDetect(Node):
         # anything above ~10 Hz buys accuracy nobody downstream can use, at
         # the price of CPU the offboard heartbeat needs. 0 = no limit.
         self.max_fps = float(self.declare_parameter('max_fps', self.MAX_FPS).value)
+        from rcl_interfaces.msg import ParameterDescriptor
+        self.corner_jump_px = float(self.declare_parameter(
+            'corner_jump_px', self.CORNER_JUMP_PX,
+            ParameterDescriptor(dynamic_typing=True)).value)
         self.min_frame_interval = (1.0 / self.max_fps) if self.max_fps > 0.0 else 0.0
         self.last_processed = 0.0
         self.frames_skipped = 0
@@ -697,7 +775,9 @@ class WindowDetect(Node):
         """One frame. Identical pipeline to the standalone script."""
         hsv_img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
         green_mask = hsv_mask(hsv_img, self.color)
-        window_contour = window_detection(green_mask, self.min_area)
+        window_contour = window_detection(green_mask, self.min_area,
+                                          self.max_window_aspect,
+                                          self.min_window_solidity)
 
         depth_image = self.current_depth() if self.use_depth else None
         info = ''
@@ -734,11 +814,8 @@ class WindowDetect(Node):
 
             corners = np.array([[u1, v1], [u2, v2], [u3, v3], [u4, v4]], dtype=np.float32)
 
-            if self.smoothed_corners is None:
-                self.smoothed_corners = corners
-            else:
-                self.smoothed_corners = (self.CORNER_ALPHA * corners
-                                         + (1 - self.CORNER_ALPHA) * self.smoothed_corners)
+            self.smoothed_corners = smooth_corners(
+                self.smoothed_corners, corners, self.CORNER_ALPHA, self.corner_jump_px)
 
             u1, v1 = self.smoothed_corners[0].astype(int)
             u2, v2 = self.smoothed_corners[1].astype(int)

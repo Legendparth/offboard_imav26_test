@@ -838,6 +838,9 @@ class BarCross(OffboardSequence):
         if self.move_target_x is not None:
             self.move_target_x, self.move_target_y = turn(
                 self.move_target_x, self.move_target_y)
+        # Separately: this node's _set_target never sets move_start, so it is
+        # None here and rotating it unconditionally crashed the node.
+        if self.move_start_x is not None:
             self.move_start_x, self.move_start_y = turn(
                 self.move_start_x, self.move_start_y)
 
