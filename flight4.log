@@ -1,0 +1,670 @@
+ark-jetson-orin@localhost:~$ ros2 launch drone_testing course_mission.launch.py agent_only:=false
+[INFO] [launch]: All log files can be found below /home/ark-jetson-orin/.ros/log/1970-01-01-05-31-07-569789-localhost.localdomain-3518
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [launch.user]: Using common configuration file: /home/ark-jetson-orin/imav26_ws/install/zed_wrapper/share/zed_wrapper/config/common_stereo.yaml
+[INFO] [launch.user]: Using camera configuration file: /home/ark-jetson-orin/imav26_ws/install/zed_wrapper/share/zed_wrapper/config/zed.yaml
+[INFO] [launch.user]: Using Object Detection configuration file: /home/ark-jetson-orin/imav26_ws/install/zed_wrapper/share/zed_wrapper/config/object_detection.yaml
+[INFO] [launch.user]: Using Custom Object Detection configuration file: /home/ark-jetson-orin/imav26_ws/install/zed_wrapper/share/zed_wrapper/config/custom_object_detection.yaml
+[INFO] [launch.user]: NITROS not installed, skipping IPC/NITROS conflict check.
+[INFO] [launch.user]: Loading ZED node `zed_node` in container `/zed/zed_container`
+[INFO] [micro_ros_agent-1]: process started with pid [3574]
+[INFO] [robot_state_publisher-2]: process started with pid [3575]
+[INFO] [component_container_isolated-3]: process started with pid [3576]
+[micro_ros_agent-1] [69.034002] info     | TermiosAgentLinux.cpp | init                     | running...             | fd: 12
+[micro_ros_agent-1] [69.034400] info     | Root.cpp           | set_verbose_level        | logger setup           | verbose_level: 4
+[robot_state_publisher-2] [INFO] [0000000069.089871072] [zed.zed_state_publisher]: Robot initialized
+[component_container_isolated-3] [INFO] [0000000069.293783552] [zed.zed_container]: Load Library: /home/ark-jetson-orin/imav26_ws/install/zed_components/lib/libzed_camera_component.so
+[component_container_isolated-3] [INFO] [0000000069.541998816] [zed.zed_container]: Found class: rclcpp_components::NodeFactoryTemplate<stereolabs::ZedCamera>
+[component_container_isolated-3] [INFO] [0000000069.542116576] [zed.zed_container]: Instantiate class: rclcpp_components::NodeFactoryTemplate<stereolabs::ZedCamera>
+[component_container_isolated-3] [INFO] [0000000069.716788256] [zed.zed_node]: ================================
+[component_container_isolated-3] [INFO] [0000000069.717341056] [zed.zed_node]:       ZED Camera Component 
+[component_container_isolated-3] [INFO] [0000000069.717363168] [zed.zed_node]: ================================
+[component_container_isolated-3] [INFO] [0000000069.717378048] [zed.zed_node]:  * IPC: enabled
+[INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/zed/zed_node' in container '/zed/zed_container'
+[component_container_isolated-3] [INFO] [0000000069.767675904] [zed.zed_node]:  * namespace: /zed
+[component_container_isolated-3] [INFO] [0000000069.767766944] [zed.zed_node]:  * node name: zed_node
+[component_container_isolated-3] [INFO] [0000000069.767787872] [zed.zed_node]: ================================
+[component_container_isolated-3] [INFO] [0000000069.767805056] [zed.zed_node]: Starting node initialization...
+[component_container_isolated-3] [INFO] [0000000069.768845728] [zed.zed_node]: === DEBUG parameters ===
+[component_container_isolated-3] [INFO] [0000000069.769283776] [zed.zed_node]:  * SDK Verbose: 1
+[component_container_isolated-3] [INFO] [0000000069.769507264] [zed.zed_node]:  * Use Pub Timestamps: FALSE
+[component_container_isolated-3] [INFO] [0000000069.769635712] [zed.zed_node]:  * SDK Verbose File: 
+[component_container_isolated-3] [INFO] [0000000069.769738624] [zed.zed_node]:  * Debug Common: FALSE
+[component_container_isolated-3] [INFO] [0000000069.769839104] [zed.zed_node]:  * Debug Dynamic Parameters: FALSE
+[component_container_isolated-3] [INFO] [0000000069.769944160] [zed.zed_node]:  * Debug Grab (low level): FALSE
+[component_container_isolated-3] [INFO] [0000000069.770049024] [zed.zed_node]:  * Debug Simulation: FALSE
+[component_container_isolated-3] [INFO] [0000000069.770147264] [zed.zed_node]:  * Debug Video/Depth: FALSE
+[component_container_isolated-3] [INFO] [0000000069.770256448] [zed.zed_node]:  * Debug Control settings: FALSE
+[component_container_isolated-3] [INFO] [0000000069.770348608] [zed.zed_node]:  * Debug Point Cloud: FALSE
+[component_container_isolated-3] [INFO] [0000000069.770462624] [zed.zed_node]:  * Debug TF: FALSE
+[component_container_isolated-3] [INFO] [0000000069.770560576] [zed.zed_node]:  * Debug Positional Tracking: FALSE
+[component_container_isolated-3] [INFO] [0000000069.770646656] [zed.zed_node]:  * Debug GNSS: FALSE
+[component_container_isolated-3] [INFO] [0000000069.770726368] [zed.zed_node]:  * Debug sensors: FALSE
+[component_container_isolated-3] [INFO] [0000000069.770847872] [zed.zed_node]:  * Debug Mapping: FALSE
+[component_container_isolated-3] [INFO] [0000000069.770971840] [zed.zed_node]:  * Debug Object Detection: FALSE
+[component_container_isolated-3] [INFO] [0000000069.771115456] [zed.zed_node]:  * Debug Body Tracking: FALSE
+[component_container_isolated-3] [INFO] [0000000069.771248864] [zed.zed_node]:  * Debug Streaming: FALSE
+[component_container_isolated-3] [INFO] [0000000069.771402432] [zed.zed_node]:  * Debug ROI: FALSE
+[component_container_isolated-3] [INFO] [0000000069.771542528] [zed.zed_node]:  * Debug Nitros: FALSE
+[component_container_isolated-3] [INFO] [0000000069.771679904] [zed.zed_node]:  * Debug Advanced: FALSE
+[component_container_isolated-3] [INFO] [0000000069.771739392] [zed.zed_node]: === TOPIC selection parameters ===
+[component_container_isolated-3] [INFO] [0000000069.771884960] [zed.zed_node]:  * Publish Status: TRUE
+[component_container_isolated-3] [INFO] [0000000069.772081408] [zed.zed_node]:  * Image format: BGRA 32-bit
+[component_container_isolated-3] [INFO] [0000000069.772211872] [zed.zed_node]:  * Publish Left/Right images: FALSE
+[component_container_isolated-3] [INFO] [0000000069.772319264] [zed.zed_node]:  * Publish Raw images: FALSE
+[component_container_isolated-3] [INFO] [0000000069.772428480] [zed.zed_node]:  * Publish Gray images: FALSE
+[component_container_isolated-3] [INFO] [0000000069.772539168] [zed.zed_node]:  * Publish RGB image: TRUE
+[component_container_isolated-3] [INFO] [0000000069.772627840] [zed.zed_node]:  * Publish Stereo image: FALSE
+[component_container_isolated-3] [INFO] [0000000069.772740288] [zed.zed_node]:  * Publish ROI Mask image: FALSE
+[component_container_isolated-3] [INFO] [0000000069.772846272] [zed.zed_node]:  * Publish Depth Map: TRUE
+[component_container_isolated-3] [INFO] [0000000069.772954656] [zed.zed_node]:  * Publish Depth Info: FALSE
+[component_container_isolated-3] [INFO] [0000000069.773112032] [zed.zed_node]:  * Publish Point Cloud: TRUE
+[component_container_isolated-3] [INFO] [0000000069.773229184] [zed.zed_node]:  * Publish Depth Confidence: FALSE
+[component_container_isolated-3] [INFO] [0000000069.773338336] [zed.zed_node]:  * Publish Disparity: FALSE
+[component_container_isolated-3] [INFO] [0000000069.773442496] [zed.zed_node]:  * Publish IMU: TRUE
+[component_container_isolated-3] [INFO] [0000000069.773549664] [zed.zed_node]:  * Publish IMU Raw: FALSE
+[component_container_isolated-3] [INFO] [0000000069.773647520] [zed.zed_node]:  * Publish LeftCam/IMU Transf.: FALSE
+[component_container_isolated-3] [INFO] [0000000069.773746496] [zed.zed_node]:  * Publish Magnetometer: FALSE
+[component_container_isolated-3] [INFO] [0000000069.773847232] [zed.zed_node]:  * Publish Barometer: FALSE
+[component_container_isolated-3] [INFO] [0000000069.773942720] [zed.zed_node]:  * Publish Temperature: FALSE
+[component_container_isolated-3] [INFO] [0000000069.774114304] [zed.zed_node]:  * Publish Odometry/Pose: TRUE
+[component_container_isolated-3] [INFO] [0000000069.774240352] [zed.zed_node]:  * Publish Pose with Covariance: FALSE
+[component_container_isolated-3] [INFO] [0000000069.774417504] [zed.zed_node]:  * Publish Camera Path: FALSE
+[component_container_isolated-3] [INFO] [0000000069.774595424] [zed.zed_node]:  * Publish Detection Plane: FALSE
+[component_container_isolated-3] [INFO] [0000000069.774896544] [zed.zed_node]: === SVO RECORDING parameters ===
+[component_container_isolated-3] [INFO] [0000000069.775077408] [zed.zed_node]:  * SVO Encoding preset: DEFAULT
+[component_container_isolated-3] [INFO] [0000000069.775156992] [zed.zed_node]: === SVO INPUT parameters ===
+[component_container_isolated-3] [INFO] [0000000069.775286240] [zed.zed_node]:  * SVO input: DISABLED
+[component_container_isolated-3] [INFO] [0000000069.775322368] [zed.zed_node]: === LOCAL STREAMING parameters ===
+[component_container_isolated-3] [INFO] [0000000069.775426304] [zed.zed_node]:  * Local stream input: DISABLED
+[component_container_isolated-3] [INFO] [0000000069.775450144] [zed.zed_node]: === GENERAL parameters ===
+[component_container_isolated-3] [INFO] [0000000069.775576608] [zed.zed_node]:  * Camera model: zed - ZED
+[component_container_isolated-3] [INFO] [0000000069.775691680] [zed.zed_node]:  * Camera name: zed
+[component_container_isolated-3] [INFO] [0000000069.775842720] [zed.zed_node]:  * Camera SN: 0
+[component_container_isolated-3] [INFO] [0000000069.775956416] [zed.zed_node]:  * Camera ID: -1
+[component_container_isolated-3] [INFO] [0000000069.776066944] [zed.zed_node]:  * Camera timeout [sec]: 5
+[component_container_isolated-3] [INFO] [0000000069.776172800] [zed.zed_node]:  * Camera reconnection temptatives: 5
+[component_container_isolated-3] [INFO] [0000000069.776287680] [zed.zed_node]:  * Camera framerate: 30
+[component_container_isolated-3] [INFO] [0000000069.776398112] [zed.zed_node]:  * GPU ID: -1
+[component_container_isolated-3] [INFO] [0000000069.776505696] [zed.zed_node]:  * Asynchronous image retrieval: FALSE
+[component_container_isolated-3] [INFO] [0000000069.776611328] [zed.zed_node]:  * Image Validity Check: 1
+[component_container_isolated-3] [INFO] [0000000069.776872640] [zed.zed_node]:  * Camera resolution: HD720
+[component_container_isolated-3] [INFO] [0000000069.777024416] [zed.zed_node]:  * Publishing resolution: NATIVE
+[component_container_isolated-3] [INFO] [0000000069.777264416] [zed.zed_node]:  * OpenCV custom calibration: 
+[component_container_isolated-3] [INFO] [0000000069.777457632] [zed.zed_node]:  * Camera self calibration: TRUE
+[component_container_isolated-3] [INFO] [0000000069.777593376] [zed.zed_node]:  * Camera flip: FALSE
+[component_container_isolated-3] [INFO] [0000000069.777795200] [zed.zed_node]:  * Publish framerate [Hz]:  0 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.777928672] [zed.zed_node]:  * Grab Compute Capping FPS: 0
+[component_container_isolated-3] [INFO] [0000000069.778055040] [zed.zed_node]:  * SDK Monotonic Clock: FALSE
+[component_container_isolated-3] [INFO] [0000000069.778674784] [zed.zed_node]: === VIDEO parameters ===
+[component_container_isolated-3] [INFO] [0000000069.778928704] [zed.zed_node]:  * Brightness: 4 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.779070464] [zed.zed_node]:  * Contrast: 4 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.779187200] [zed.zed_node]:  * Hue: 0 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.779296832] [zed.zed_node]:  * Saturation: 4 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.779419968] [zed.zed_node]:  * Sharpness: 4 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.779553344] [zed.zed_node]:  * Gamma: 8 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.779666240] [zed.zed_node]:  * Auto Exposure/Gain: TRUE [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.779783104] [zed.zed_node]:  * Exposure: 80 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.779897440] [zed.zed_node]:  * Gain: 80 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.780003616] [zed.zed_node]:  * Auto White Balance: TRUE [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.780307872] [zed.zed_node]:  * White Balance Temperature: 42 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.780354304] [zed.zed_node]: === DEPTH parameters ===
+[component_container_isolated-3] [INFO] [0000000069.781005952] [zed.zed_node]:  * Depth mode: NEURAL LIGHT [4]
+[component_container_isolated-3] [INFO] [0000000069.781194624] [zed.zed_node]:  * Min depth [m]: 0.7
+[component_container_isolated-3] [INFO] [0000000069.781321536] [zed.zed_node]:  * Max depth [m]: 8
+[component_container_isolated-3] [INFO] [0000000069.781413760] [zed.zed_node]:  * Depth Stabilization: -1
+[component_container_isolated-3] [INFO] [0000000069.781510432] [zed.zed_node]:  * OpenNI mode (16bit depth): FALSE
+[component_container_isolated-3] [INFO] [0000000069.781600896] [zed.zed_node]:  * Point cloud rate [Hz]: 10
+[component_container_isolated-3] [INFO] [0000000069.782280096] [zed.zed_node]:  * Point cloud resolution: COMPACT
+[component_container_isolated-3] [INFO] [0000000069.782544128] [zed.zed_node]:  * Voxel Point Cloud: FALSE [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.782761344] [zed.zed_node]:  * Voxel Size [mm]: -1 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.782960864] [zed.zed_node]:  * Voxel Resolution Mode: STEREO_UNCERTAINTY
+[component_container_isolated-3] [INFO] [0000000069.783156864] [zed.zed_node]:  * Voxel Resolution Scale: 0.2 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.783318144] [zed.zed_node]:  * Depth Confidence: 95 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.783482240] [zed.zed_node]:  * Depth Texture Confidence: 100 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.783712192] [zed.zed_node]:  * Remove saturated areas: TRUE [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.783761280] [zed.zed_node]: === POSITIONAL TRACKING parameters ===
+[component_container_isolated-3] [INFO] [0000000069.783942432] [zed.zed_node]:  * Map frame id: map
+[component_container_isolated-3] [INFO] [0000000069.784088608] [zed.zed_node]:  * Odometry frame id: odom
+[component_container_isolated-3] [INFO] [0000000069.784224224] [zed.zed_node]:  * Positional tracking enabled: TRUE
+[component_container_isolated-3] [INFO] [0000000069.784437088] [zed.zed_node]:  * Positional tracking mode [AUTO]: GEN 3
+[component_container_isolated-3] [INFO] [0000000069.784621440] [zed.zed_node]:  * Broadcast Odometry TF: FALSE
+[component_container_isolated-3] [INFO] [0000000069.784755936] [zed.zed_node]:  * Depth minimum range: 0
+[component_container_isolated-3] [INFO] [0000000069.784869856] [zed.zed_node]:  * TF timestamp offset: 0 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.785029696] [zed.zed_node]:  * Path publishing rate: 2 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.785346144] [zed.zed_node]:  * Path history lenght: -1
+[component_container_isolated-3] [INFO] [0000000069.785508768] [zed.zed_node]:  * Initial pose: [0,0,0,0,0,0,]
+[component_container_isolated-3] [INFO] [0000000069.785676352] [zed.zed_node]:  * Area Memory: TRUE
+[component_container_isolated-3] [INFO] [0000000069.785811872] [zed.zed_node]:  * Area Memory File: 
+[component_container_isolated-3] [INFO] [0000000069.785929184] [zed.zed_node]:  * Enable Localization Only: FALSE
+[component_container_isolated-3] [INFO] [0000000069.786045952] [zed.zed_node]:  * Save Area Memory on closing: FALSE
+[component_container_isolated-3] [INFO] [0000000069.786158816] [zed.zed_node]:  * Camera is static: FALSE
+[component_container_isolated-3] [INFO] [0000000069.786295968] [zed.zed_node]:  * Gravity as origin: TRUE
+[component_container_isolated-3] [INFO] [0000000069.786435168] [zed.zed_node]:  * IMU Fusion: TRUE
+[component_container_isolated-3] [INFO] [0000000069.786580640] [zed.zed_node]:  * Floor Alignment: FALSE
+[component_container_isolated-3] [INFO] [0000000069.786714944] [zed.zed_node]:  * Reset Odometry with Loop Closure: FALSE
+[component_container_isolated-3] [INFO] [0000000069.786821184] [zed.zed_node]:  * Publish 3D Landmarks: FALSE
+[component_container_isolated-3] [INFO] [0000000069.786964064] [zed.zed_node]:  * Publish Landmark Skip Frame: 
+[component_container_isolated-3] [INFO] [0000000069.787093088] [zed.zed_node]:  * 2D mode: FALSE
+[component_container_isolated-3] [INFO] [0000000069.787197152] [zed.zed_node]:  * Reset pose with SVO loop: TRUE
+[component_container_isolated-3] [INFO] [0000000069.787231840] [zed.zed_node]: === GNSS FUSION parameters ===
+[component_container_isolated-3] [WARN] [0000000069.787255744] [zed.zed_node]: !!! GNSS FUSION module cannot be enabled with ZED!!!
+[component_container_isolated-3] [INFO] [0000000069.787277984] [zed.zed_node]: === REGION OF INTEREST parameters ===
+[component_container_isolated-3] [INFO] [0000000069.787383328] [zed.zed_node]:  * Automatic ROI generation: FALSE
+[component_container_isolated-3] [INFO] [0000000069.787535872] [zed.zed_node]:  * Manual ROI polygon: []
+[component_container_isolated-3] [INFO] [0000000069.787568096] [zed.zed_node]: === Spatial Mapping parameters ===
+[component_container_isolated-3] [INFO] [0000000069.787684352] [zed.zed_node]:  * Spatial Mapping Enabled: FALSE
+[component_container_isolated-3] [INFO] [0000000069.787814048] [zed.zed_node]:  * Spatial Mapping resolution [m]: 0.05
+[component_container_isolated-3] [INFO] [0000000069.787929728] [zed.zed_node]:  * 3D Max Mapping range [m]: 5
+[component_container_isolated-3] [INFO] [0000000069.788056288] [zed.zed_node]:  * Map publishing rate [Hz]: 1 [DYNAMIC]
+[component_container_isolated-3] [INFO] [0000000069.788218368] [zed.zed_node]:  * Clicked point topic: /clicked_point
+[component_container_isolated-3] [INFO] [0000000069.788367104] [zed.zed_node]:  * Plane Det. Max Dist. Thresh.: 0.15
+[component_container_isolated-3] [INFO] [0000000069.788490464] [zed.zed_node]:  * Plane Det. Normals Sim. Thresh.: 15
+[component_container_isolated-3] [INFO] [0000000069.788530592] [zed.zed_node]: === STREAMING SERVER parameters ===
+[component_container_isolated-3] [INFO] [0000000069.788668896] [zed.zed_node]:  * Streaming Server enabled: FALSE
+[component_container_isolated-3] [INFO] [0000000069.788770976] [zed.zed_node]:  * Stream codec: H265
+[component_container_isolated-3] [INFO] [0000000069.788908672] [zed.zed_node]:  * Stream port: 30000
+[component_container_isolated-3] [INFO] [0000000069.789073344] [zed.zed_node]:  * Stream bitrate: 12500
+[component_container_isolated-3] [INFO] [0000000069.789195136] [zed.zed_node]:  * Stream GOP size: -1
+[component_container_isolated-3] [INFO] [0000000069.789322176] [zed.zed_node]:  * Stream Chunk size: 16084
+[component_container_isolated-3] [INFO] [0000000069.789438496] [zed.zed_node]:  * Adaptive bitrate: FALSE
+[component_container_isolated-3] [INFO] [0000000069.789553408] [zed.zed_node]:  * Target frame rate:0
+[component_container_isolated-3] [INFO] [0000000069.789587264] [zed.zed_node]: === ADVANCED parameters ===
+[component_container_isolated-3] [INFO] [0000000069.789696736] [zed.zed_node]:  * Change thread priority: FALSE
+[component_container_isolated-3] [INFO] [0000000069.789849696] [zed.zed_node]: === SERVICES ===
+[component_container_isolated-3] [INFO] [0000000069.794001472] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/reset_odometry'
+[component_container_isolated-3] [INFO] [0000000069.795060064] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/reset_pos_tracking'
+[component_container_isolated-3] [INFO] [0000000069.800268288] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/set_pose'
+[component_container_isolated-3] [INFO] [0000000069.801489728] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/save_area_memory'
+[component_container_isolated-3] [INFO] [0000000069.803467840] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/enable_obj_det'
+[component_container_isolated-3] [INFO] [0000000069.804388032] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/enable_body_trk'
+[component_container_isolated-3] [INFO] [0000000069.805410368] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/enable_mapping'
+[component_container_isolated-3] [INFO] [0000000069.806339328] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/enable_streaming'
+[component_container_isolated-3] [INFO] [0000000069.807539936] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/start_svo_rec'
+[component_container_isolated-3] [INFO] [0000000069.808416544] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/stop_svo_rec'
+[component_container_isolated-3] [INFO] [0000000069.809545856] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/set_roi'
+[component_container_isolated-3] [INFO] [0000000069.810420288] [zed.zed_node]:  * Advertised on service: '/zed/zed_node/reset_roi'
+[component_container_isolated-3] [INFO] [0000000069.810466752] [zed.zed_node]: === STARTING CAMERA ===
+[component_container_isolated-3] [INFO] [0000000069.810517888] [zed.zed_node]: ZED SDK Version: 5.4.1 - Build 117278_137d3e18_3228745
+[component_container_isolated-3] [INFO] [0000000069.819782976] [zed.zed_node]: === CAMERA OPENING ===
+[micro_ros_agent-1] [69.861540] info     | Root.cpp           | create_client            | create                 | client_key: 0x00000001, session_id: 0x81
+[micro_ros_agent-1] [69.862082] info     | SessionManager.hpp | establish_session        | session established    | client_key: 0x00000001, address: 1
+[micro_ros_agent-1] [69.881117] info     | ProxyClient.cpp    | create_participant       | participant created    | client_key: 0x00000001, participant_id: 0x001(1)
+[component_container_isolated-3] [1970-01-01 05:31:10 UTC][ZED][INFO] Logging level INFO
+[component_container_isolated-3] [2026-09-15 04:48:05 UTC][ZED][INFO] [Init]  Camera successfully opened.
+[component_container_isolated-3] [2026-09-15 04:48:05 UTC][ZED][INFO] [Init]  Camera FW version: 1523
+[component_container_isolated-3] [2026-09-15 04:48:05 UTC][ZED][INFO] [Init]  Video mode: HD720@30
+[component_container_isolated-3] [2026-09-15 04:48:05 UTC][ZED][INFO] [Init]  Serial Number: S/N 1943145
+[component_container_isolated-3] [2026-09-15 04:48:05 UTC][ZED][INFO] [Init]  Depth mode selected: NEURAL LIGHT. Ensure this mode matches your application's performance and accuracy requirements. See https://www.stereolabs.com/docs/depth-sensing/depth-modes for help.
+[INFO] [window_detect-4]: process started with pid [3775]
+[component_container_isolated-3] [INFO] [1789427887.718207104] [zed.zed_node]:  * ZED SDK running on GPU #0
+[component_container_isolated-3] [INFO] [1789427887.718379904] [zed.zed_node]:  * Camera Model  -> ZED
+[component_container_isolated-3] [INFO] [1789427887.718402304] [zed.zed_node]:  * Serial Number -> 1943145
+[component_container_isolated-3] [INFO] [1789427887.718575392] [zed.zed_node]:  * Focal Length	-> 2.87387 mm
+[component_container_isolated-3] [INFO] [1789427887.718635360] [zed.zed_node]:  * Input	-> USB
+[component_container_isolated-3] [INFO] [1789427887.718674656] [zed.zed_node]:  * Camera FW Version  -> 1523
+[component_container_isolated-3] [INFO] [1789427887.718690944] [zed.zed_node]:  * Camera grab size -> 1280x720
+[component_container_isolated-3] [INFO] [1789427887.718703264] [zed.zed_node]:  * Color/Depth publishing size -> 1280x720
+[component_container_isolated-3] [INFO] [1789427887.718714880] [zed.zed_node]:  * Point Cloud publishing size -> 448x256
+[component_container_isolated-3] [INFO] [1789427887.718741600] [zed.zed_node]: === TF FRAMES ===
+[component_container_isolated-3] [INFO] [1789427887.718756192] [zed.zed_node]:  * Map			-> map
+[component_container_isolated-3] [INFO] [1789427887.718768160] [zed.zed_node]:  * Odometry		-> odom
+[component_container_isolated-3] [INFO] [1789427887.718779232] [zed.zed_node]:  * Base			-> zed_camera_link
+[component_container_isolated-3] [INFO] [1789427887.718789856] [zed.zed_node]:  * Camera		-> zed_camera_center
+[component_container_isolated-3] [INFO] [1789427887.718800224] [zed.zed_node]:  * Left			-> zed_left_camera_frame
+[component_container_isolated-3] [INFO] [1789427887.718810112] [zed.zed_node]:  * Left Optical		-> zed_left_camera_frame_optical
+[component_container_isolated-3] [INFO] [1789427887.718820192] [zed.zed_node]:  * Right			-> zed_right_camera_frame
+[component_container_isolated-3] [INFO] [1789427887.718842816] [zed.zed_node]:  * Right Optical		-> zed_right_camera_frame_optical
+[component_container_isolated-3] [INFO] [1789427887.718855264] [zed.zed_node]:  * Depth			-> zed_left_camera_frame
+[component_container_isolated-3] [INFO] [1789427887.718865088] [zed.zed_node]:  * Depth Optical		-> zed_left_camera_frame_optical
+[component_container_isolated-3] [INFO] [1789427887.718874592] [zed.zed_node]:  * Point Cloud		-> zed_left_camera_frame
+[component_container_isolated-3] [INFO] [1789427887.718985152] [zed.zed_node]: === PUBLISHED TOPICS ===
+[component_container_isolated-3] [INFO] [1789427887.724885600] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/status/health
+[component_container_isolated-3] [INFO] [1789427887.726194816] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/status/heartbeat
+[component_container_isolated-3] [INFO] [1789427887.731906624] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/rgb/color/rect/image [IPC type-adapted zero-copy]
+[component_container_isolated-3] [INFO] [1789427888.076667328] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/rgb/color/rect/image
+[component_container_isolated-3] [INFO] [1789427888.076773184] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/rgb/color/rect/image/compressed [image_transport]
+[component_container_isolated-3] [INFO] [1789427888.076796192] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/rgb/color/rect/image/theora [image_transport]
+[component_container_isolated-3] [INFO] [1789427888.076840512] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/rgb/color/rect/image/zstd [image_transport]
+[component_container_isolated-3] [INFO] [1789427888.077491232] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/depth/depth_registered [IPC type-adapted zero-copy]
+[component_container_isolated-3] [INFO] [1789427888.093060128] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/depth/depth_registered
+[component_container_isolated-3] [INFO] [1789427888.093171104] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/depth/depth_registered/compressedDepth [image_transport]
+[component_container_isolated-3] [INFO] [1789427888.093196384] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/depth/depth_registered/zstd [image_transport]
+[component_container_isolated-3] [INFO] [1789427888.094936832] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/rgb/color/rect/camera_info
+[component_container_isolated-3] [INFO] [1789427888.096144288] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/rgb/color/rect/image/camera_info
+[component_container_isolated-3] [INFO] [1789427888.097251776] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/depth/camera_info
+[component_container_isolated-3] [INFO] [1789427888.098151808] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/depth/depth_registered/camera_info
+[component_container_isolated-3] [INFO] [1789427888.103836832] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/point_cloud/cloud_registered
+[component_container_isolated-3] [INFO] [1789427888.106180928] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/pose
+[component_container_isolated-3] [INFO] [1789427888.107480928] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/pose/status
+[component_container_isolated-3] [INFO] [1789427888.114063680] [zed.zed_node]:  * Advertised on topic: /zed/zed_node/odom
+[component_container_isolated-3] [INFO] [1789427888.114162976] [zed.zed_node]: === Subscribers ===
+[component_container_isolated-3] [INFO] [1789427888.115995008] [zed.zed_node]:  * Plane detection: '/clicked_point'
+[component_container_isolated-3] [INFO] [1789427888.305341440] [zed.zed_node]: === zed started ===
+[window_detect-4] [INFO] [1789427888.572522272] [window_detect]: camera_info_topic derived from image_topic: /zed/zed_node/rgb/color/rect/camera_info
+[component_container_isolated-3] [INFO] [1789427888.595178624] [zed.zed_node]: === Starting Positional Tracking ===
+[component_container_isolated-3] [INFO] [1789427888.595326944] [zed.zed_node]:  * Waiting for valid static transformations...
+[component_container_isolated-3] [INFO] [1789427888.595612736] [zed.zed_node]:  Static transform ref. CMOS Sensor to Base [zed_left_camera_frame -> zed_camera_link]
+[component_container_isolated-3] [INFO] [1789427888.595661536] [zed.zed_node]:   * Translation: {0.011,-0.060,-0.015}
+[component_container_isolated-3] [INFO] [1789427888.595694304] [zed.zed_node]:   * Rotation: {0.000,-2.865,0.000}
+[component_container_isolated-3] [INFO] [1789427888.595766560] [zed.zed_node]:  Static transform ref. CMOS Sensor to Camera Center [zed_left_camera_frame -> zed_camera_center]
+[component_container_isolated-3] [INFO] [1789427888.595801632] [zed.zed_node]:   * Translation: {0.010,-0.060,0.000}
+[component_container_isolated-3] [INFO] [1789427888.595829696] [zed.zed_node]:   * Rotation: {0.000,-0.000,0.000}
+[component_container_isolated-3] [INFO] [1789427888.595886208] [zed.zed_node]:  Static transform Camera Center to Base [zed_camera_center -> zed_camera_link]
+[component_container_isolated-3] [INFO] [1789427888.595919552] [zed.zed_node]:   * Translation: {0.001,0.000,-0.015}
+[component_container_isolated-3] [INFO] [1789427888.595947584] [zed.zed_node]:   * Rotation: {0.000,-2.865,0.000}
+[component_container_isolated-3] [INFO] [1789427888.597096512] [zed.zed_node]: Initial ZED left camera pose (ZED pos. tracking): 
+[component_container_isolated-3] [INFO] [1789427888.597161920] [zed.zed_node]:  * T: [-0.0099875,0.06,0.0154998]
+[component_container_isolated-3] [INFO] [1789427888.597219168] [zed.zed_node]:  * Q: [0,0.0249974,0,0.999688]
+[window_detect-4] [INFO] [1789427888.609567200] [window_detect]: Browser stream on http://<jetson-ip>:8080/ (single frame at /snapshot.jpg).
+[window_detect-4] [INFO] [1789427888.611018016] [window_detect]: Window detection up. image=/zed/zed_node/rgb/color/rect/image depth=/zed/zed_node/depth/depth_registered color=blue. Publishing /window_detected, /window_info, /window_geometry, /window_detection/image.
+[micro_ros_agent-1] [1789427889.036169] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x800(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.036397] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x800(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.038713] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x800(6), subscriber_id: 0x800(4)
+[micro_ros_agent-1] [1789427889.042138] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x801(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.042239] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x801(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.043200] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x801(6), subscriber_id: 0x801(4)
+[micro_ros_agent-1] [1789427889.046353] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x802(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.046438] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x802(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.047563] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x802(6), subscriber_id: 0x802(4)
+[micro_ros_agent-1] [1789427889.050755] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x803(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.050846] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x803(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.052083] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x803(6), subscriber_id: 0x803(4)
+[micro_ros_agent-1] [1789427889.055212] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x804(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.055283] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x804(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.056425] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x804(6), subscriber_id: 0x804(4)
+[micro_ros_agent-1] [1789427889.059569] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x805(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.059635] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x805(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.060414] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x805(6), subscriber_id: 0x805(4)
+[micro_ros_agent-1] [1789427889.063516] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x806(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.063580] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x806(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.064370] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x806(6), subscriber_id: 0x806(4)
+[micro_ros_agent-1] [1789427889.067929] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x807(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.067995] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x807(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.068958] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x807(6), subscriber_id: 0x807(4)
+[micro_ros_agent-1] [1789427889.071987] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x808(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.072050] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x808(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.072933] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x808(6), subscriber_id: 0x808(4)
+[micro_ros_agent-1] [1789427889.075897] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x809(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.075958] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x809(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.076828] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x809(6), subscriber_id: 0x809(4)
+[micro_ros_agent-1] [1789427889.079872] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80A(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.079930] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80A(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.080798] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80A(6), subscriber_id: 0x80A(4)
+[micro_ros_agent-1] [1789427889.083834] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.083905] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80B(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.084731] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80B(6), subscriber_id: 0x80B(4)
+[micro_ros_agent-1] [1789427889.087622] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80C(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.087681] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80C(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.088297] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80C(6), subscriber_id: 0x80C(4)
+[micro_ros_agent-1] [1789427889.091304] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80D(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.091365] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80D(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.092351] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80D(6), subscriber_id: 0x80D(4)
+[micro_ros_agent-1] [1789427889.095260] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80E(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.095320] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80E(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.096363] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80E(6), subscriber_id: 0x80E(4)
+[micro_ros_agent-1] [1789427889.099514] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80F(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.099574] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80F(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.100684] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80F(6), subscriber_id: 0x80F(4)
+[micro_ros_agent-1] [1789427889.104186] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x810(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.104243] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x810(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.105114] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x810(6), subscriber_id: 0x810(4)
+[micro_ros_agent-1] [1789427889.108257] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x811(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.108315] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x811(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.109481] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x811(6), subscriber_id: 0x811(4)
+[micro_ros_agent-1] [1789427889.113117] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x812(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.113178] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x812(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.114169] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x812(6), subscriber_id: 0x812(4)
+[micro_ros_agent-1] [1789427889.117264] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x813(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.117339] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x813(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.118101] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x813(6), subscriber_id: 0x813(4)
+[micro_ros_agent-1] [1789427889.120985] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x814(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.121047] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x814(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.124815] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x814(6), subscriber_id: 0x814(4)
+[micro_ros_agent-1] [1789427889.127780] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x815(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.127837] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x815(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.128746] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x815(6), subscriber_id: 0x815(4)
+[micro_ros_agent-1] [1789427889.131952] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x816(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.132011] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x816(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.133076] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x816(6), subscriber_id: 0x816(4)
+[micro_ros_agent-1] [1789427889.136138] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x817(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.136195] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x817(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.136986] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x817(6), subscriber_id: 0x817(4)
+[micro_ros_agent-1] [1789427889.140513] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x818(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.140571] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x818(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.141627] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x818(6), subscriber_id: 0x818(4)
+[micro_ros_agent-1] [1789427889.144447] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x819(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.144502] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x819(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.145267] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x819(6), subscriber_id: 0x819(4)
+[micro_ros_agent-1] [1789427889.148183] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81A(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.148242] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81A(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.148902] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81A(6), subscriber_id: 0x81A(4)
+[micro_ros_agent-1] [1789427889.152132] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.152197] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81B(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.152822] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81B(6), subscriber_id: 0x81B(4)
+[micro_ros_agent-1] [1789427889.156006] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81C(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.156064] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81C(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.156770] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81C(6), subscriber_id: 0x81C(4)
+[micro_ros_agent-1] [1789427889.160283] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81D(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.160344] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81D(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.161267] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81D(6), subscriber_id: 0x81D(4)
+[micro_ros_agent-1] [1789427889.164388] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81E(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.164446] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81E(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.168666] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81E(6), subscriber_id: 0x81E(4)
+[micro_ros_agent-1] [1789427889.171664] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81F(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.171724] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81F(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.172221] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81F(6), subscriber_id: 0x81F(4)
+[micro_ros_agent-1] [1789427889.175200] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x820(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.175260] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x820(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.175804] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x820(6), subscriber_id: 0x820(4)
+[micro_ros_agent-1] [1789427889.179177] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x821(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.179235] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x821(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.179995] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x821(6), subscriber_id: 0x821(4)
+[micro_ros_agent-1] [1789427889.182961] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x822(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.183024] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x822(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.183709] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x822(6), subscriber_id: 0x822(4)
+[micro_ros_agent-1] [1789427889.186833] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x823(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.186895] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x823(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.187502] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x823(6), subscriber_id: 0x823(4)
+[micro_ros_agent-1] [1789427889.190564] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x824(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.190621] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x824(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.191187] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x824(6), subscriber_id: 0x824(4)
+[micro_ros_agent-1] [1789427889.194297] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x825(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.194356] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x825(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.195129] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x825(6), subscriber_id: 0x825(4)
+[micro_ros_agent-1] [1789427889.198475] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0CD(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.198578] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0CD(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.200711] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0CD(5), publisher_id: 0x0CD(3)
+[micro_ros_agent-1] [1789427889.203817] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x010(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.203943] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x010(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.204753] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x010(5), publisher_id: 0x010(3)
+[micro_ros_agent-1] [1789427889.207573] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x09D(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.207651] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x09D(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.208298] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x09D(5), publisher_id: 0x09D(3)
+[micro_ros_agent-1] [1789427889.210876] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x014(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.210956] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x014(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.211549] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x014(5), publisher_id: 0x014(3)
+[micro_ros_agent-1] [1789427889.214355] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x01B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.214428] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x01B(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.214892] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x01B(5), publisher_id: 0x01B(3)
+[micro_ros_agent-1] [1789427889.217712] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x055(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.217791] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x055(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.218234] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x055(5), publisher_id: 0x055(3)
+[micro_ros_agent-1] [1789427889.221321] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x05B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.221400] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x05B(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.222070] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x05B(5), publisher_id: 0x05B(3)
+[micro_ros_agent-1] [1789427889.225120] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x094(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.225214] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x094(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.225960] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x094(5), publisher_id: 0x094(3)
+[micro_ros_agent-1] [1789427889.229123] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x09A(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.229203] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x09A(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.229882] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x09A(5), publisher_id: 0x09A(3)
+[micro_ros_agent-1] [1789427889.232786] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0C0(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.232893] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0C0(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.233684] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0C0(5), publisher_id: 0x0C0(3)
+[micro_ros_agent-1] [1789427889.236442] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0E1(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.236524] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0E1(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.237393] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0E1(5), publisher_id: 0x0E1(3)
+[micro_ros_agent-1] [1789427889.240130] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0F9(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.240214] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0F9(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.240859] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0F9(5), publisher_id: 0x0F9(3)
+[micro_ros_agent-1] [1789427889.243582] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0FC(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.243680] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0FC(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.244275] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0FC(5), publisher_id: 0x0FC(3)
+[micro_ros_agent-1] [1789427889.248016] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x115(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.248103] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x115(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.248798] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x115(5), publisher_id: 0x115(3)
+[micro_ros_agent-1] [1789427889.251975] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x108(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.252063] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x108(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.252643] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x108(5), publisher_id: 0x108(3)
+[micro_ros_agent-1] [1789427889.255494] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x10F(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.255578] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x10F(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.256199] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x10F(5), publisher_id: 0x10F(3)
+[micro_ros_agent-1] [1789427889.293393] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x10C(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.293542] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x10C(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.294980] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x10C(5), publisher_id: 0x10C(3)
+[micro_ros_agent-1] [1789427889.298281] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x110(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.298417] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x110(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.299510] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x110(5), publisher_id: 0x110(3)
+[micro_ros_agent-1] [1789427889.302556] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x112(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.302710] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x112(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.303922] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x112(5), publisher_id: 0x112(3)
+[micro_ros_agent-1] [1789427889.307093] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x116(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.307239] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x116(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.308286] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x116(5), publisher_id: 0x116(3)
+[micro_ros_agent-1] [1789427889.481897] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x11B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.482059] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x11B(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.483925] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x11B(5), publisher_id: 0x11B(3)
+[micro_ros_agent-1] [1789427889.487000] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x120(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.487085] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x120(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.487950] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x120(5), publisher_id: 0x120(3)
+[micro_ros_agent-1] [1789427889.490844] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x00D(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.490931] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x00D(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.491830] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x00D(5), publisher_id: 0x00D(3)
+[micro_ros_agent-1] [1789427889.494768] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x129(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.494847] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x129(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.495517] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x129(5), publisher_id: 0x129(3)
+[micro_ros_agent-1] [1789427889.498436] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x080(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.498512] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x080(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.499513] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x080(5), publisher_id: 0x080(3)
+[micro_ros_agent-1] [1789427889.501961] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x12B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.502034] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x12B(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.502877] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x12B(5), publisher_id: 0x12B(3)
+[micro_ros_agent-1] [1789427889.505806] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x06E(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.505885] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x06E(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789427889.506592] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x06E(5), publisher_id: 0x06E(3)
+[micro_ros_agent-1] [1789427889.512203] info     | ProxyClient.cpp    | create_replier           | replier created        | client_key: 0x00000001, requester_id: 0x800(7), participant_id: 0x001(1)
+[window_detect-4] [WARN] [1789427889.603218752] [window_detect]: No frames on /zed/zed_node/rgb/color/rect/image yet. Is zed_wrapper running? Check `ros2 topic list | grep zed`.
+[window_detect-4] [INFO] [1789427889.627806496] [window_detect]: CameraInfo from /zed/zed_node/rgb/color/rect/camera_info: fx=703.8 fy=703.8 cx=591.7 cy=375.7 (1280x720). /window_geometry angles are now metric.
+[window_detect-4] [INFO] [1789427889.718130560] [window_detect]: First frame from /zed/zed_node/rgb/color/rect/image: 1280x720.
+[window_detect-4] [INFO] [1789427889.787880256] [window_detect]: window: no   (streak 0 misses, 1 frames processed, 0 skipped by max_fps=10)
+[window_detect-4] [WARN] [1789427889.949951648] [window_detect]: WINDOW DETECTED  (centre=(650,213) offset=+0.02 area=85px dist=3.17m)
+[window_detect-4] [INFO] [1789427890.790926336] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.16m
+[window_detect-4] [INFO] [1789427891.857444736] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.22m
+[window_detect-4] [INFO] [1789427892.858275648] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.25m
+[window_detect-4] [INFO] [1789427893.893729408] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.18m
+[INFO] [course_fsm-5]: process started with pid [3957]
+[window_detect-4] [INFO] [1789427894.988567168] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.21m
+[course_fsm-5] [WARN] [1789427895.889197344] [course_fsm]: stdin is not a tty; q/k abort is unavailable.
+[course_fsm-5] [INFO] [1789427895.890505120] [course_fsm]: Airframe: 0.260 m tall, 0.260 m wide, extending 0.160 m below and 0.100 m above the commanded point. A window must measure at least 0.32 x 0.32 m to be flown.
+[course_fsm-5] [WARN] [1789427895.901306816] [course_fsm]: Window traversal on ARK FLOW: climb 1.20 m, hold 5 s, sweep +/-10 deg for the window, lock, line up 1.60 m in front of it and fly through to 0.50 m beyond, then land. Approach 0.30 m/s, traverse 0.45 m/s. Hard limit 240 s from the start of the climb. Press q to abort into a descent, k to force-disarm.
+[course_fsm-5] [WARN] [1789427895.907905408] [course_fsm]: COURSE: window, then OVER the red bar (1.98 m, cross at 2.41 m), then UNDER the blue bar (0.80 m, cross at 0.48 m), then land 0.80 m past it. Gaps 1.00 / 1.00 m; every vertical move happens at a gap midpoint. Bars are flown on the known geometry along the window's traverse line. READY.
+[course_fsm-5] [INFO] [1789427895.917330528] [course_fsm]: Waiting for VehicleStatus from PX4...
+[course_fsm-5] [INFO] [1789427895.919936832] [course_fsm]: nav_state -> MANUAL(0)
+[course_fsm-5] [INFO] [1789427895.920675008] [course_fsm]: RNG still not fused (0.0 s): stage PREPARATION, alt n/a m. dist_bottom=n/a, no estimator_status_flags
+[course_fsm-5] [ERROR] [1789427895.922083072] [course_fsm]: Not arming: no VehicleLocalPosition yet.
+[course_fsm-5] [WARN] [1789427895.930474368] [course_fsm]: No VehicleLocalPosition being published at all.
+[course_fsm-5] [INFO] [1789427895.931335872] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
+[course_fsm-5] [INFO] [1789427895.932398368] [course_fsm]: PX4 failsafe (expected on this airframe, harmless): gcs_connection_lost, home_position_invalid
+[course_fsm-5] [INFO] [1789427895.971340384] [course_fsm]: alt=n/a airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.00) | hdg=-0 deg yaw_sp=+0 deg
+[window_detect-4] [INFO] [1789427896.024074336] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.20m
+[course_fsm-5] [WARN] [1789427896.170789152] [course_fsm]: RNG FUSION BACK after 0.26 s (lost in PREPARATION): stage PREPARATION, alt n/a m. dist_bottom=0.15 m (valid=False) rng_hgt=True rng_terrain=False kin_consistent=True fault=False stuck=False
+[course_fsm-5] [INFO] [1789427896.972027040] [course_fsm]: alt=n/a airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.00) | hdg=-0 deg yaw_sp=+0 deg
+[window_detect-4] [INFO] [1789427897.092390304] [window_detect]: window: YES  centre=(650,213) offset=+0.01 area=84px dist=3.22m
+[course_fsm-5] [INFO] [1789427897.129034496] [course_fsm]: Setpoint stream established, position estimate healthy.
+[course_fsm-5] [INFO] [1789427897.174243680] [course_fsm]: Requesting Offboard mode...
+[course_fsm-5] [INFO] [1789427897.207002080] [course_fsm]: nav_state -> OFFBOARD(14)
+[course_fsm-5] [INFO] [1789427897.219734464] [course_fsm]: Offboard mode active.
+[course_fsm-5] [INFO] [1789427897.421128192] [course_fsm]: Arming point captured: x=0.11 y=0.00 z=-0.15 yaw=-0 deg. 'forward' means this heading for the whole flight.
+[course_fsm-5] [WARN] [1789427897.422498624] [course_fsm]: ARMED. Holding on the ground for 5 s.
+[course_fsm-5] [INFO] [1789427897.476251808] [course_fsm]: Armed on the ground, 5.0 s to takeoff...
+[course_fsm-5] [INFO] [1789427897.977990688] [course_fsm]: alt=+0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.01,+0.03) | hdg=-0 deg yaw_sp=-0 deg
+[course_fsm-5] [INFO] [1789427897.979349696] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depths disagree x11, implausible window size x5)
+[window_detect-4] [INFO] [1789427898.181955936] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.19m
+[course_fsm-5] [INFO] [1789427898.534151200] [course_fsm]: Armed on the ground, 3.9 s to takeoff...
+[course_fsm-5] [INFO] [1789427899.032931584] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.03) | hdg=-0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427899.198397664] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.18m
+[course_fsm-5] [INFO] [1789427899.567904032] [course_fsm]: Armed on the ground, 2.9 s to takeoff...
+[course_fsm-5] [INFO] [1789427899.979993152] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depths disagree x27, implausible window size x5)
+[course_fsm-5] [INFO] [1789427900.076164736] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.01) | hdg=+0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427900.228571776] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.20m
+[course_fsm-5] [INFO] [1789427900.572786048] [course_fsm]: Armed on the ground, 1.9 s to takeoff...
+[course_fsm-5] [INFO] [1789427901.131378752] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,+0.00) | hdg=-0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427901.259296864] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=85px dist=3.17m
+[course_fsm-5] [INFO] [1789427901.573288384] [course_fsm]: Armed on the ground, 0.9 s to takeoff...
+[course_fsm-5] [INFO] [1789427902.031081888] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depths disagree x44, implausible window size x5)
+[course_fsm-5] [INFO] [1789427902.171982368] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00) | hdg=+0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427902.389861056] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.21m
+[course_fsm-5] [WARN] [1789427902.476676608] [course_fsm]: Climbing to 1.20 m (datum z=-0.15).
+[course_fsm-5] [WARN] [1789427902.521594240] [course_fsm]: Flight clock started: landing in 240 s.
+[course_fsm-5] [INFO] [1789427903.174198080] [course_fsm]: alt=+0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=-0.01 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.00,+0.00) | hdg=+0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427903.492059360] [window_detect]: window: YES  centre=(650,213) offset=+0.02 area=82px dist=3.06m
+[course_fsm-5] [INFO] [1789427904.077280224] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depths disagree x60, implausible window size x5)
+[course_fsm-5] [INFO] [1789427904.176510944] [course_fsm]: alt=+0.13 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.15 m rng_ok=True vz=-0.02 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.02,+0.02) | hdg=+0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427904.592289632] [window_detect]: window: YES  centre=(646,213) offset=+0.01 area=148px dist=3.02m
+[course_fsm-5] [INFO] [1789427905.222020736] [course_fsm]: alt=+0.20 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.17 m rng_ok=True vz=-0.12 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.02,+0.13) | hdg=-0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427905.626688608] [window_detect]: window: YES  centre=(651,212) offset=+0.02 area=155px dist=3.14m
+[course_fsm-5] [INFO] [1789427906.130244480] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depths disagree x76, implausible window size x5)
+[course_fsm-5] [INFO] [1789427906.230117856] [course_fsm]: alt=+0.28 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.22 m rng_ok=True vz=-0.33 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.03,+0.11) | hdg=-0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427906.727634496] [window_detect]: window: YES  centre=(648,210) offset=+0.01 area=76px dist=4.20m
+[course_fsm-5] [INFO] [1789427907.232372800] [course_fsm]: alt=+0.37 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.26 m rng_ok=True vz=-0.35 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.02,+0.00) | hdg=+0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427907.930400992] [window_detect]: window: YES  centre=(620,210) offset=-0.03 area=227px dist=3.57m
+[course_fsm-5] [INFO] [1789427908.130988544] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depths disagree x89, implausible window size x8)
+[course_fsm-5] [INFO] [1789427908.273198144] [course_fsm]: alt=+0.35 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.26 m rng_ok=True vz=-0.37 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.13,+0.15) | hdg=+4 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427909.019769088] [window_detect]: window: YES  centre=(346,7) offset=-0.46 area=918px dist=0.96m
+[course_fsm-5] [INFO] [1789427909.324936576] [course_fsm]: alt=+0.43 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.36 m rng_ok=True vz=-0.38 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.19,+0.13) | hdg=+3 deg yaw_sp=-0 deg
+[course_fsm-5] [INFO] [1789427910.020904160] [course_fsm]: Flow healthy: latching x/y hold at (0.07, 0.35).
+[course_fsm-5] [WARN] [1789427910.022330400] [course_fsm]: Drifted 0.35 m during the climb; holding here rather than flying back to the arming point (takeoff_return_to_pad is false). If this number is large every flight, the drift is real: check SENS_FLOW_ROT, the flow mounting and the floor texture.
+[window_detect-4] [INFO] [1789427910.158430656] [window_detect]: window: YES  centre=(337,69) offset=-0.47 area=54970px dist=6.13m
+[course_fsm-5] [INFO] [1789427910.173373600] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 11 such frames) -- not measurable until the whole aperture is in view
+[course_fsm-5] [INFO] [1789427910.375247744] [course_fsm]: alt=+0.60 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.59 m rng_ok=True vz=-0.31 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.03) | hdg=+3 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427911.253554464] [window_detect]: window: YES  centre=(327,168) offset=-0.49 area=143609px dist=6.03m
+[course_fsm-5] [INFO] [1789427911.419108128] [course_fsm]: alt=+0.82 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.82 m rng_ok=True vz=-0.22 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.03,-0.03) | hdg=+2 deg yaw_sp=-0 deg
+[course_fsm-5] [INFO] [1789427912.231302688] [course_fsm]: window: no usable pose (5/6 fresh samples, 5 accepted ever, 22 truncated; rejections: corner depths disagree x89, implausible window size x11, opposite sides disagree x1)
+[window_detect-4] [INFO] [1789427912.321707872] [window_detect]: window: YES  centre=(297,260) offset=-0.54 area=166886px dist=5.26m
+[course_fsm-5] [INFO] [1789427912.419494016] [course_fsm]: alt=+0.96 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.96 m rng_ok=True vz=-0.14 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.04) | hdg=+1 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427913.324734464] [window_detect]: window: YES  centre=(286,304) offset=-0.55 area=160951px dist=5.20m
+[course_fsm-5] [INFO] [1789427913.419802208] [course_fsm]: alt=+1.01 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.01 m rng_ok=True vz=-0.11 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,-0.03) | hdg=+1 deg yaw_sp=-0 deg
+[course_fsm-5] [INFO] [1789427914.233286528] [course_fsm]: window: window at (+1.27, +0.00, -1.24) NED, facing -178 deg, 0.64x0.56 m, 21 samples, 107 ms old
+[window_detect-4] [INFO] [1789427914.367617856] [window_detect]: window: YES  centre=(284,330) offset=-0.56 area=150218px dist=5.34m
+[course_fsm-5] [INFO] [1789427914.470309088] [course_fsm]: alt=+1.04 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.05 m rng_ok=True vz=-0.11 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.04) | hdg=+1 deg yaw_sp=-0 deg
+[course_fsm-5] [INFO] [1789427915.473372416] [course_fsm]: alt=+1.10 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.11 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.00,-0.07) | hdg=+0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427915.485594624] [window_detect]: window: YES  centre=(306,371) offset=-0.52 area=138858px dist=5.43m
+[course_fsm-5] [INFO] [1789427916.235884288] [course_fsm]: window: window at (+1.28, +0.00, -1.22) NED, facing -177 deg, 0.65x0.55 m, 18 samples, 25 ms old
+[window_detect-4] [INFO] [1789427916.500765504] [window_detect]: window: YES  centre=(240,389) offset=-0.62 area=107793px dist=4.23m
+[course_fsm-5] [INFO] [1789427916.518837984] [course_fsm]: alt=+1.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.12 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.05) | hdg=+0 deg yaw_sp=-0 deg
+[course_fsm-5] [WARN] [1789427916.834149088] [course_fsm]: Reached 1.12 m. Holding for 5 s.
+[course_fsm-5] [INFO] [1789427916.872303072] [course_fsm]: Holding, 5.0 s to the sweep... (window IN SIGHT)
+[course_fsm-5] [INFO] [1789427917.520804235] [course_fsm]: alt=+1.10 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.10 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,-0.04) | hdg=+0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427917.617366108] [window_detect]: window: YES  centre=(393,362) offset=-0.39 area=131476px dist=6.72m
+[course_fsm-5] [INFO] [1789427917.921135759] [course_fsm]: Holding, 3.9 s to the sweep... (window IN SIGHT)
+[course_fsm-5] [INFO] [1789427918.239864362] [course_fsm]: window: window at (+1.30, +0.01, -1.23) NED, facing -176 deg, 0.65x0.56 m, 17 samples, 146 ms old
+[course_fsm-5] [INFO] [1789427918.521435412] [course_fsm]: alt=+1.10 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.10 m rng_ok=True vz=-0.09 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.02) | hdg=-0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427918.621025498] [window_detect]: window: YES  centre=(430,366) offset=-0.33 area=135033px dist=7.73m
+[course_fsm-5] [INFO] [1789427918.928172784] [course_fsm]: Holding, 2.9 s to the sweep... (window IN SIGHT)
+[course_fsm-5] [INFO] [1789427919.532387436] [course_fsm]: alt=+1.11 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.11 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,+0.01) | hdg=+0 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427919.622809990] [window_detect]: window: YES  centre=(402,374) offset=-0.37 area=136766px dist=6.84m
+[course_fsm-5] [INFO] [1789427919.929376607] [course_fsm]: Holding, 1.9 s to the sweep... (window IN SIGHT)
+[course_fsm-5] [INFO] [1789427920.273480336] [course_fsm]: window: window at (+1.29, +0.03, -1.24) NED, facing -176 deg, 0.66x0.56 m, 18 samples, 119 ms old
+[course_fsm-5] [INFO] [1789427920.579181625] [course_fsm]: alt=+1.11 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.10 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.00) | hdg=+1 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427920.645674318] [window_detect]: window: YES  centre=(443,360) offset=-0.31 area=151588px dist=0.00m
+[course_fsm-5] [INFO] [1789427920.929470937] [course_fsm]: Holding, 0.9 s to the sweep... (window IN SIGHT)
+[course_fsm-5] [INFO] [1789427921.582004064] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.08 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,+0.02) | hdg=+1 deg yaw_sp=-0 deg
+[window_detect-4] [INFO] [1789427921.717112331] [window_detect]: window: YES  centre=(436,352) offset=-0.32 area=161660px dist=0.00m
+[course_fsm-5] [WARN] [1789427921.871008651] [course_fsm]: WINDOW LOCKED (already in sight at the end of the hold). Yaw stopped at +0 deg, holding position. 434.3|352.2|-0.321|161692|1.08|1.05|1.03|1.08|0.00|full. Landing in 221 s.
+[course_fsm-5] [INFO] [1789427921.925925058] [course_fsm]: Locked, holding. window IN SIGHT. 221 s to landing.
+[course_fsm-5] [WARN] [1789427921.930719705] [course_fsm]: AIM: turning to +4 deg to face the window square-on, holding position. window at (+1.28, +0.03, -1.25) NED, facing -176 deg, 0.66x0.56 m, 20 samples, 78 ms old.
+[course_fsm-5] [INFO] [1789427921.981459522] [course_fsm]: AIM: 4 deg to turn. window at (+1.28, +0.03, -1.25) NED, facing -176 deg, 0.66x0.56 m, 20 samples, 129 ms old
+[course_fsm-5] [WARN] [1789427922.085170821] [course_fsm]: ALIGN: flying to (-0.31, -0.09) NED, 1.60 m in front of the window on its axis, at 0.30 m/s. window at (+1.28, +0.03, -1.25) NED, facing -176 deg, 0.66x0.56 m, 20 samples, 91 ms old.
+[course_fsm-5] [INFO] [1789427922.139663500] [course_fsm]: ALIGN: -0.45 m along / +0.32 m across to the approach point (tolerances 0.25/0.06), 4 deg off the normal, alt +1.10/1.13 m. window at (+1.28, +0.03, -1.25) NED, facing -176 deg, 0.66x0.56 m, 19 samples, 154 ms old
+[course_fsm-5] [INFO] [1789427922.332364117] [course_fsm]: window: window at (+1.28, +0.03, -1.25) NED, facing -176 deg, 0.66x0.56 m, 20 samples, 83 ms old
+[course_fsm-5] [INFO] [1789427922.624848675] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.09 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,-0.00) | hdg=+4 deg yaw_sp=+4 deg
+[window_detect-4] [INFO] [1789427922.876412634] [window_detect]: window: YES  centre=(380,349) offset=-0.41 area=167418px dist=0.00m
+[course_fsm-5] [INFO] [1789427923.179691662] [course_fsm]: ALIGN: -0.44 m along / +0.32 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.07/1.13 m. window at (+1.28, +0.03, -1.25) NED, facing -176 deg, 0.67x0.56 m, 19 samples, 24 ms old
+[course_fsm-5] [INFO] [1789427923.629824443] [course_fsm]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.05 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.09,-0.10) | hdg=+5 deg yaw_sp=+5 deg
+[window_detect-4] [INFO] [1789427923.887540914] [window_detect]: window: YES  centre=(386,328) offset=-0.40 area=153360px dist=0.00m
+[course_fsm-5] [INFO] [1789427924.230267387] [course_fsm]: ALIGN: -0.34 m along / +0.27 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.03/1.12 m. window at (+1.28, +0.02, -1.24) NED, facing -175 deg, 0.66x0.56 m, 16 samples, 82 ms old
+[course_fsm-5] [INFO] [1789427924.378564362] [course_fsm]: window: window at (+1.28, +0.02, -1.24) NED, facing -175 deg, 0.66x0.56 m, 17 samples, 4 ms old
+[course_fsm-5] [INFO] [1789427924.669554633] [course_fsm]: alt=+1.03 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.02 m rng_ok=True vz=-0.08 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.14,-0.15) | hdg=+5 deg yaw_sp=+5 deg
+[course_fsm-5] [WARN] [1789427924.724473199] [course_fsm]: Window is 0.56 m tall: too tight for 0.15 m clearance around a 0.26 m airframe. Favouring the sill and flying at 1.11 m.
+[window_detect-4] [INFO] [1789427924.946389519] [window_detect]: window: YES  centre=(468,329) offset=-0.27 area=115941px dist=7.16m
+[course_fsm-5] [INFO] [1789427925.281540656] [course_fsm]: ALIGN: -0.20 m along / +0.20 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.03/1.12 m. window at (+1.24, +0.00, -1.23) NED, facing -176 deg, 0.65x0.55 m, 17 samples, 71 ms old
+[course_fsm-5] [INFO] [1789427925.672047919] [course_fsm]: alt=+1.03 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=-0.08 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.10,-0.10) | hdg=+4 deg yaw_sp=+4 deg
+[window_detect-4] [INFO] [1789427926.017001955] [window_detect]: window: YES  centre=(533,346) offset=-0.17 area=88752px dist=7.74m
+[course_fsm-5] [INFO] [1789427926.289503437] [course_fsm]: ALIGN: -0.08 m along / +0.14 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.05/1.11 m. window at (+1.24, +0.01, -1.22) NED, facing -176 deg, 0.64x0.54 m, 17 samples, 126 ms old
+[course_fsm-5] [INFO] [1789427926.423783636] [course_fsm]: window: window at (+1.24, +0.01, -1.22) NED, facing -176 deg, 0.64x0.54 m, 17 samples, 142 ms old
+[course_fsm-5] [INFO] [1789427926.672490736] [course_fsm]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.07 m rng_ok=True vz=-0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.07,-0.04) | hdg=+4 deg yaw_sp=+4 deg
+[window_detect-4] [INFO] [1789427927.108729569] [window_detect]: window: YES  centre=(561,361) offset=-0.12 area=74798px dist=7.69m
+[course_fsm-5] [INFO] [1789427927.334034418] [course_fsm]: ALIGN: +0.01 m along / +0.09 m across to the approach point (tolerances 0.25/0.06), 0 deg off the normal, alt +1.06/1.09 m. window at (+1.25, +0.04, -1.21) NED, facing -176 deg, 0.64x0.54 m, 18 samples, 116 ms old
+[course_fsm-5] [INFO] [1789427927.672575231] [course_fsm]: alt=+1.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.07 m rng_ok=True vz=-0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.03,-0.02) | hdg=+3 deg yaw_sp=+4 deg
+[window_detect-4] [INFO] [1789427928.180578692] [window_detect]: window: YES  centre=(581,352) offset=-0.09 area=70782px dist=7.58m
+[course_fsm-5] [INFO] [1789427928.343119288] [course_fsm]: ALIGN: +0.06 m along / +0.10 m across to the approach point (tolerances 0.25/0.06), 2 deg off the normal, alt +1.05/1.09 m. window at (+1.28, +0.06, -1.21) NED, facing -174 deg, 0.65x0.55 m, 19 samples, 25 ms old
+[course_fsm-5] [INFO] [1789427928.434808270] [course_fsm]: window: window at (+1.29, +0.06, -1.21) NED, facing -174 deg, 0.65x0.55 m, 18 samples, 119 ms old
+[course_fsm-5] [INFO] [1789427928.725719638] [course_fsm]: alt=+1.04 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.04 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.04,-0.02) | hdg=+4 deg yaw_sp=+6 deg
+[window_detect-4] [INFO] [1789427929.239072143] [window_detect]: window: YES  centre=(586,346) offset=-0.08 area=73432px dist=7.43m
+[course_fsm-5] [INFO] [1789427929.729319820] [course_fsm]: alt=+1.03 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.00) | hdg=+6 deg yaw_sp=+5 deg
+[course_fsm-5] [WARN] [1789427929.733941780] [course_fsm]: Window is 0.55 m tall: too tight for 0.15 m clearance around a 0.26 m airframe. Favouring the sill and flying at 1.09 m.
+[window_detect-4] [INFO] [1789427930.306147574] [window_detect]: window: YES  centre=(580,349) offset=-0.09 area=78280px dist=7.59m
+[course_fsm-5] [INFO] [1789427930.480574491] [course_fsm]: window: window at (+1.31, +0.09, -1.21) NED, facing -175 deg, 0.65x0.55 m, 18 samples, 57 ms old
+[course_fsm-5] [WARN] [1789427930.530603587] [course_fsm]: Tight fit: 0.14 m vertical and 0.18 m lateral margin, below the 0.15/0.15 m wanted. Off the centreline by +0.01 m at 2 deg. Flying it anyway.
+[course_fsm-5] [WARN] [1789427930.532337346] [course_fsm]: TRAVERSE: committed. Flying through to (+1.81, +0.14) NED at 0.45 m/s on a heading of +5 deg, altitude 1.10 m. Window 0.65x0.55 m, leaving 0.14 m above and below the airframe and 0.18 m either side. The camera is no longer steering: this target is frozen.
+[course_fsm-5] [INFO] [1789427930.583189702] [course_fsm]: TRAVERSE: -0.01/2.10 m, 2 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427930.770948695] [course_fsm]: alt=+1.04 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.05 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,-0.02) | hdg=+7 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427931.098528696] [course_fsm]: TRAVERSE: 0.01/2.10 m, 1 deg off the committed heading.
+[window_detect-4] [INFO] [1789427931.405459660] [window_detect]: window: YES  centre=(521,345) offset=-0.19 area=86162px dist=7.95m
+[course_fsm-5] [INFO] [1789427931.621100333] [course_fsm]: TRAVERSE: 0.04/2.10 m, 2 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427931.819473187] [course_fsm]: alt=+1.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.06 m rng_ok=True vz=-0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.14,-0.04) | hdg=+7 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427932.125106983] [course_fsm]: TRAVERSE: 0.12/2.10 m, 1 deg off the committed heading.
+[window_detect-4] [INFO] [1789427932.442783700] [window_detect]: window: YES  centre=(654,324) offset=+0.02 area=98590px dist=6.69m
+[course_fsm-5] [INFO] [1789427932.522691250] [course_fsm]: window: window at (+1.32, +0.10, -1.22) NED, facing -174 deg, 0.65x0.56 m, 16 samples, 76 ms old
+[course_fsm-5] [INFO] [1789427932.682324786] [course_fsm]: TRAVERSE: 0.22/2.10 m, 1 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427932.822818708] [course_fsm]: alt=+1.03 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.02 m rng_ok=True vz=-0.05 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.17,+0.01) | hdg=+6 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427933.230615346] [course_fsm]: TRAVERSE: 0.32/2.10 m, 3 deg off the committed heading.
+[course_fsm-5] [ERROR] [1789427933.247832679] [course_fsm]: PX4 failsafe SET: battery_warning=1
+[window_detect-4] [INFO] [1789427933.469620112] [window_detect]: window: YES  centre=(681,264) offset=+0.06 area=137949px dist=6.77m
+[course_fsm-5] [INFO] [1789427933.776606059] [course_fsm]: TRAVERSE: 0.42/2.10 m, 2 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427933.871419343] [course_fsm]: alt=+0.96 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.94 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.18,+0.11) | hdg=+7 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427934.321511008] [course_fsm]: TRAVERSE: 0.54/2.10 m, 1 deg off the committed heading.
+[window_detect-4] [INFO] [1789427934.501603247] [window_detect]: window: YES  centre=(676,222) offset=+0.06 area=210668px dist=6.82m
+[course_fsm-5] [INFO] [1789427934.523566450] [course_fsm]: window: window at (+1.38, +0.12, -1.26) NED, facing -174 deg, 0.68x0.58 m, 12 samples, 518 ms old
+[course_fsm-5] [INFO] [1789427934.877929047] [course_fsm]: alt=+0.95 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.94 m rng_ok=True vz=-0.14 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.21,+0.09) | hdg=+6 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427934.879850963] [course_fsm]: TRAVERSE: 0.67/2.10 m, 1 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427935.422314804] [course_fsm]: TRAVERSE: 0.80/2.10 m, 0 deg off the committed heading.
+[window_detect-4] [INFO] [1789427935.542890029] [window_detect]: window: YES  centre=(618,226) offset=-0.03 area=310865px dist=6.78m
+[course_fsm-5] [INFO] [1789427935.919580036] [course_fsm]: alt=+0.96 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.94 m rng_ok=True vz=-0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.24,+0.10) | hdg=+4 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427935.922625691] [course_fsm]: TRAVERSE: 0.92/2.10 m, 1 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427936.425524616] [course_fsm]: TRAVERSE: 1.04/2.10 m, 2 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427936.569785940] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 41 such frames) -- not measurable until the whole aperture is in view
+[window_detect-4] [INFO] [1789427936.678878992] [window_detect]: window: YES  centre=(595,340) offset=-0.07 area=384282px dist=6.46m
+[course_fsm-5] [INFO] [1789427936.974092869] [course_fsm]: alt=+0.96 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.95 m rng_ok=True vz=-0.15 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.23,+0.12) | hdg=+3 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427936.975575501] [course_fsm]: TRAVERSE: 1.18/2.10 m, 2 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427937.522830392] [course_fsm]: TRAVERSE: 1.24/2.10 m, 16 deg off the committed heading.
+[window_detect-4] [INFO] [1789427937.738749231] [window_detect]: window: YES  centre=(558,602) offset=-0.13 area=124340px dist=2.65m
+[course_fsm-5] [INFO] [1789427938.018840478] [course_fsm]: alt=+0.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.90 m rng_ok=True vz=-0.34 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.47,-0.52) | hdg=-9 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427938.075282278] [course_fsm]: TRAVERSE: 1.01/2.10 m, 14 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427938.576044286] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 51 such frames) -- not measurable until the whole aperture is in view
+[course_fsm-5] [INFO] [1789427938.577270962] [course_fsm]: TRAVERSE: 0.76/2.10 m, 7 deg off the committed heading.
+[window_detect-4] [INFO] [1789427938.836187121] [window_detect]: window: YES  centre=(322,336) offset=-0.50 area=214634px dist=0.00m
+[course_fsm-5] [INFO] [1789427939.019182781] [course_fsm]: alt=+1.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.18 m rng_ok=True vz=+0.27 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.77,-0.22) | hdg=+13 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427939.121179889] [course_fsm]: TRAVERSE: 0.47/2.10 m, 7 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427939.674031971] [course_fsm]: TRAVERSE: 0.18/2.10 m, 14 deg off the committed heading.
+[window_detect-4] [INFO] [1789427939.870930822] [window_detect]: window: YES  centre=(222,312) offset=-0.65 area=212788px dist=0.00m
+[course_fsm-5] [INFO] [1789427940.068082049] [course_fsm]: alt=+0.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=+0.16 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.26,+0.56) | hdg=+12 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427940.192918453] [course_fsm]: TRAVERSE: 0.08/2.10 m, 7 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427940.578620970] [course_fsm]: window: no usable pose (0/6 fresh samples, 159 accepted ever, 60 truncated; rejections: corner depths disagree x95, implausible window size x11, opposite sides disagree x1)
+[course_fsm-5] [INFO] [1789427940.725242137] [course_fsm]: TRAVERSE: 0.01/2.10 m, 2 deg off the committed heading.
+[window_detect-4] [INFO] [1789427940.963651036] [window_detect]: window: YES  centre=(200,327) offset=-0.69 area=127855px dist=0.00m
+[course_fsm-5] [INFO] [1789427941.069693655] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.11 m rng_ok=True vz=-0.05 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.07,+0.12) | hdg=-25 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427941.273187966] [course_fsm]: TRAVERSE: -0.06/2.10 m, 49 deg off the committed heading.
+[course_fsm-5] [INFO] [1789427941.834572421] [course_fsm]: TRAVERSE: -0.04/2.10 m, 55 deg off the committed heading.
+[window_detect-4] [INFO] [1789427942.042069100] [window_detect]: window: YES  centre=(327,370) offset=-0.49 area=323647px dist=0.00m
+[course_fsm-5] [INFO] [1789427942.119842212] [course_fsm]: alt=+1.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.11 m rng_ok=True vz=+0.05 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.13,+0.12) | hdg=-38 deg yaw_sp=+5 deg
+[course_fsm-5] [INFO] [1789427942.290339757] [course_fsm]: PX4 failsafe cleared: battery_warning=1
+[course_fsm-5] [WARN] [1789427942.321186640] [course_fsm]: Vehicle disarmed by PX4. Stopping.
+[course_fsm-5] [INFO] [1789427942.373245272] [course_fsm]: Idle. Ctrl-C to exit.
+[window_detect-4] [INFO] [1789427943.205311212] [window_detect]: window: YES  centre=(167,426) offset=-0.74 area=182818px dist=0.00m
+[course_fsm-5] [ERROR] [1789427944.144110561] [course_fsm]: PX4 failsafe SET: offboard_control_signal_lost
+[window_detect-4] [INFO] [1789427944.239597350] [window_detect]: window: YES  centre=(214,504) offset=-0.67 area=160362px dist=0.00m
+[window_detect-4] [INFO] [1789427945.331139673] [window_detect]: window: YES  centre=(349,471) offset=-0.46 area=282184px dist=0.00m
+[window_detect-4] [INFO] [1789427946.335915111] [window_detect]: window: YES  centre=(274,329) offset=-0.57 area=318998px dist=0.00m
+[window_detect-4] [INFO] [1789427947.400413504] [window_detect]: window: YES  centre=(553,327) offset=-0.14 area=303547px dist=0.00m
+[course_fsm-5] [INFO] [1789427947.419089526] [course_fsm]: Idle. Ctrl-C to exit.
+[window_detect-4] [INFO] [1789427948.474827561] [window_detect]: window: YES  centre=(351,344) offset=-0.45 area=368056px dist=0.00m
+[window_detect-4] [INFO] [1789427949.607963614] [window_detect]: window: YES  centre=(328,359) offset=-0.49 area=453936px dist=0.00m
+[window_detect-4] [INFO] [1789427950.704737248] [window_detect]: window: YES  centre=(473,206) offset=-0.26 area=13166px dist=0.00m
+[window_detect-4] [INFO] [1789427951.794535461] [window_detect]: window: YES  centre=(524,44) offset=-0.18 area=1971px dist=0.00m
+[course_fsm-5] [INFO] [1789427952.468947204] [course_fsm]: Idle. Ctrl-C to exit.
+[window_detect-4] [INFO] [1789427952.868068532] [window_detect]: window: YES  centre=(492,34) offset=-0.23 area=4748px dist=1.69m
+[window_detect-4] [INFO] [1789427953.871101041] [window_detect]: window: YES  centre=(1110,175) offset=+0.73 area=12238px dist=0.00m
+[window_detect-4] [INFO] [1789427955.004588954] [window_detect]: window: YES  centre=(612,34) offset=-0.04 area=4696px dist=1.33m
+
