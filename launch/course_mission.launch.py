@@ -233,6 +233,8 @@ def generate_launch_description():
                     'course_vertical_timeout': LaunchConfiguration('course_vertical_timeout'),
                     'course_cross_timeout': LaunchConfiguration('course_cross_timeout'),
                     'course_flow_timeout': LaunchConfiguration('course_flow_timeout'),
+                    'course_rng_dropout_timeout': LaunchConfiguration(
+                        'course_rng_dropout_timeout'),
                     # ---- the estimator ----
                     'depth_min': LaunchConfiguration('depth_min'),
                     'depth_max': LaunchConfiguration('depth_max'),
@@ -719,6 +721,12 @@ def generate_launch_description():
             'course_flow_timeout', default_value='8.0',
             description='s without optical flow during a rise or drop before '
                         'landing on the midpoint.'),
+        DeclareLaunchArgument(
+            'course_rng_dropout_timeout', default_value='6.0',
+            description='s of rangefinder fusion loss tolerated during the red '
+                        'crossing (the bar under the lidar is a step EKF2 '
+                        'rejects). Past it, or if still lost at BLUE_DROP, it '
+                        'lands.'),
 
         # ---- the rest ----
         DeclareLaunchArgument(

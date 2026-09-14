@@ -152,6 +152,10 @@ class CourseFSM(WindowTraverse):
     COURSE_VERTICAL_TIMEOUT = 25.0
     COURSE_CROSS_TIMEOUT = 15.0
     COURSE_FLOW_TIMEOUT = 8.0
+    COURSE_RNG_DROPOUT_TIMEOUT = 6.0  # s of rangefinder dropout tolerated in
+                                # RED_CROSS. The bar passing under the lidar is
+                                # a ~2 m step EKF2 rightly rejects; landing on
+                                # that puts the aircraft onto the bar.
 
     FLOW_FLOOR_MARGIN = 0.10    # m the blue altitude must clear FLOW_MIN_AGL by
 
@@ -187,6 +191,8 @@ class CourseFSM(WindowTraverse):
         self.COURSE_CROSS_TIMEOUT = float(n(
             'course_cross_timeout', self.COURSE_CROSS_TIMEOUT))
         self.COURSE_FLOW_TIMEOUT = float(n('course_flow_timeout', self.COURSE_FLOW_TIMEOUT))
+        self.COURSE_RNG_DROPOUT_TIMEOUT = float(n(
+            'course_rng_dropout_timeout', self.COURSE_RNG_DROPOUT_TIMEOUT))
 
         self.red_altitude = (self.RED_BAR_HEIGHT + self.BAR_RADIUS
                              + self.RED_CLEARANCE + self.body_below)
@@ -215,6 +221,10 @@ class CourseFSM(WindowTraverse):
         self.bar_push_since = None
         self.bar_push_seconds = 0.0
         self.window_blind_capped = False
+        self.rng_was_healthy = None     # last fusion state seen, for the log
+        self.rng_lost_since = None
+        self.rng_lost_stage = None
+        self.rng_excused = False
 
         self.get_logger().warning(
             f"COURSE: window, then OVER the red bar ({self.RED_BAR_HEIGHT:.2f} m, "
@@ -315,6 +325,20 @@ class CourseFSM(WindowTraverse):
 
     # ------------------------------------------------------------ stages
 
+    def _set_course_target(self, x, y, altitude):
+        """_set_target, plus the move start the EKF2 reset handlers rotate.
+
+        The inherited _set_target sets move_target_x but never move_start_x,
+        and both reset handlers shift the two together. A heading reset in a
+        course stage (EKF2 does one when range fusion drops over the red bar)
+        then hit None - None and killed the node mid-push -- PX4 kept flying
+        the last forward velocity setpoint. Course stages only.
+        """
+        self._set_target(x, y, altitude)
+        lp = self.local_position
+        self.move_start_x = float(lp.x) if lp is not None else float(x)
+        self.move_start_y = float(lp.y) if lp is not None else float(y)
+
     def _enter_course_stage(self, stage):
         self._enter_stage(stage)
         self.course_settle_since = None
@@ -332,7 +356,7 @@ class CourseFSM(WindowTraverse):
             x, y = lp.x, lp.y
         self.CLIMB_SPEED = self.COURSE_CLIMB_SPEED
         self.MOVE_SPEED = self.APPROACH_SPEED
-        self._set_target(x, y, self.red_altitude)
+        self._set_course_target(x, y, self.red_altitude)
         self._enter_course_stage(self.RED_RISE)
         self.get_logger().warning(
             f"RED_RISE: climbing straight up to {self.red_altitude:.2f} m on the "
@@ -343,7 +367,7 @@ class CourseFSM(WindowTraverse):
         distance = 0.5 * self.WINDOW_TO_RED + 0.5 * self.RED_TO_BLUE
         x, y = self._ahead(distance)
         self.MOVE_SPEED = self.BAR_CROSS_SPEED
-        self._set_target(x, y, self.red_altitude)
+        self._set_course_target(x, y, self.red_altitude)
         self._enter_course_stage(self.RED_CROSS)
         self.get_logger().warning(
             f"RED_CROSS: over the red bar, {distance:.2f} m to the next midpoint "
@@ -357,7 +381,7 @@ class CourseFSM(WindowTraverse):
         self.course_saved_land_speed = self.LAND_SPEED
         self.LAND_SPEED = self.COURSE_DESCENT_SPEED
         self.MOVE_SPEED = self.APPROACH_SPEED
-        self._set_target(x, y, self.blue_altitude)
+        self._set_course_target(x, y, self.blue_altitude)
         self._enter_course_stage(self.BLUE_DROP)
         self.get_logger().warning(
             f"BLUE_DROP: descending straight down to {self.blue_altitude:.2f} m "
@@ -369,7 +393,7 @@ class CourseFSM(WindowTraverse):
         distance = 0.5 * self.RED_TO_BLUE + self.BLUE_EXIT
         x, y = self._ahead(distance)
         self.MOVE_SPEED = self.BAR_CROSS_SPEED
-        self._set_target(x, y, self.blue_altitude)
+        self._set_course_target(x, y, self.blue_altitude)
         self._enter_course_stage(self.BLUE_CROSS)
         self.get_logger().warning(
             f"BLUE_CROSS: under the blue bar, {distance:.2f} m at "
@@ -520,6 +544,88 @@ class CourseFSM(WindowTraverse):
 
     # ------------------------------------------------------ plumbing
 
+    def rangefinder_is_healthy(self):
+        # Only ever excused for the duration of the _still_flyable() call below.
+        if self.rng_excused:
+            return True
+        return super().rangefinder_is_healthy()
+
+    def _still_flyable(self):
+        """Inherited, except a rangefinder dropout does not land us over red.
+
+        Over the red bar the lidar sees the bar top instead of the floor, a
+        ~2 m step that EKF2's kinematic check rejects. Landing there descends
+        onto the bar. Instead the dropout is tolerated for
+        course_rng_dropout_timeout: flow_is_healthy() also needs the
+        rangefinder, so the existing open-loop push to P1 takes over, and
+        BLUE_DROP (not excused) lands on P1 if fusion is still not back.
+        Every other check, and every other stage, is untouched.
+        """
+        if (self.current_stage != self.RED_CROSS
+                or super().rangefinder_is_healthy()):
+            return super()._still_flyable()
+
+        lost = 0.0 if self.rng_lost_since is None else time.monotonic() - self.rng_lost_since
+        if lost > self.COURSE_RNG_DROPOUT_TIMEOUT:
+            self._begin_landing(
+                f"rangefinder fusion lost for {lost:.1f} s during the red crossing "
+                f"(limit {self.COURSE_RNG_DROPOUT_TIMEOUT:.1f} s); altitude is unanchored")
+            return False
+        self.get_logger().warning(
+            f"RED_CROSS: rangefinder not fused for {lost:.1f} s -- expected over "
+            f"the bar; tolerating up to {self.COURSE_RNG_DROPOUT_TIMEOUT:.1f} s.",
+            throttle_duration_sec=0.5)
+        self.rng_excused = True
+        try:
+            return super()._still_flyable()
+        finally:
+            self.rng_excused = False
+
+    def _rng_flags_summary(self):
+        f = self.estimator_flags
+        lp = self.local_position
+        dist = "n/a" if lp is None else f"{lp.dist_bottom:.2f} m (valid={lp.dist_bottom_valid})"
+        if f is None:
+            return f"dist_bottom={dist}, no estimator_status_flags"
+        return (f"dist_bottom={dist} rng_hgt={f.cs_rng_hgt} "
+                f"rng_terrain={f.cs_rng_terrain} kin_consistent={f.cs_rng_kin_consistent} "
+                f"fault={f.cs_rng_fault} stuck={f.cs_rng_stuck}")
+
+    def _where_summary(self):
+        alt = self.relative_altitude()
+        along, cross = self._target_errors()
+        s = f"stage {self.current_stage}, alt {'n/a' if alt is None else f'{alt:.2f}'} m"
+        if self.current_stage in self.COURSE_STAGES and along is not None:
+            s += f", {along:.2f} m to the target, {cross:+.2f} m off the line"
+        return s
+
+    def _log_rangefinder_fusion(self):
+        """Log only: every change in rangefinder fusion, in every stage."""
+        healthy = super().rangefinder_is_healthy()
+        now = time.monotonic()
+        if self.rng_was_healthy is None:
+            self.rng_was_healthy = healthy
+            if not healthy:
+                self.rng_lost_since, self.rng_lost_stage = now, self.current_stage
+            return
+        if healthy != self.rng_was_healthy:
+            if not healthy:
+                self.rng_lost_since, self.rng_lost_stage = now, self.current_stage
+                self.get_logger().error(
+                    f"RNG FUSION LOST: {self._where_summary()}. {self._rng_flags_summary()}")
+            else:
+                lost = 0.0 if self.rng_lost_since is None else now - self.rng_lost_since
+                self.get_logger().warning(
+                    f"RNG FUSION BACK after {lost:.2f} s (lost in {self.rng_lost_stage}): "
+                    f"{self._where_summary()}. {self._rng_flags_summary()}")
+                self.rng_lost_since = None
+            self.rng_was_healthy = healthy
+        elif not healthy and self.rng_lost_since is not None:
+            self.get_logger().info(
+                f"RNG still not fused ({now - self.rng_lost_since:.1f} s): "
+                f"{self._where_summary()}. {self._rng_flags_summary()}",
+                throttle_duration_sec=0.5)
+
     def _clock_stages(self):
         # The crossings are excluded for the same reason the window traverse
         # is: a stopwatch must not start a descent over or under a bar. The
@@ -527,6 +633,7 @@ class CourseFSM(WindowTraverse):
         return super()._clock_stages() + (self.RED_RISE, self.BLUE_DROP)
 
     def timer_callback(self):
+        self._log_rangefinder_fusion()
         if self.current_stage not in self.COURSE_STAGES:
             super().timer_callback()
             return
