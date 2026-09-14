@@ -362,9 +362,13 @@ class OffboardSequence(Node):
     TAKEOFF_TIMEOUT = 20.0
     SETTLE_GRACE_SECONDS = 0.3      # a dip out of the arrival band shorter than
                                     # this does not restart the settle timer
-    TAKEOFF_ACCEPT_TOLERANCE = 0.25 # m. At the timeout, an aircraft that is
-                                    # airborne and this close to the target is
-                                    # accepted rather than landed
+    TAKEOFF_ACCEPT_TOLERANCE = 0.25 # m. An aircraft that is airborne, steady
+                                    # and this close to the target is accepted
+                                    # rather than waited on or landed
+    TAKEOFF_ACCEPT_SECONDS = 6.0    # s into the climb before that acceptance is
+                                    # allowed. It used to wait the full
+                                    # TAKEOFF_TIMEOUT: on 09-15 the aircraft sat
+                                    # steady at 1.09 m of 1.20 m and burned 20 s.
     LANDING_TIMEOUT = 30.0
     DISARM_TIMEOUT = 5.0
     LANDED_CONFIRM_SECONDS = 1.0    # land-detector must agree this long
@@ -408,6 +412,8 @@ class OffboardSequence(Node):
         self.YAW_RATE = float(self._declare_number('yaw_rate', self.YAW_RATE))
         self.TAKEOFF_RETURN_TO_PAD = bool(self.declare_parameter(
             'takeoff_return_to_pad', self.TAKEOFF_RETURN_TO_PAD).value)
+        self.TAKEOFF_ACCEPT_SECONDS = float(self._declare_number(
+            'takeoff_accept_seconds', self.TAKEOFF_ACCEPT_SECONDS))
         self.GROUND_WAIT_SECONDS = float(self._declare_number(
             'ground_wait_seconds', self.GROUND_WAIT_SECONDS))
         self.CLIMB_SPEED = float(self._declare_number(
@@ -1251,19 +1257,26 @@ class OffboardSequence(Node):
                 self.in_band_since = None
                 self.band_exit_since = None
 
-        if self._in_stage_for() > self.TAKEOFF_TIMEOUT:
+        in_stage = self._in_stage_for()
+        if in_stage > self.TAKEOFF_ACCEPT_SECONDS:
+            alt = self.relative_altitude()
+            lp = self.local_position
+            steady = lp is not None and abs(lp.vz) < 0.15
+            if (steady and self.is_airborne() and alt is not None
+                    and abs(alt - self.commanded_altitude) <= self.TAKEOFF_ACCEPT_TOLERANCE):
+                self.get_logger().warning(
+                    f"Takeoff steady at {alt:.2f} m of {self.commanded_altitude:.2f} m "
+                    f"after {in_stage:.1f} s without holding the "
+                    f"+/-{self.ALTITUDE_TOLERANCE:.2f} m band. Accepting it: this "
+                    "airframe holds a few cm under its setpoint, and waiting longer "
+                    "does not change that.")
+                self._enter_stage(self.HOLD)
+                return
+
+        if in_stage > self.TAKEOFF_TIMEOUT:
             alt = self.relative_altitude()
             agl = self.agl()
             airborne = self.is_airborne()
-            if (airborne and alt is not None
-                    and abs(alt - self.commanded_altitude) <= self.TAKEOFF_ACCEPT_TOLERANCE):
-                self.get_logger().warning(
-                    f"Takeoff never held the +/-{self.ALTITUDE_TOLERANCE:.2f} m band "
-                    f"for {self.SETTLE_SECONDS:.1f} s, but the aircraft is airborne at "
-                    f"{alt:.2f} m of {self.commanded_altitude:.2f} m. Accepting it "
-                    "and holding rather than landing a vehicle that is flying.")
-                self._enter_stage(self.HOLD)
-                return
             self._begin_landing(
                 f"takeoff did not settle in {self.TAKEOFF_TIMEOUT:.0f} s: "
                 f"airborne={airborne}, ekf alt="

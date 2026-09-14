@@ -652,6 +652,24 @@ class WindowTraverse(WindowScan):
                                 # airframe reaches the window, at which the run
                                 # stops moving forward until altitude recovers
 
+    # ---- getting through the gate in seconds, not minutes -------------------
+    # 09-15 log: ALIGN ran 50 s and never committed. The aircraft held altitude
+    # 5-13 cm UNDER the setpoint the whole time (1.02-1.15 m against
+    # 1.11-1.19 m) and its flow hold wandered +/-0.25 m across the approach
+    # line on a ~15 s cycle, passing through the 6 cm band only briefly. An
+    # instantaneous gate, held 1.5 s, on both at once, essentially never opens.
+    #
+    # Two fixes, neither of which loosens what is actually flown:
+    #   * an integral trim on the altitude setpoint during ALIGN, so the
+    #     aircraft actually sits at the planned height instead of 10 cm under
+    #     it -- which is also what protects the gear on the sill;
+    #   * the gate judges MEANS over align_settle_seconds, because the hold
+    #     oscillates around the right point, with a hard cap on the
+    #     instantaneous cross-track so it never commits at the end of a swing.
+    ALT_TRIM_GAIN = 0.4         # 1/s of integral action on altitude error
+    ALT_TRIM_LIMIT = 0.15       # m, largest correction either way
+    ALIGN_CROSS_PEAK = 0.12     # m, instantaneous cross-track cap at commit
+
     # ---- re-centring on a truncated window --------------------------------
     # window_detect flags a quad with a corner at the image edge as TRUNCATED:
     # the aperture it measured is the visible PART of a window, narrower than
@@ -782,6 +800,12 @@ class WindowTraverse(WindowScan):
         self.TRAVERSE_SAG_LIMIT = float(self._declare_number(
             'traverse_sag_limit', self.TRAVERSE_SAG_LIMIT))
         self.traverse_paused = False
+        self.ALT_TRIM_GAIN = float(self._declare_number('alt_trim_gain', self.ALT_TRIM_GAIN))
+        self.ALT_TRIM_LIMIT = float(self._declare_number('alt_trim_limit', self.ALT_TRIM_LIMIT))
+        self.ALIGN_CROSS_PEAK = float(self._declare_number(
+            'align_cross_peak', self.ALIGN_CROSS_PEAK))
+        self.alt_trim = 0.0
+        self.align_samples = []
         self.ALIGN_ALT_TOLERANCE = float(self._declare_number(
             'align_alt_tolerance', self.ALIGN_ALT_TOLERANCE))
         self.APPROACH_SPEED = float(self._declare_number(
@@ -1376,7 +1400,9 @@ class WindowTraverse(WindowScan):
         self.moving = True
         if altitude is not None:
             self.commanded_altitude = float(altitude)
-            self.target_z = self.home_z - float(altitude)
+            # commanded_altitude is where the aircraft should BE; the setpoint
+            # carries the trim that gets it there. See ALT_TRIM_GAIN.
+            self.target_z = self.home_z - (float(altitude) + self.alt_trim)
 
     def _aim_yaw_at(self, heading):
         """Walk the commanded yaw towards an absolute NED heading.
@@ -1820,6 +1846,7 @@ class WindowTraverse(WindowScan):
         entry, _, heading = self.approach_points(est)
         self._enter_stage(self.ALIGN)
         self.align_in_band_since = None
+        self.align_samples = []
         self.MOVE_SPEED = self.APPROACH_SPEED
         # Set the target HERE rather than leaving it to the first tick of the
         # stage. A single-frame pose dropout on that tick would otherwise leave
@@ -1883,6 +1910,7 @@ class WindowTraverse(WindowScan):
             # carrot the vehicle is not chasing.
             self.moving = False
             self.align_in_band_since = None
+            self.align_samples = []
             self.get_logger().warning(
                 "ALIGN: vision unhealthy, holding still until it comes back.",
                 throttle_duration_sec=2.0)
@@ -1890,14 +1918,11 @@ class WindowTraverse(WindowScan):
                 self._abandon("vision never recovered during the approach")
             return
 
+        self._update_alt_trim()
+        self._record_align_sample()
         if self._aligned():
-            if self.align_in_band_since is None:
-                self.align_in_band_since = time.monotonic()
-            elif time.monotonic() - self.align_in_band_since >= self.ALIGN_SETTLE_SECONDS:
-                self._begin_traverse()
+            self._begin_traverse()
             return
-
-        self.align_in_band_since = None
 
         # Not aligned and no live pose: now the stale clock is allowed to end
         # the attempt.
@@ -1920,7 +1945,8 @@ class WindowTraverse(WindowScan):
             f"{self.ALIGN_CROSS_TOLERANCE:.2f}), "
             f"{math.degrees(self._heading_error(self._target_heading())):.0f} deg "
             f"off the normal, alt {'n/a' if alt is None else f'{alt:+.2f}'}/"
-            f"{self.commanded_altitude:.2f} m. {self.pose_summary()}",
+            f"{self.commanded_altitude:.2f} m (trim {self.alt_trim:+.2f}). "
+            f"{self.pose_summary()}",
             throttle_duration_sec=1.0)
 
     def _target_heading(self):
@@ -1949,24 +1975,66 @@ class WindowTraverse(WindowScan):
         c, sn = math.cos(heading), math.sin(heading)
         return ex * c + ey * sn, -ex * sn + ey * c
 
-    def _aligned(self):
-        """All four axes of "lined up", simultaneously.
+    def _update_alt_trim(self):
+        """Integrate altitude error into the setpoint while lining up.
 
-        Four rather than three now: along-track and cross-track are separate
-        gates with different tolerances, because they buy different things.
-        Cross-track is charged at the tight rate -- it is the aircraft's
-        distance from the centreline of the aperture it is about to fly
-        through, and it is spent out of a clearance budget that on a typical
-        window is under 20 cm a side.
+        Only in ALIGN, only while position-holding and vertically steady, and
+        frozen from the commit onwards: during the run the lidar passes over
+        the window's lower structure, and a trim that kept integrating there
+        could wind up on a reading that is not the floor.
         """
-        along, cross = self._approach_errors()
-        if along is None:
-            return False
-        if abs(cross) > self.ALIGN_CROSS_TOLERANCE:
-            return False
-        if abs(along) > self.ALIGN_ALONG_TOLERANCE:
-            return False
         alt = self.relative_altitude()
+        lp = self.local_position
+        if alt is None or lp is None or self.home_z is None or not self.hold_xy:
+            return
+        if abs(lp.vz) > 0.15:
+            return
+        error = self.commanded_altitude - alt
+        self.alt_trim = min(max(self.alt_trim + self.ALT_TRIM_GAIN * error * 0.05,
+                                -self.ALT_TRIM_LIMIT), self.ALT_TRIM_LIMIT)
+        self.target_z = self.home_z - (self.commanded_altitude + self.alt_trim)
+
+    def _record_align_sample(self):
+        """Keep the last align_settle_seconds of alignment errors."""
+        along, cross = self._approach_errors()
+        alt = self.relative_altitude()
+        now = time.monotonic()
+        if along is None or alt is None:
+            self.align_samples = []
+            return
+        self.align_samples.append((now, along, cross, alt - self.commanded_altitude,
+                                   self._heading_error(self._target_heading())))
+        cutoff = now - self.ALIGN_SETTLE_SECONDS
+        while self.align_samples and self.align_samples[0][0] < cutoff:
+            self.align_samples.pop(0)
+
+    def _aligned(self):
+        """Lined up ON AVERAGE over align_settle_seconds, and not mid-swing now.
+
+        The position hold on this airframe oscillates slowly around the target
+        instead of sitting on it, so demanding every axis inside its band on
+        every tick for 1.5 s straight almost never happens (09-15: 50 s, no
+        commit). The means are what say where the aircraft is; the
+        instantaneous cross-track cap is what stops it committing at the far
+        end of a swing, which is the one moment that would put a prop on a
+        jamb. Altitude keeps its asymmetric limits and the lintel clamp.
+        """
+        s = self.align_samples
+        if not s or s[-1][0] - s[0][0] < 0.9 * self.ALIGN_SETTLE_SECONDS:
+            return False
+        n = float(len(s))
+        mean_along = sum(x[1] for x in s) / n
+        mean_cross = sum(x[2] for x in s) / n
+        mean_alt_err = sum(x[3] for x in s) / n
+        if abs(s[-1][2]) > self.ALIGN_CROSS_PEAK or abs(s[-1][1]) > self.ALIGN_ALONG_TOLERANCE:
+            return False
+        if abs(mean_cross) > self.ALIGN_CROSS_TOLERANCE:
+            return False
+        if abs(mean_along) > self.ALIGN_ALONG_TOLERANCE:
+            return False
+        if max(x[4] for x in s) > self.ALIGN_YAW_TOLERANCE:
+            return False
+        alt = self.commanded_altitude + mean_alt_err
         # Asymmetric: committing low spends the sill clearance before the run
         # has started. Committing high spends the LINTEL clearance, which is
         # only lintel_clearance (6 cm) -- so the upper tolerance can never be

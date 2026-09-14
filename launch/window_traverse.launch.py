@@ -269,6 +269,10 @@ def generate_launch_description():
                     'lintel_clearance': LaunchConfiguration('lintel_clearance'),
                     'align_alt_below_tolerance': LaunchConfiguration('align_alt_below_tolerance'),
                     'traverse_sag_limit': LaunchConfiguration('traverse_sag_limit'),
+                    'alt_trim_gain': LaunchConfiguration('alt_trim_gain'),
+                    'alt_trim_limit': LaunchConfiguration('alt_trim_limit'),
+                    'align_cross_peak': LaunchConfiguration('align_cross_peak'),
+                    'takeoff_accept_seconds': LaunchConfiguration('takeoff_accept_seconds'),
                     'align_alt_tolerance': LaunchConfiguration('align_alt_tolerance'),
                     'approach_speed': LaunchConfiguration('approach_speed'),
                     'traverse_speed': LaunchConfiguration('traverse_speed'),
@@ -599,6 +603,24 @@ def generate_launch_description():
             'align_alt_below_tolerance', default_value='0.03',
             description='m the aircraft may be below the traverse altitude and '
                         'still commit. Above it, align_alt_tolerance applies.'),
+        DeclareLaunchArgument(
+            'alt_trim_gain', default_value='0.4',
+            description='1/s. Integral trim on the altitude setpoint during ALIGN, '
+                        'so the aircraft sits at the planned traverse height '
+                        'instead of the ~10 cm under it this airframe holds. '
+                        'Frozen from the commit on. 0 disables it.'),
+        DeclareLaunchArgument(
+            'alt_trim_limit', default_value='0.15',
+            description='m. Largest altitude trim either way.'),
+        DeclareLaunchArgument(
+            'align_cross_peak', default_value='0.12',
+            description='m. The commit gate judges MEANS over '
+                        'align_settle_seconds; this caps the instantaneous '
+                        'cross-track so it never commits mid-swing.'),
+        DeclareLaunchArgument(
+            'takeoff_accept_seconds', default_value='6.0',
+            description='s into the climb after which a steady, airborne '
+                        'aircraft within 0.25 m of the target is accepted.'),
         DeclareLaunchArgument(
             'traverse_sag_limit', default_value='0.06',
             description='m below the traverse altitude, before reaching the '
