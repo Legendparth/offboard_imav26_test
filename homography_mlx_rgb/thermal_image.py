@@ -180,19 +180,21 @@ class MLX90640Reader:
 if __name__ == "__main__":
     import cv2
     import numpy as np
-    
+    from flask import Flask, Response
+
+    app = Flask(__name__)
     reader = MLX90640Reader()
     reader.start()
     
-    try:
-        print("Starting fused thermal feed. Press 'q' in the window to quit.")
+    def generate_frames():
+        
         while True:
             
             frame = reader.get_latest_frame()
             if frame is not None:
 
                 hot_y_thermal, hot_x_thermal = frame.max_pixel
-                print(f"max Temp: {frame.max_temp}")
+                
 
                 grid = frame.grid
                 grid_min, grid_max = np.min(grid), np.max(grid)
@@ -202,15 +204,29 @@ if __name__ == "__main__":
                 heatmap = cv2.applyColorMap(norm_grid, cv2.COLORMAP_INFERNO)
                 heatmap_resized = cv2.resize(heatmap, (640, 480), interpolation=cv2.INTER_CUBIC)
 
-                cv2.imshow('MLX90640 Thermal Feed', heatmap_resized)
-                
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-                    
-            time.sleep(0.05)
+                ret, buffer = cv2.imencode('.jpg', heatmap_resized)
+                frame_bytes = buffer.tobytes()
+
+                yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
             
+            
+        
+    @app.route('/video_feed')
+    def video_feed():
+        return Response(generate_frames(),
+                        mimetype='multipart/x-mixed-replace; boundary=frame')
+
+    @app.route('/')
+    def index():
+        # Simple HTML page to display the stream
+        return '<html><body><h1>Thermal Sensor Fusion</h1><img src="/video_feed"></body></html>'
+
+    try:
+        print("Starting video stream. Open http://<Jetson_IP>:5000 in your browser.")
+        # Run Flask app on all network interfaces
+        app.run(host='0.0.0.0', port=5000, threaded=True)
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
-        cv2.destroyAllWindows()
         reader.close()

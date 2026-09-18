@@ -747,7 +747,7 @@ def generate_launch_description():
             'bar_radius', default_value='0.02',
             description='m, half the bar thickness. Same value for both bars.'),
         DeclareLaunchArgument(
-            'red_clearance', default_value='0.25',
+            'red_clearance', default_value='0.30',
             description='m between the landing gear and the top of the red bar. '
                         'Crossing altitude = height + radius + this + gear.'),
         DeclareLaunchArgument(
