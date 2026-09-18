@@ -131,6 +131,43 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('detect')),
     )
 
+    tube_detect_node = TimerAction(
+        period=5.0,
+        actions=[
+            Node(
+                package='drone_testing',
+                executable='tube_detect',
+                name='tube_detect',
+                output='screen',
+                emulate_tty=True,
+                parameters=[{
+                    'image_topic': LaunchConfiguration('image_topic'),
+                    'depth_topic': LaunchConfiguration('depth_topic'),
+                    'camera_info_topic': LaunchConfiguration('camera_info_topic'),
+                    'fallback_hfov_deg': LaunchConfiguration('fallback_hfov_deg'),
+                    'max_fps': LaunchConfiguration('max_fps'),
+                    'publish_image': LaunchConfiguration('publish_image'),
+                    'publish_mask': LaunchConfiguration('publish_mask'),
+                    'publish_compressed': LaunchConfiguration('publish_compressed'),
+                    'stream_scale': LaunchConfiguration('stream_scale'),
+                    'jpeg_quality': LaunchConfiguration('jpeg_quality'),
+                    'color': LaunchConfiguration('tube_color'),
+                    'min_area': LaunchConfiguration('tube_min_area'),
+                    'min_aspect': LaunchConfiguration('tube_min_aspect'),
+                    'max_tilt_deg': LaunchConfiguration('tube_max_tilt_deg'),
+                    'vertical_kernel_frac': LaunchConfiguration('tube_vertical_kernel_frac'),
+                    'samples_along': LaunchConfiguration('tube_samples_along'),
+                    'border_margin': LaunchConfiguration('tube_border_margin'),
+                    'min_tubes': LaunchConfiguration('tube_min_tubes'),
+                    'detect_frames': LaunchConfiguration('tube_detect_frames'),
+                    'lost_frames': LaunchConfiguration('tube_lost_frames'),
+                    'stream_port': LaunchConfiguration('tube_stream_port'),
+                }],
+            )
+        ],
+        condition=IfCondition(LaunchConfiguration('tubes')),
+    )
+
     reboot_node = TimerAction(
         period=3.0,
         actions=[
@@ -233,6 +270,32 @@ def generate_launch_description():
                     'course_vertical_timeout': LaunchConfiguration('course_vertical_timeout'),
                     'course_cross_timeout': LaunchConfiguration('course_cross_timeout'),
                     'course_flow_timeout': LaunchConfiguration('course_flow_timeout'),
+                    # ---- the tubes ----
+                    'tubes': LaunchConfiguration('tubes'),
+                    'blue_bar_gap': LaunchConfiguration('blue_bar_gap'),
+                    'blue_to_tube_distance': LaunchConfiguration('blue_to_tube_distance'),
+                    'tube_spacing': LaunchConfiguration('tube_spacing'),
+                    'tube_radius': LaunchConfiguration('tube_radius'),
+                    'cross_bar_height': LaunchConfiguration('cross_bar_height'),
+                    'diagonal_left_height': LaunchConfiguration('diagonal_left_height'),
+                    'diagonal_right_height': LaunchConfiguration('diagonal_right_height'),
+                    'gap_side': LaunchConfiguration('gap_side'),
+                    'tube_standoff': LaunchConfiguration('tube_standoff'),
+                    'tube_pass_exit': LaunchConfiguration('tube_pass_exit'),
+                    'tube_shift_left': LaunchConfiguration('tube_shift_left'),
+                    'tube_exit_distance': LaunchConfiguration('tube_exit_distance'),
+                    'tube_clearance': LaunchConfiguration('tube_clearance'),
+                    'tube_cross_tolerance': LaunchConfiguration('tube_cross_tolerance'),
+                    'tube_search_timeout': LaunchConfiguration('tube_search_timeout'),
+                    'tube_min_matched': LaunchConfiguration('tube_min_matched'),
+                    'tube_max_plane_yaw_deg': LaunchConfiguration('tube_max_plane_yaw_deg'),
+                    'tube_depth_min': LaunchConfiguration('tube_depth_min'),
+                    'tube_depth_max': LaunchConfiguration('tube_depth_max'),
+                    'min_tube_top_height': LaunchConfiguration('min_tube_top_height'),
+                    'max_tube_bottom_height': LaunchConfiguration('max_tube_bottom_height'),
+                    'tube_cluster_radius': LaunchConfiguration('tube_cluster_radius'),
+                    'tube_min_samples': LaunchConfiguration('tube_min_samples'),
+                    'tube_buffer_seconds': LaunchConfiguration('tube_buffer_seconds'),
                     # ---- the estimator ----
                     'depth_min': LaunchConfiguration('depth_min'),
                     'depth_max': LaunchConfiguration('depth_max'),
@@ -720,6 +783,55 @@ def generate_launch_description():
             description='s without optical flow during a rise or drop before '
                         'landing on the midpoint.'),
 
+        # ---- the tubes: the last obstacle, and the two blue bars ----
+        DeclareLaunchArgument(
+            'tubes', default_value='true',
+            description='Fly the tube obstacle after the blue bars, and start '
+                        'tube_detect. false = land after the blue bars.'),
+        DeclareLaunchArgument(
+            'blue_bar_gap', default_value='1.00',
+            description='m between the TWO blue bars. They are flown as one '
+                        'obstacle: down to the crossing height once, then '
+                        'straight on past both, because the second is '
+                        'invisible from under the first.'),
+        DeclareLaunchArgument(
+            'blue_to_tube_distance', default_value='2.00',
+            description='m past the second blue bar to stop, climb to the gap '
+                        'altitude and look for the tube uprights.'),
+        DeclareLaunchArgument('tube_spacing', default_value='0.50'),
+        DeclareLaunchArgument('tube_radius', default_value='0.025'),
+        DeclareLaunchArgument('cross_bar_height', default_value='0.461'),
+        DeclareLaunchArgument('diagonal_left_height', default_value='2.0'),
+        DeclareLaunchArgument('diagonal_right_height', default_value='0.922'),
+        DeclareLaunchArgument('gap_side', default_value='left'),
+        DeclareLaunchArgument('tube_standoff', default_value='1.20'),
+        DeclareLaunchArgument('tube_pass_exit', default_value='0.50'),
+        DeclareLaunchArgument('tube_shift_left', default_value='0.40'),
+        DeclareLaunchArgument('tube_exit_distance', default_value='1.20'),
+        DeclareLaunchArgument('tube_clearance', default_value='0.12'),
+        DeclareLaunchArgument('tube_cross_tolerance', default_value='0.05'),
+        DeclareLaunchArgument('tube_search_timeout', default_value='45.0'),
+        DeclareLaunchArgument('tube_min_matched', default_value='3'),
+        DeclareLaunchArgument('tube_max_plane_yaw_deg', default_value='30.0'),
+        DeclareLaunchArgument('tube_depth_min', default_value='0.40'),
+        DeclareLaunchArgument('tube_depth_max', default_value='6.00'),
+        DeclareLaunchArgument('min_tube_top_height', default_value='1.20'),
+        DeclareLaunchArgument('max_tube_bottom_height', default_value='0.40'),
+        DeclareLaunchArgument('tube_cluster_radius', default_value='0.15'),
+        DeclareLaunchArgument('tube_min_samples', default_value='6'),
+        DeclareLaunchArgument('tube_buffer_seconds', default_value='2.5'),
+        DeclareLaunchArgument('tube_color', default_value='red'),
+        DeclareLaunchArgument('tube_min_area', default_value='600.0'),
+        DeclareLaunchArgument('tube_min_aspect', default_value='4.0'),
+        DeclareLaunchArgument('tube_max_tilt_deg', default_value='15.0'),
+        DeclareLaunchArgument('tube_vertical_kernel_frac', default_value='0.10'),
+        DeclareLaunchArgument('tube_samples_along', default_value='9'),
+        DeclareLaunchArgument('tube_border_margin', default_value='8.0'),
+        DeclareLaunchArgument('tube_min_tubes', default_value='2'),
+        DeclareLaunchArgument('tube_detect_frames', default_value='3'),
+        DeclareLaunchArgument('tube_lost_frames', default_value='5'),
+        DeclareLaunchArgument('tube_stream_port', default_value='8082'),
+
         # ---- the rest ----
         DeclareLaunchArgument(
             'reboot_fc', default_value='false',
@@ -738,4 +850,5 @@ def generate_launch_description():
                     condition=IfCondition(flight)),
         zed_wrapper,
         detect_node,
+        tube_detect_node,
     ])

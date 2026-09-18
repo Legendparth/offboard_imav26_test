@@ -98,11 +98,14 @@ WHEN OPTICAL FLOW DROPS OUT
 import math
 import time
 
+import numpy as np
 import rclpy
 from px4_msgs.msg import TrajectorySetpoint, VehicleStatus
-from std_msgs.msg import String
+from std_msgs.msg import Bool, Float32MultiArray, String
 
-from drone_testing.offboard_sequence import spin_node
+from drone_testing.offboard_sequence import spin_node, wrap_pi
+from drone_testing.tube_cross import TubeEstimator, solve_gap
+from drone_testing.tube_detect import STRIDE
 from drone_testing.window_traverse import WindowTraverse
 
 
@@ -113,7 +116,23 @@ class CourseFSM(WindowTraverse):
     BLUE_DROP = "BLUE_DROP"
     BLUE_CROSS = "BLUE_CROSS"
 
-    COURSE_STAGES = (RED_RISE, RED_CROSS, BLUE_DROP, BLUE_CROSS)
+    TUBE_CLIMB = "TUBE_CLIMB"
+    TUBE_SEARCH = "TUBE_SEARCH"
+    TUBE_LOCK = "TUBE_LOCK"
+    TUBE_ALIGN = "TUBE_ALIGN"
+    TUBE_PASS = "TUBE_PASS"
+    TUBE_SHIFT = "TUBE_SHIFT"
+    TUBE_EXIT = "TUBE_EXIT"
+
+    TUBE_STAGES = (TUBE_CLIMB, TUBE_SEARCH, TUBE_LOCK, TUBE_ALIGN, TUBE_PASS,
+                   TUBE_SHIFT, TUBE_EXIT)
+    COURSE_STAGES = (RED_RISE, RED_CROSS, BLUE_DROP, BLUE_CROSS) + TUBE_STAGES
+    # Where horizontal hold is judged on FLOW FUSION ALONE. Crossing a bar or
+    # the cross tube steps dist_bottom by a metre or two, EKF2 drops
+    # cs_rng_kin_consistent, and it only re-earns that at |vz| > 0.5 m/s -- so
+    # it never comes back in a hover. Requiring it here is what landed the
+    # aircraft just after the red bar.
+    FLOW_ONLY_STAGES = (RED_CROSS, BLUE_DROP, BLUE_CROSS) + TUBE_STAGES
 
     # ---- the course layout ------------------------------------------------
     WINDOW_TO_RED = 1.00        # m, window plane to red bar
@@ -121,6 +140,13 @@ class CourseFSM(WindowTraverse):
     BLUE_EXIT = 0.80            # m past the blue bar to stop and land. The
                                 # airframe is 0.26 m across, so this puts its
                                 # trailing edge well clear before the descent.
+
+    BLUE_BAR_GAP = 1.00         # m between the TWO blue bars. They are flown
+                                # as one obstacle: down to the crossing height
+                                # once, then straight on past both, because the
+                                # second is invisible from under the first.
+    BLUE_TO_TUBE = 2.00         # m from the second blue bar to where the
+                                # aircraft stops to look for the tube obstacle
 
     RED_BAR_HEIGHT = 1.98
     BLUE_BAR_HEIGHT = 0.80
@@ -154,6 +180,47 @@ class CourseFSM(WindowTraverse):
     COURSE_FLOW_TIMEOUT = 8.0
 
     FLOW_FLOOR_MARGIN = 0.10    # m the blue altitude must clear FLOW_MIN_AGL by
+
+    # ---- the tube obstacle (same numbers and solve as tube_cross) ----------
+    TUBES = True                # false = land after the blue bars
+    TUBE_SPACING = 0.50
+    TUBE_RADIUS = 0.025
+    CROSS_BAR_HEIGHT = 0.461
+    DIAGONAL_LEFT_HEIGHT = 2.000
+    DIAGONAL_RIGHT_HEIGHT = 0.922
+    GAP_SIDE = 'left'
+    TUBE_STANDOFF = 1.20        # m before the tube plane the pass starts
+    TUBE_PASS_EXIT = 0.50       # m past it before stepping sideways
+    TUBE_SHIFT_LEFT = 0.40      # m left, to clear the upright behind the plane
+    TUBE_EXIT_DISTANCE = 1.20
+    TUBE_CLEARANCE = 0.12
+    TUBE_CROSS_TOLERANCE = 0.05     # m off the gap centreline: under 10 cm a side
+    TUBE_ALONG_TOLERANCE = 0.15
+    TUBE_YAW_TOLERANCE = math.radians(5.0)
+    TUBE_ALT_TOLERANCE = 0.06
+    TUBE_SETTLE_SECONDS = 1.5
+    TUBE_ARRIVE_TOLERANCE = 0.10
+    TUBE_SEARCH_TIMEOUT = 45.0
+    TUBE_LOCK_SECONDS = 2.0
+    TUBE_STAGE_TIMEOUT = 40.0
+    TUBE_PASS_SPEED = 0.30
+    TUBE_SHIFT_SPEED = 0.25
+    TUBE_GEOMETRY_TOPIC = 'tube_geometry'
+    TUBE_DETECT_TOPIC = 'tubes_detected'
+    TUBE_DEPTH_MIN = 0.40
+    TUBE_DEPTH_MAX = 6.00
+    TUBE_MIN_TOP_HEIGHT = 1.20
+    TUBE_MAX_BOTTOM_HEIGHT = 0.40
+    TUBE_BUFFER_SECONDS = 2.5
+    TUBE_BUFFER_MAX = 400
+    TUBE_CLUSTER_RADIUS = 0.15
+    TUBE_MIN_SAMPLES = 6
+    TUBE_PLANE_BAND = 0.40
+    TUBE_MATCH_TOLERANCE = 0.12
+    TUBE_MIN_MATCHED = 3
+    TUBE_MAX_PLANE_YAW_DEG = 30.0
+    TUBE_MIN_GAP_WIDTH = 0.40
+    TUBE_MAX_GAP_WIDTH = 0.60
 
     # The window mission ends ON the first midpoint, and the whole course fits
     # inside this clock (crossings excluded, as for the window traverse).
@@ -209,6 +276,62 @@ class CourseFSM(WindowTraverse):
         for problem in self.course_problems:
             self.get_logger().error(f"COURSE NOT FLYABLE: {problem}")
 
+        n = self._declare_number
+        self.BLUE_BAR_GAP = float(n('blue_bar_gap', self.BLUE_BAR_GAP))
+        self.BLUE_TO_TUBE = float(n('blue_to_tube_distance', self.BLUE_TO_TUBE))
+        self.TUBES = bool(self.declare_parameter('tubes', self.TUBES).value)
+        self.TUBE_SPACING = float(n('tube_spacing', self.TUBE_SPACING))
+        self.TUBE_RADIUS = float(n('tube_radius', self.TUBE_RADIUS))
+        self.CROSS_BAR_HEIGHT = float(n('cross_bar_height', self.CROSS_BAR_HEIGHT))
+        self.DIAGONAL_LEFT_HEIGHT = float(n('diagonal_left_height', self.DIAGONAL_LEFT_HEIGHT))
+        self.DIAGONAL_RIGHT_HEIGHT = float(n('diagonal_right_height', self.DIAGONAL_RIGHT_HEIGHT))
+        self.gap_side = str(self.declare_parameter('gap_side', self.GAP_SIDE).value).strip().lower()
+        self.TUBE_STANDOFF = float(n('tube_standoff', self.TUBE_STANDOFF))
+        self.TUBE_PASS_EXIT = float(n('tube_pass_exit', self.TUBE_PASS_EXIT))
+        self.TUBE_SHIFT_LEFT = float(n('tube_shift_left', self.TUBE_SHIFT_LEFT))
+        self.TUBE_EXIT_DISTANCE = float(n('tube_exit_distance', self.TUBE_EXIT_DISTANCE))
+        self.TUBE_CLEARANCE = float(n('tube_clearance', self.TUBE_CLEARANCE))
+        self.TUBE_CROSS_TOLERANCE = float(n('tube_cross_tolerance', self.TUBE_CROSS_TOLERANCE))
+        self.TUBE_SEARCH_TIMEOUT = float(n('tube_search_timeout', self.TUBE_SEARCH_TIMEOUT))
+        self.TUBE_MAX_PLANE_YAW = math.radians(float(n(
+            'tube_max_plane_yaw_deg', self.TUBE_MAX_PLANE_YAW_DEG)))
+        self.TUBE_MIN_MATCHED = int(n('tube_min_matched', self.TUBE_MIN_MATCHED))
+
+        self.tube_estimator = TubeEstimator(
+            depth_min=float(n('tube_depth_min', self.TUBE_DEPTH_MIN)),
+            depth_max=float(n('tube_depth_max', self.TUBE_DEPTH_MAX)),
+            tube_radius=self.TUBE_RADIUS,
+            min_top_height=float(n('min_tube_top_height', self.TUBE_MIN_TOP_HEIGHT)),
+            max_bottom_height=float(n('max_tube_bottom_height', self.TUBE_MAX_BOTTOM_HEIGHT)),
+            buffer_seconds=float(n('tube_buffer_seconds', self.TUBE_BUFFER_SECONDS)),
+            buffer_max=self.TUBE_BUFFER_MAX,
+            cluster_radius=float(n('tube_cluster_radius', self.TUBE_CLUSTER_RADIUS)),
+            min_samples=int(n('tube_min_samples', self.TUBE_MIN_SAMPLES)),
+        )
+        self.tube_altitude, self.tube_floor, self.tube_roof = self._tube_solve_altitude()
+
+        self.create_subscription(
+            Float32MultiArray,
+            str(self.declare_parameter('tube_geometry_topic', self.TUBE_GEOMETRY_TOPIC).value),
+            self.tube_geometry_callback, 10, callback_group=self.sensor_cbg)
+        self.create_subscription(
+            Bool, str(self.declare_parameter('tube_detect_topic', self.TUBE_DETECT_TOPIC).value),
+            self.tube_detected_callback, 10, callback_group=self.sensor_cbg)
+        self.tube_gap_pub = self.create_publisher(String, 'tube_gap', 10)
+
+        self.tubes_flag = False
+        self.tube_geometry_seen = 0
+        self.tube_solution = None
+        self.tube_reason = 'no data yet'
+        self.tube_ok_since = None
+        self.gap_point = self.gap_normal = self.gap_left = None
+        self.gap_heading = None
+        self.tube_entry = self.tube_pass_exit = None
+        self.tube_shift_point = self.tube_final_point = None
+        self.tube_settle_since = None
+        self.tube_push_since = None
+        self.tube_push_seconds = 0.0
+
         self.course_saved_land_speed = None
         self.course_settle_since = None
         self.course_flow_lost_since = None
@@ -224,6 +347,9 @@ class CourseFSM(WindowTraverse):
             f"{self.WINDOW_TO_RED:.2f} / {self.RED_TO_BLUE:.2f} m; every "
             "vertical move happens at a gap midpoint. Bars are flown on the "
             "known geometry along the window's traverse line. "
+            + (f"Then {self.BLUE_TO_TUBE:.2f} m on to the tubes, gap at "
+               f"{self.tube_altitude:.2f} m (band {self.tube_floor:.2f}-"
+               f"{self.tube_roof:.2f} m). " if self.TUBES else "Tubes disabled. ")
             + ("READY." if not self.course_problems else
                "The bars will NOT be attempted -- the aircraft lands after the "
                "window. See the errors above."))
@@ -366,13 +492,15 @@ class CourseFSM(WindowTraverse):
 
     def _begin_blue_cross(self):
         self._restore_land_speed()
-        distance = 0.5 * self.RED_TO_BLUE + self.BLUE_EXIT
+        # Both blue bars in one run: the second is invisible from under the
+        # first, and there is no room to stop between them.
+        distance = 0.5 * self.RED_TO_BLUE + self.BLUE_BAR_GAP + self.BLUE_EXIT
         x, y = self._ahead(distance)
         self.MOVE_SPEED = self.BAR_CROSS_SPEED
         self._set_target(x, y, self.blue_altitude)
         self._enter_course_stage(self.BLUE_CROSS)
         self.get_logger().warning(
-            f"BLUE_CROSS: under the blue bar, {distance:.2f} m at "
+            f"BLUE_CROSS: under BOTH blue bars, {distance:.2f} m at "
             f"{self.BAR_CROSS_SPEED:.2f} m/s, altitude {self.blue_altitude:.2f} m.")
 
     def _restore_land_speed(self):
@@ -513,12 +641,359 @@ class CourseFSM(WindowTraverse):
             throttle_duration_sec=0.5)
 
     def _finish_course(self):
-        self.outcome = (f"COURSE COMPLETE: window, over red at "
-                        f"{self.red_altitude:.2f} m, under blue at "
+        self.outcome = (f"BARS COMPLETE: window, over red at "
+                        f"{self.red_altitude:.2f} m, under both blue at "
                         f"{self.blue_altitude:.2f} m")
-        self._begin_landing("course complete")
+        if not self.TUBES:
+            self._begin_landing("course complete (tubes disabled)")
+            return
+        self._begin_tube_climb()
+
+    # --------------------------------------------------------------- TUBES
+
+    def _tube_diagonal_height(self, lateral):
+        mid = 0.5 * (self.DIAGONAL_LEFT_HEIGHT + self.DIAGONAL_RIGHT_HEIGHT)
+        slope = ((self.DIAGONAL_LEFT_HEIGHT - self.DIAGONAL_RIGHT_HEIGHT)
+                 / (2.0 * self.TUBE_SPACING))
+        return mid + slope * lateral
+
+    def _tube_solve_altitude(self):
+        """Crossing height for the gap, solved across the whole airframe."""
+        centre = (0.5 if self.gap_side == 'left' else -0.5) * self.TUBE_SPACING
+        edges = (centre - 0.5 * self.DRONE_WIDTH, centre + 0.5 * self.DRONE_WIDTH)
+        roof_tube = min(self._tube_diagonal_height(e) for e in edges)
+        floor = (self.CROSS_BAR_HEIGHT + self.TUBE_RADIUS + self.TUBE_CLEARANCE
+                 + self.body_below)
+        roof = roof_tube - self.TUBE_RADIUS - self.TUBE_CLEARANCE - self.body_above
+        return 0.5 * (floor + roof), floor, roof
+
+    def tube_detected_callback(self, msg):
+        self.tubes_flag = bool(msg.data)
+
+    def tube_geometry_callback(self, msg):
+        self.tube_geometry_seen += 1
+        data = np.asarray(msg.data, dtype=float)
+        if data.size == 0 or data.size % STRIDE != 0:
+            return
+        lp = self.local_position
+        if (lp is None or not lp.xy_valid or not lp.z_valid
+                or self.home_z is None or self.attitude is None):
+            return
+        q = np.asarray(self.attitude.q, dtype=float)
+        pos = np.array([lp.x, lp.y, lp.z])
+        now = time.monotonic()
+        for row in data.reshape(-1, STRIDE):
+            self.tube_estimator.add(row, q, pos, self.r_cam, self.t_cam,
+                                    self.home_z, now)
+
+    def _update_tube_solution(self):
+        lp = self.local_position
+        if lp is None or self.home_z is None:
+            self.tube_solution = None
+            return
+        heading = self.gap_heading if self.gap_heading is not None else self.home_yaw
+        sol, reason = solve_gap(
+            self.tube_estimator.clusters(time.monotonic()), (lp.x, lp.y), heading,
+            self.TUBE_SPACING, self.TUBE_PLANE_BAND, self.TUBE_MATCH_TOLERANCE,
+            self.TUBE_MIN_MATCHED, self.TUBE_MAX_PLANE_YAW, self.gap_side)
+        if sol is not None and not (self.TUBE_MIN_GAP_WIDTH <= sol['width']
+                                    <= self.TUBE_MAX_GAP_WIDTH):
+            sol, reason = None, f"measured gap {sol['width']:.2f} m is implausible"
+        self.tube_solution = sol
+        self.tube_reason = reason
+        if sol is None:
+            self.tube_ok_since = None
+        elif self.tube_ok_since is None:
+            self.tube_ok_since = time.monotonic()
+
+    def tube_summary(self):
+        s = self.tube_solution
+        if s is None:
+            if self.tube_geometry_seen == 0:
+                return "nothing on /tube_geometry -- is tube_detect running?"
+            return (f"no gap: {self.tube_reason} "
+                    f"({self.tube_estimator.accepted_total} samples accepted; "
+                    f"rejections: {self.tube_estimator.rejection_summary()})")
+        return (f"gap at ({s['point'][0]:+.2f}, {s['point'][1]:+.2f}), "
+                f"{s['width']:.2f} m wide, {s['matched']} uprights matched")
+
+    def publish_tube_gap(self):
+        msg = String()
+        s = self.tube_solution
+        msg.data = '' if s is None else "|".join([
+            f"{s['point'][0]:.3f}", f"{s['point'][1]:.3f}",
+            f"{math.degrees(s['heading']):.1f}", f"{s['width']:.3f}",
+            f"{s['matched']}"])
+        self.tube_gap_pub.publish(msg)
+
+    def _freeze_tube_path(self, sol):
+        self.gap_point = np.array(sol['point'], dtype=float)
+        self.gap_normal = np.array(sol['normal'], dtype=float)
+        self.gap_left = np.array(sol['left'], dtype=float)
+        self.gap_heading = sol['heading']
+        self.tube_entry = self.gap_point - self.gap_normal * self.TUBE_STANDOFF
+        self.tube_pass_exit = self.gap_point + self.gap_normal * self.TUBE_PASS_EXIT
+        self.tube_shift_point = self.tube_pass_exit + self.gap_left * self.TUBE_SHIFT_LEFT
+        self.tube_final_point = self.tube_shift_point + self.gap_normal * self.TUBE_EXIT_DISTANCE
+
+    def _tube_frame(self, target):
+        lp = self.local_position
+        if lp is None or target is None or self.gap_normal is None:
+            return None, None
+        e = np.asarray(target) - np.array([lp.x, lp.y])
+        return float(np.dot(e, self.gap_normal)), float(np.dot(e, self.gap_left))
+
+    def _tube_past_plane(self):
+        lp = self.local_position
+        if lp is None or self.gap_point is None:
+            return -1e9
+        return float(np.dot(np.array([lp.x, lp.y]) - self.gap_point, self.gap_normal))
+
+    def _tube_arrived(self, target):
+        along, cross = self._tube_frame(target)
+        if (along is not None and abs(along) <= self.TUBE_ARRIVE_TOLERANCE
+                and abs(cross) <= self.TUBE_ARRIVE_TOLERANCE):
+            now = time.monotonic()
+            if self.tube_settle_since is None:
+                self.tube_settle_since = now
+            return now - self.tube_settle_since >= 0.5
+        self.tube_settle_since = None
+        return False
+
+    def _enter_tube_stage(self, stage):
+        self._enter_stage(stage)
+        self.tube_settle_since = None
+        self.tube_push_since = None
+        self.course_flow_lost_since = None
+
+    def _begin_tube_climb(self):
+        """Forward to the look-from point, rising to the gap altitude."""
+        x, y = self._ahead(self.BLUE_TO_TUBE)
+        self.MOVE_SPEED = self.APPROACH_SPEED
+        self._set_target(x, y, self.tube_altitude)
+        self._enter_tube_stage(self.TUBE_CLIMB)
+        self.get_logger().warning(
+            f"TUBE_CLIMB: past the blue bars. {self.BLUE_TO_TUBE:.2f} m on and "
+            f"up to {self.tube_altitude:.2f} m (gap band {self.tube_floor:.2f}-"
+            f"{self.tube_roof:.2f} m), then look for the uprights.")
+
+    def _handle_tube_climb(self):
+        if self._flow_lost_for() > self.COURSE_FLOW_TIMEOUT:
+            self._abandon("flow lost on the way to the tubes")
+            return
+        along, _ = self._target_errors()
+        alt = self.relative_altitude()
+        settled = (along is not None and abs(along) <= self.COURSE_XY_TOLERANCE
+                   and alt is not None
+                   and abs(alt - self.commanded_altitude) <= self.COURSE_ALT_TOLERANCE)
+        if settled or self._in_stage_for() > self.COURSE_VERTICAL_TIMEOUT:
+            self._enter_tube_stage(self.TUBE_SEARCH)
+            self.get_logger().warning(
+                "TUBE_SEARCH: holding, looking for the uprights."
+                if settled else
+                "TUBE_SEARCH: did not settle on the look-from point; looking "
+                "from here anyway.")
+            return
+        self.get_logger().info(
+            f"TUBE_CLIMB: {0.0 if along is None else along:+.2f} m to go, alt "
+            f"{'n/a' if alt is None else f'{alt:.2f}'}/{self.commanded_altitude:.2f} m.",
+            throttle_duration_sec=1.0)
+
+    def _handle_tube_search(self):
+        if self.tube_solution is not None and self.hold_xy:
+            self._enter_tube_stage(self.TUBE_LOCK)
+            self.get_logger().warning(f"TUBE_LOCK: {self.tube_summary()}.")
+            return
+        if self._in_stage_for() > self.TUBE_SEARCH_TIMEOUT:
+            self._abandon(f"no tube gap found in {self.TUBE_SEARCH_TIMEOUT:.0f} s. "
+                          f"{self.tube_summary()}")
+            return
+        self.get_logger().info(f"TUBE_SEARCH: {self.tube_summary()}",
+                               throttle_duration_sec=1.0)
+
+    def _handle_tube_lock(self):
+        if self.tube_solution is None:
+            if self._in_stage_for() > self.TUBE_STAGE_TIMEOUT:
+                self._abandon(f"lost the tube gap. {self.tube_summary()}")
+            return
+        if (self.tube_ok_since is None
+                or time.monotonic() - self.tube_ok_since < self.TUBE_LOCK_SECONDS):
+            self.get_logger().info(f"TUBE_LOCK: settling. {self.tube_summary()}",
+                                   throttle_duration_sec=1.0)
+            return
+        self._begin_tube_align(self.tube_solution)
+
+    def _begin_tube_align(self, sol):
+        self._freeze_tube_path(sol)
+        self.MOVE_SPEED = self.APPROACH_SPEED
+        self._enter_tube_stage(self.TUBE_ALIGN)
+        self._set_target(self.tube_entry[0], self.tube_entry[1], self.tube_altitude)
+        self._aim_yaw_at(self.gap_heading)
+        self.get_logger().warning(
+            f"TUBE_ALIGN: gap at ({self.gap_point[0]:+.2f}, {self.gap_point[1]:+.2f}), "
+            f"heading {math.degrees(self.gap_heading):+.0f} deg. Entry "
+            f"{self.TUBE_STANDOFF:.2f} m short of it at {self.tube_altitude:.2f} m.")
+
+    def _handle_tube_align(self):
+        self._aim_yaw_at(self.gap_heading)
+        if not self.hold_xy:
+            self.moving = False
+            self.tube_settle_since = None
+            if self._in_stage_for() > self.TUBE_STAGE_TIMEOUT:
+                self._abandon("lateral estimate never recovered before the gap")
+            return
+        self.moving = True
+
+        along, cross = self._tube_frame(self.tube_entry)
+        alt = self.relative_altitude()
+        ready = (along is not None
+                 and abs(along) <= self.TUBE_ALONG_TOLERANCE
+                 and abs(cross) <= self.TUBE_CROSS_TOLERANCE
+                 and alt is not None
+                 and abs(alt - self.tube_altitude) <= self.TUBE_ALT_TOLERANCE
+                 and self._heading_error(self.gap_heading) <= self.TUBE_YAW_TOLERANCE)
+        if ready:
+            now = time.monotonic()
+            if self.tube_settle_since is None:
+                self.tube_settle_since = now
+            elif now - self.tube_settle_since >= self.TUBE_SETTLE_SECONDS:
+                self._begin_tube_pass()
+            return
+        self.tube_settle_since = None
+        if self._in_stage_for() > self.TUBE_STAGE_TIMEOUT:
+            self._abandon("could not settle on the gap entry in "
+                          f"{self.TUBE_STAGE_TIMEOUT:.0f} s")
+            return
+        self.get_logger().info(
+            f"TUBE_ALIGN: {0.0 if along is None else along:+.2f} along / "
+            f"{0.0 if cross is None else cross:+.2f} across (tol "
+            f"{self.TUBE_CROSS_TOLERANCE:.2f}), alt "
+            f"{'n/a' if alt is None else f'{alt:.2f}'}/{self.tube_altitude:.2f}. "
+            f"{self.tube_summary()}", throttle_duration_sec=1.0)
+
+    def _begin_tube_pass(self):
+        self.MOVE_SPEED = self.TUBE_PASS_SPEED
+        self._enter_tube_stage(self.TUBE_PASS)
+        self._set_target(self.tube_pass_exit[0], self.tube_pass_exit[1],
+                         self.tube_altitude)
+        self.get_logger().warning(
+            "TUBE_PASS: committed, through the gap. The camera is no longer "
+            "steering.")
+
+    def _handle_tube_pass(self):
+        self.yaw_remaining = wrap_pi(self.gap_heading - self.yaw_setpoint)
+        now = time.monotonic()
+        if not self.hold_xy:
+            past = self._tube_past_plane()
+            if past < -0.35 and self.tube_push_since is None:
+                self._abandon("flow lost before the gap; landing in front of it")
+                return
+            if self.tube_push_since is None:
+                remaining = max(0.0, self.TUBE_PASS_EXIT - past)
+                self.tube_push_seconds = remaining / max(self.TUBE_PASS_SPEED, 1e-3)
+                self.tube_push_since = now
+                self.get_logger().error(
+                    f"TUBE_PASS: flow lost in the gap. Pushing on open-loop "
+                    f"{remaining:.2f} m before landing.")
+            elif now - self.tube_push_since >= self.tube_push_seconds:
+                self._abandon("flow lost in the gap; pushed through open-loop")
+            return
+        if self.tube_push_since is not None:
+            self.get_logger().warning("TUBE_PASS: flow is back; resuming.")
+            self.tube_push_since = None
+
+        if self._tube_arrived(self.tube_pass_exit):
+            self.MOVE_SPEED = self.TUBE_SHIFT_SPEED
+            self._enter_tube_stage(self.TUBE_SHIFT)
+            self._set_target(self.tube_shift_point[0], self.tube_shift_point[1],
+                             self.tube_altitude)
+            self.get_logger().warning(
+                f"TUBE_SHIFT: through. {self.TUBE_SHIFT_LEFT:+.2f} m left to "
+                "clear the upright behind the plane.")
+            return
+        if self._in_stage_for() > self.TUBE_STAGE_TIMEOUT:
+            self._abandon("the tube pass timed out")
+            return
+        self.get_logger().info(
+            f"TUBE_PASS: {self._tube_past_plane():+.2f} m past the plane.",
+            throttle_duration_sec=0.5)
+
+    def _handle_tube_shift(self):
+        self._aim_yaw_at(self.gap_heading)
+        if not self.hold_xy:
+            self._abandon("flow lost during the tube shift; landing straight down")
+            return
+        if self._tube_arrived(self.tube_shift_point):
+            self.MOVE_SPEED = self.APPROACH_SPEED
+            self._enter_tube_stage(self.TUBE_EXIT)
+            self._set_target(self.tube_final_point[0], self.tube_final_point[1],
+                             self.tube_altitude)
+            self.get_logger().warning(
+                f"TUBE_EXIT: {self.TUBE_EXIT_DISTANCE:.2f} m on, past the back "
+                "upright.")
+            return
+        if self._in_stage_for() > self.TUBE_STAGE_TIMEOUT:
+            self._abandon("the tube shift timed out")
+
+    def _handle_tube_exit(self):
+        self._aim_yaw_at(self.gap_heading)
+        if not self.hold_xy:
+            self._abandon("flow lost on the way out; landing straight down")
+            return
+        if self._tube_arrived(self.tube_final_point):
+            self.outcome = (f"COURSE COMPLETE: window, red bar, both blue bars, "
+                            f"tube gap at {self.tube_altitude:.2f} m")
+            self._begin_landing("course complete")
+            return
+        if self._in_stage_for() > self.TUBE_STAGE_TIMEOUT:
+            self._abandon("the tube exit timed out")
 
     # ------------------------------------------------------ plumbing
+
+    def flow_is_healthy(self):
+        """Flow fusion alone once bars and tubes are in play.
+
+        The base class also demands EKF2's rangefinder consistency flag. That
+        flag drops when the lidar sweeps over the red bar or the cross tube --
+        a two-metre step in dist_bottom -- and it only re-earns itself above
+        0.5 m/s of vertical speed, so it never returns in a hover. Requiring
+        it is what made the aircraft give up and land just after the red bar.
+        """
+        if self.current_stage not in self.FLOW_ONLY_STAGES:
+            return super().flow_is_healthy()
+        lp = self.local_position
+        f = self.estimator_flags
+        if f is None:
+            return super().flow_is_healthy()
+        return (lp is not None and lp.xy_valid and lp.v_xy_valid
+                and lp.dist_bottom > self.FLOW_MIN_AGL
+                and f.cs_opt_flow and not f.cs_inertial_dead_reckoning)
+
+    def _on_heading_reset(self, delta):
+        super()._on_heading_reset(delta)
+        lp = self.local_position
+        if lp is None:
+            return
+        pivot = np.array([lp.x, lp.y])
+        c, sn = math.cos(delta), math.sin(delta)
+
+        def turn(p):
+            d = np.asarray(p) - pivot
+            return pivot + np.array([c * d[0] - sn * d[1], sn * d[0] + c * d[1]])
+
+        def spin(v):
+            return np.array([c * v[0] - sn * v[1], sn * v[0] + c * v[1]])
+
+        self.tube_estimator.rotate((lp.x, lp.y), delta)
+        for name in ('gap_point', 'tube_entry', 'tube_pass_exit',
+                     'tube_shift_point', 'tube_final_point'):
+            if getattr(self, name, None) is not None:
+                setattr(self, name, turn(getattr(self, name)))
+        for name in ('gap_normal', 'gap_left'):
+            if getattr(self, name, None) is not None:
+                setattr(self, name, spin(getattr(self, name)))
+        if self.gap_heading is not None:
+            self.gap_heading = wrap_pi(self.gap_heading + delta)
 
     def _clock_stages(self):
         # The crossings are excluded for the same reason the window traverse
@@ -527,6 +1002,10 @@ class CourseFSM(WindowTraverse):
         return super()._clock_stages() + (self.RED_RISE, self.BLUE_DROP)
 
     def timer_callback(self):
+        if self.current_stage in self.TUBE_STAGES:
+            self._update_tube_solution()
+            self.publish_tube_gap()
+
         if self.current_stage not in self.COURSE_STAGES:
             super().timer_callback()
             return
@@ -547,11 +1026,24 @@ class CourseFSM(WindowTraverse):
             self._begin_landing("operator abort")
             return
 
+        if self.current_stage in self.TUBE_STAGES:
+            if not self._still_flyable():
+                return
+            self._try_latch_xy_hold()
+            self.log_flight_state()
+
         {
             self.RED_RISE: self._handle_red_rise,
             self.RED_CROSS: self._handle_red_cross,
             self.BLUE_DROP: self._handle_blue_drop,
             self.BLUE_CROSS: self._handle_blue_cross,
+            self.TUBE_CLIMB: self._handle_tube_climb,
+            self.TUBE_SEARCH: self._handle_tube_search,
+            self.TUBE_LOCK: self._handle_tube_lock,
+            self.TUBE_ALIGN: self._handle_tube_align,
+            self.TUBE_PASS: self._handle_tube_pass,
+            self.TUBE_SHIFT: self._handle_tube_shift,
+            self.TUBE_EXIT: self._handle_tube_exit,
         }[self.current_stage]()
 
     def publish_position_setpoint(self):
@@ -581,7 +1073,10 @@ class CourseFSM(WindowTraverse):
         alt = self.relative_altitude()
         armed = self.arming_state == VehicleStatus.ARMING_STATE_ARMED
         along, _ = self._target_errors()
-        if self.current_stage in (self.RED_RISE, self.BLUE_DROP):
+        if self.current_stage in self.TUBE_STAGES:
+            detail = ('gap?' if self.tube_solution is None
+                      else f"gap{self._tube_past_plane():+.1f}")
+        elif self.current_stage in (self.RED_RISE, self.BLUE_DROP):
             detail = f"alt{self.commanded_altitude:.2f}"
         else:
             detail = f"go{0.0 if along is None else along:.1f}"
