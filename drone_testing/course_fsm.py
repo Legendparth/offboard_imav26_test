@@ -103,7 +103,7 @@ import rclpy
 from px4_msgs.msg import TrajectorySetpoint, VehicleStatus
 from std_msgs.msg import Bool, Float32MultiArray, String
 
-from drone_testing.offboard_sequence import spin_node, wrap_pi
+from drone_testing.offboard_sequence import nav_state_name, spin_node, wrap_pi
 from drone_testing.tube_cross import TubeEstimator, solve_gap
 from drone_testing.tube_detect import STRIDE
 from drone_testing.window_traverse import WindowTraverse
@@ -124,15 +124,28 @@ class CourseFSM(WindowTraverse):
     TUBE_SHIFT = "TUBE_SHIFT"
     TUBE_EXIT = "TUBE_EXIT"
 
+    COURSE_HOLD = "COURSE_HOLD"     # hover, wait for the estimate, carry on
+    # Stages that FINISH before hovering when the rangefinder drops out. They
+    # are level flights across an obstacle, so the flow hold is enough to fly
+    # them, and stopping in the middle would park the aircraft over the red bar
+    # -- with the lidar staring at the very thing that broke the fusion, which
+    # is the worst place to wait for it to come back. The vertical stages do
+    # NOT get this: climbing or descending on an unanchored height estimate is
+    # the thing to stop doing immediately.
+    FINISH_FIRST_STAGES = ("RED_CROSS", "BLUE_CROSS", "TUBE_PASS", "TUBE_SHIFT",
+                           "TUBE_EXIT")
+
     TUBE_STAGES = (TUBE_CLIMB, TUBE_SEARCH, TUBE_LOCK, TUBE_ALIGN, TUBE_PASS,
                    TUBE_SHIFT, TUBE_EXIT)
-    COURSE_STAGES = (RED_RISE, RED_CROSS, BLUE_DROP, BLUE_CROSS) + TUBE_STAGES
+    COURSE_STAGES = ((RED_RISE, RED_CROSS, BLUE_DROP, BLUE_CROSS, COURSE_HOLD)
+                     + TUBE_STAGES)
     # Where horizontal hold is judged on FLOW FUSION ALONE. Crossing a bar or
     # the cross tube steps dist_bottom by a metre or two, EKF2 drops
     # cs_rng_kin_consistent, and it only re-earns that at |vz| > 0.5 m/s -- so
     # it never comes back in a hover. Requiring it here is what landed the
     # aircraft just after the red bar.
-    FLOW_ONLY_STAGES = (RED_CROSS, BLUE_DROP, BLUE_CROSS) + TUBE_STAGES
+    FLOW_ONLY_STAGES = ((RED_CROSS, BLUE_DROP, BLUE_CROSS, COURSE_HOLD)
+                        + TUBE_STAGES)
 
     # ---- the course layout ------------------------------------------------
     WINDOW_TO_RED = 1.00        # m, window plane to red bar
@@ -178,6 +191,13 @@ class CourseFSM(WindowTraverse):
     COURSE_VERTICAL_TIMEOUT = 25.0
     COURSE_CROSS_TIMEOUT = 15.0
     COURSE_FLOW_TIMEOUT = 8.0
+    # How long the aircraft will HOVER waiting for the rangefinder or the flow
+    # to come back before it gives up and lands. The lidar sweeping over the
+    # red bar drops EKF2's rangefinder fusion, and the base class's answer to
+    # that is to land immediately -- which is how the course ended on the
+    # ground just past the red bar. Waiting is better: the aircraft is in open
+    # air between obstacles, and the estimate usually comes back.
+    COURSE_HOLD_TIMEOUT = 45.0
 
     FLOW_FLOOR_MARGIN = 0.10    # m the blue altitude must clear FLOW_MIN_AGL by
 
@@ -254,6 +274,10 @@ class CourseFSM(WindowTraverse):
         self.COURSE_CROSS_TIMEOUT = float(n(
             'course_cross_timeout', self.COURSE_CROSS_TIMEOUT))
         self.COURSE_FLOW_TIMEOUT = float(n('course_flow_timeout', self.COURSE_FLOW_TIMEOUT))
+        self.COURSE_HOLD_TIMEOUT = float(n('course_hold_timeout', self.COURSE_HOLD_TIMEOUT))
+        self.course_resume_stage = None
+        self.course_hold_since = None
+        self.course_hold_reason = ''
 
         self.red_altitude = (self.RED_BAR_HEIGHT + self.BAR_RADIUS
                              + self.RED_CLEARANCE + self.body_below)
@@ -539,10 +563,8 @@ class CourseFSM(WindowTraverse):
         if lost > 0.0:
             self.course_settle_since = None
             if lost > self.COURSE_FLOW_TIMEOUT:
-                self._abandon(
-                    f"optical flow lost for {self.COURSE_FLOW_TIMEOUT:.0f} s during "
-                    f"{what}; descending straight down on the midpoint, which "
-                    "is clear of both obstacles")
+                self._hold_and_wait(self.current_stage,
+                                    f"optical flow lost during {what}")
             return
 
         along, cross = self._target_errors()
@@ -602,9 +624,9 @@ class CourseFSM(WindowTraverse):
                     f"for {self.bar_push_seconds:.1f} s ({remaining:.2f} m) to get "
                     "past it rather than descending onto it.")
             elif now - self.bar_push_since >= self.bar_push_seconds:
-                self._abandon(
-                    "flow lost over the red bar; pushed past it open-loop and "
-                    "landing on the far side")
+                self._hold_and_wait(
+                    self.BLUE_DROP,
+                    "flow lost over the red bar; pushed clear of it open-loop")
             return
         if self.bar_push_since is not None:
             self.get_logger().warning("RED_CROSS: flow is back; resuming the crossing.")
@@ -620,17 +642,30 @@ class CourseFSM(WindowTraverse):
         self._aim_yaw_at(self._course_heading())
 
         if not self.hold_xy:
-            self._abandon(
-                "flow lost during the blue crossing; landing immediately, which "
-                "is straight down and away from the bar above")
+            # Under the bars: push on for what is left rather than stopping in
+            # the gap, then hover clear of them and wait.
+            now = time.monotonic()
+            if self.bar_push_since is None:
+                along, _ = self._target_errors()
+                remaining = max(0.0, along or 0.0)
+                self.bar_push_seconds = remaining / max(self.BAR_CROSS_SPEED, 1e-3)
+                self.bar_push_since = now
+                self.get_logger().error(
+                    f"BLUE_CROSS: flow lost under the bars. Pushing on "
+                    f"{remaining:.2f} m open-loop, then hovering.")
+            elif now - self.bar_push_since >= self.bar_push_seconds:
+                self._hold_and_wait(self.BLUE_CROSS,
+                                    "flow lost under the blue bars")
             return
+        self.bar_push_since = None
 
         self._handle_crossing(self._finish_course, "the blue crossing")
 
     def _handle_crossing(self, done, what):
         along, cross = self._target_errors()
         if along is not None and along <= self.COURSE_XY_TOLERANCE:
-            done()
+            if self._range_ok_or_hold():
+                done()
             return
         if self._in_stage_for() > self.COURSE_CROSS_TIMEOUT:
             self._abandon(f"{what} timed out {along or 0.0:.2f} m short")
@@ -779,7 +814,7 @@ class CourseFSM(WindowTraverse):
 
     def _handle_tube_climb(self):
         if self._flow_lost_for() > self.COURSE_FLOW_TIMEOUT:
-            self._abandon("flow lost on the way to the tubes")
+            self._hold_and_wait(self.TUBE_CLIMB, "flow lost on the way to the tubes")
             return
         along, _ = self._target_errors()
         alt = self.relative_altitude()
@@ -840,7 +875,7 @@ class CourseFSM(WindowTraverse):
             self.moving = False
             self.tube_settle_since = None
             if self._in_stage_for() > self.TUBE_STAGE_TIMEOUT:
-                self._abandon("lateral estimate never recovered before the gap")
+                self._hold_and_wait(self.TUBE_ALIGN, "flow lost before the gap")
             return
         self.moving = True
 
@@ -896,13 +931,16 @@ class CourseFSM(WindowTraverse):
                     f"TUBE_PASS: flow lost in the gap. Pushing on open-loop "
                     f"{remaining:.2f} m before landing.")
             elif now - self.tube_push_since >= self.tube_push_seconds:
-                self._abandon("flow lost in the gap; pushed through open-loop")
+                self._hold_and_wait(self.TUBE_SHIFT,
+                                    "flow lost in the gap; pushed through open-loop")
             return
         if self.tube_push_since is not None:
             self.get_logger().warning("TUBE_PASS: flow is back; resuming.")
             self.tube_push_since = None
 
         if self._tube_arrived(self.tube_pass_exit):
+            if not self._range_ok_or_hold():
+                return
             self.MOVE_SPEED = self.TUBE_SHIFT_SPEED
             self._enter_tube_stage(self.TUBE_SHIFT)
             self._set_target(self.tube_shift_point[0], self.tube_shift_point[1],
@@ -921,7 +959,7 @@ class CourseFSM(WindowTraverse):
     def _handle_tube_shift(self):
         self._aim_yaw_at(self.gap_heading)
         if not self.hold_xy:
-            self._abandon("flow lost during the tube shift; landing straight down")
+            self._hold_and_wait(self.TUBE_SHIFT, "flow lost during the tube shift")
             return
         if self._tube_arrived(self.tube_shift_point):
             self.MOVE_SPEED = self.APPROACH_SPEED
@@ -938,9 +976,11 @@ class CourseFSM(WindowTraverse):
     def _handle_tube_exit(self):
         self._aim_yaw_at(self.gap_heading)
         if not self.hold_xy:
-            self._abandon("flow lost on the way out; landing straight down")
+            self._hold_and_wait(self.TUBE_EXIT, "flow lost on the way out")
             return
         if self._tube_arrived(self.tube_final_point):
+            if not self._range_ok_or_hold():
+                return
             self.outcome = (f"COURSE COMPLETE: window, red bar, both blue bars, "
                             f"tube gap at {self.tube_altitude:.2f} m")
             self._begin_landing("course complete")
@@ -949,6 +989,113 @@ class CourseFSM(WindowTraverse):
             self._abandon("the tube exit timed out")
 
     # ------------------------------------------------------ plumbing
+
+    def _still_flyable(self):
+        """The base checks, except that a lidar dropout hovers instead of lands.
+
+        OffboardSequence lands the moment rangefinder fusion stops, and it is
+        right to in general: the height estimate then free-runs on the IMU.
+        But on this course the fusion stops for a KNOWN and temporary reason --
+        the lidar sweeping over the red bar or the cross tube -- and landing
+        from between two obstacles is worse than holding still for a few
+        seconds while EKF2 sorts itself out. So here it goes to COURSE_HOLD,
+        which hovers, waits, and resumes; and if it never comes back,
+        course_hold_timeout lands it after all.
+        """
+        if self.current_stage not in self.COURSE_STAGES:
+            return super()._still_flyable()
+
+        if self.arming_state != VehicleStatus.ARMING_STATE_ARMED:
+            self.get_logger().warning("Vehicle disarmed by PX4. Stopping.")
+            self._stand_down()
+            return False
+        if self.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
+            self.get_logger().error(
+                "Offboard lost; PX4 has control now "
+                f"(nav_state {nav_state_name(self.nav_state)}). Standing down. "
+                f"PX4 failsafe: {self.failsafe_summary()}.")
+            self._stand_down()
+            return False
+
+        lp = self.local_position
+        if lp is None or not lp.z_valid:
+            # Not the same thing: no height estimate at all is unrecoverable.
+            self._begin_landing("height estimate went invalid")
+            return False
+
+        if not self.rangefinder_is_healthy() and self.current_stage != self.COURSE_HOLD:
+            # Mid-crossing with a good flow hold: fly it out, then hover clear.
+            if self.current_stage in self.FINISH_FIRST_STAGES and self.hold_xy:
+                self.get_logger().error(
+                    "EKF2 stopped fusing the rangefinder mid-crossing. Flow hold "
+                    "is good, so finishing the crossing before hovering -- "
+                    "stopping here would wait over the obstacle that broke it.",
+                    throttle_duration_sec=2.0)
+                return True
+            self._hold_and_wait(self.current_stage,
+                                "EKF2 stopped fusing the rangefinder")
+            return False
+        return True
+
+    def _range_ok_or_hold(self):
+        """True if the height estimate is anchored; otherwise hover and wait.
+
+        Called where a stage is about to hand over to a CLIMB, a DESCENT or a
+        landing. Those are the moves that need a trustworthy height, so they
+        wait for one; level flight does not and has already been let through.
+        """
+        if self.rangefinder_is_healthy():
+            return True
+        self._hold_and_wait(self.current_stage,
+                            "EKF2 stopped fusing the rangefinder")
+        return False
+
+    def _hold_and_wait(self, resume_stage, reason):
+        """Stop where we are, hover, and remember what to go back to."""
+        if self.current_stage == self.COURSE_HOLD:
+            return
+        self.course_resume_stage = resume_stage
+        self.course_hold_reason = reason
+        self.course_hold_since = time.monotonic()
+        self.moving = False
+        lp = self.local_position
+        if lp is not None and self.hold_xy:
+            self.hold_x, self.hold_y = lp.x, lp.y
+        self._enter_stage(self.COURSE_HOLD)
+        self.get_logger().error(
+            f"COURSE_HOLD: {reason} during {resume_stage}. Hovering here and "
+            f"waiting up to {self.COURSE_HOLD_TIMEOUT:.0f} s for it to come "
+            "back, then carrying on. NOT landing.")
+
+    def _handle_course_hold(self):
+        """Hover until the estimate is back, then resume the interrupted stage."""
+        self._try_latch_xy_hold()
+        self.log_flight_state()
+        waited = time.monotonic() - (self.course_hold_since or time.monotonic())
+
+        if self.rangefinder_is_healthy() and self.hold_xy:
+            resume = self.course_resume_stage or self.RED_RISE
+            self.course_hold_since = None
+            self.moving = resume not in (self.TUBE_SEARCH, self.TUBE_LOCK)
+            self._enter_stage(resume)
+            self.get_logger().warning(
+                f"COURSE_HOLD: estimate is back after {waited:.1f} s "
+                f"({self.course_hold_reason} cleared). Resuming {resume}.")
+            return
+
+        if waited > self.COURSE_HOLD_TIMEOUT:
+            self._abandon(
+                f"{self.course_hold_reason} did not clear in "
+                f"{self.COURSE_HOLD_TIMEOUT:.0f} s of hovering")
+            return
+
+        lp = self.local_position
+        self.get_logger().warning(
+            f"COURSE_HOLD: waiting ({self.course_hold_reason}); "
+            f"rangefinder_ok={self.rangefinder_is_healthy()} flow_hold={self.hold_xy} "
+            f"lidar={'n/a' if lp is None else f'{lp.dist_bottom:.2f}'} m, "
+            f"{self.COURSE_HOLD_TIMEOUT - waited:.0f} s left.",
+            throttle_duration_sec=1.0)
 
     def flow_is_healthy(self):
         """Flow fusion alone once bars and tubes are in play.
@@ -999,7 +1146,8 @@ class CourseFSM(WindowTraverse):
         # The crossings are excluded for the same reason the window traverse
         # is: a stopwatch must not start a descent over or under a bar. The
         # vertical stages are at midpoints, where a descent passes nothing.
-        return super()._clock_stages() + (self.RED_RISE, self.BLUE_DROP)
+        return super()._clock_stages() + (self.RED_RISE, self.BLUE_DROP,
+                                          self.COURSE_HOLD)
 
     def timer_callback(self):
         if self.current_stage in self.TUBE_STAGES:
@@ -1044,13 +1192,17 @@ class CourseFSM(WindowTraverse):
             self.TUBE_PASS: self._handle_tube_pass,
             self.TUBE_SHIFT: self._handle_tube_shift,
             self.TUBE_EXIT: self._handle_tube_exit,
+            self.COURSE_HOLD: self._handle_course_hold,
         }[self.current_stage]()
 
     def publish_position_setpoint(self):
         """The inherited setpoint, except for the open-loop push over red."""
-        if not (self.current_stage == self.RED_CROSS
-                and self.bar_push_since is not None
-                and not self.hold_xy and self.home_z is not None):
+        bar_push = (self.current_stage in (self.RED_CROSS, self.BLUE_CROSS)
+                    and self.bar_push_since is not None)
+        tube_push = (self.current_stage == self.TUBE_PASS
+                     and self.tube_push_since is not None)
+        if not ((bar_push or tube_push) and not self.hold_xy
+                and self.home_z is not None):
             super().publish_position_setpoint()
             return
 
@@ -1059,10 +1211,12 @@ class CourseFSM(WindowTraverse):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self._step_setpoint_ramp()
         self._step_yaw_ramp()
-        h = self._course_heading()
+        if tube_push:
+            h, speed = self.gap_heading, self.TUBE_PASS_SPEED
+        else:
+            h, speed = self._course_heading(), self.BAR_CROSS_SPEED
         msg.position = [nan, nan, self.setpoint_z]
-        msg.velocity = [self.BAR_CROSS_SPEED * math.cos(h),
-                        self.BAR_CROSS_SPEED * math.sin(h), nan]
+        msg.velocity = [speed * math.cos(h), speed * math.sin(h), nan]
         msg.yaw = self.yaw_setpoint
         self.trajectory_setpoint_pub.publish(msg)
 
@@ -1073,7 +1227,10 @@ class CourseFSM(WindowTraverse):
         alt = self.relative_altitude()
         armed = self.arming_state == VehicleStatus.ARMING_STATE_ARMED
         along, _ = self._target_errors()
-        if self.current_stage in self.TUBE_STAGES:
+        if self.current_stage == self.COURSE_HOLD:
+            waited = time.monotonic() - (self.course_hold_since or time.monotonic())
+            detail = f"wait{self.COURSE_HOLD_TIMEOUT - waited:.0f}s"
+        elif self.current_stage in self.TUBE_STAGES:
             detail = ('gap?' if self.tube_solution is None
                       else f"gap{self._tube_past_plane():+.1f}")
         elif self.current_stage in (self.RED_RISE, self.BLUE_DROP):
