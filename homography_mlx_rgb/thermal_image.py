@@ -187,15 +187,11 @@ if __name__ == "__main__":
     reader.start()
     
     def generate_frames():
-        
         while True:
-            
             frame = reader.get_latest_frame()
             if frame is not None:
-
                 hot_y_thermal, hot_x_thermal = frame.max_pixel
                 
-
                 grid = frame.grid
                 grid_min, grid_max = np.min(grid), np.max(grid)
                 if grid_max == grid_min: grid_max += 0.1 
@@ -203,6 +199,28 @@ if __name__ == "__main__":
                 norm_grid = np.uint8((grid - grid_min) * 255 / (grid_max - grid_min))
                 heatmap = cv2.applyColorMap(norm_grid, cv2.COLORMAP_INFERNO)
                 heatmap_resized = cv2.resize(heatmap, (640, 480), interpolation=cv2.INTER_CUBIC)
+
+                # --- Add Hotspot Bounding Box ---
+                # Scale coordinates from 32x24 to 640x480
+                scale_x = 640 / 32.0
+                scale_y = 480 / 24.0
+                
+                # Add 0.5 to target the physical center of the thermal pixel before scaling
+                center_x = int((hot_x_thermal + 0.5) * scale_x)
+                center_y = int((hot_y_thermal + 0.5) * scale_y)
+                
+                box_size = 40
+                half_box = box_size // 2
+                
+                top_left = (max(center_x - half_box, 0), max(center_y - half_box, 0))
+                bottom_right = (min(center_x + half_box, 640), min(center_y + half_box, 480))
+                
+                # Draw a green rectangle and temperature label
+                cv2.rectangle(heatmap_resized, top_left, bottom_right, (0, 255, 0), 2)
+                label = f"{frame.max_temp:.1f} C"
+                cv2.putText(heatmap_resized, label, (top_left[0], max(top_left[1] - 8, 15)), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                # --------------------------------
 
                 ret, buffer = cv2.imencode('.jpg', heatmap_resized)
                 frame_bytes = buffer.tobytes()

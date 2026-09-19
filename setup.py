@@ -48,8 +48,11 @@ setup(
             'tube_cross = drone_testing.tube_cross:main',
             'aruco_pose = drone_testing.aruco_pose:main',
             'precision_land = drone_testing.precision_land:main',
+            'led_status = drone_testing.led_status:main',
+            'servo_test = drone_testing.servo_test:main',
             'thermal_sensor = drone_testing.thermal_sensor:main',
             'thermal_drop = drone_testing.thermal_drop:main',
+            'servo_control = drone_testing.servo_control:main'
         ],
     },
 )

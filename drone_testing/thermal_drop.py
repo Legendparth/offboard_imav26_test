@@ -5,11 +5,76 @@ over it, descend to drop height and hover there. ARK Flow localisation.
 
     arm -> ground wait -> climb to survey_altitude -> hold -> SURVEY (map every
     warm blob in NED, from the centre and, if needed, a small ring of points)
-    -> pick the hottest -> APPROACH (fly the drop point over it at survey
-    altitude) -> DESCEND (step down only while centred) -> HOVER (confirm
-    alignment at drop_altitude, publish thermal_drop/ready, hold) -> land.
+    -> pick the hottest -> APPROACH (fly the drop point over it, and confirm it
+    is still the hottest thing in the frame) -> DESCEND (step down only while
+    centred, LED BLINKING RED the whole way) -> HOVER (confirm alignment at
+    drop_altitude, RELEASE the servo, LED off) -> RETREAT (climb back to
+    retreat_altitude, step retreat_right to the right) -> land.
 
     q -> abort into a controlled descent.   k -> force-disarm.
+
+THREE MODES -- WALK UP THE LADDER
+
+    mode:=bench     Nothing armed, nothing published to PX4. Logs where the
+                    hottest blob is in vehicle terms. This is the axis sign
+                    check; run it first, props off.
+
+    mode:=dryrun    THE WHOLE MISSION ON A SIMULATED VEHICLE. No arming, no
+                    Offboard request, no heartbeat, no setpoint -- the motors
+                    cannot be commanded. Everything else is real: the camera,
+                    the blob detection, the survey, the hottest-box check, the
+                    LED blinking red through the descent, and the SERVO
+                    firing at the simulated drop height.
+
+                    The simulated vehicle cannot change what the camera sees,
+                    so the error it measures is just where the hot object is
+                    relative to the drop point at the simulated height: YOU
+                    close the loop by moving the hot object (or the airframe)
+                    until the green box on the :8082 stream sits on the
+                    crosshair. It then descends, blinks and drops exactly as
+                    it would in the air. Props off for this too -- it is a
+                    rehearsal, not a proof the aircraft is safe.
+
+    mode:=fly       The real thing.
+
+MAKING SURE IT IS THE HOTTEST BOX, NOT THE HOTTEST PIXEL
+    Three independent filters, because a single noisy pixel reading 20 C high
+    is the failure that puts the payload on the wrong box:
+
+      1. min_blob_pixels -- a blob of one pixel is discarded outright.
+      2. min_cluster_frames -- a survey cluster only counts once it has been
+         seen in that many frames, and it is scored on the 90th percentile of
+         its peak, not on its single best reading.
+      3. the hottest-in-frame check -- APPROACH will not hand over to DESCEND
+         until the tracked box has been the hottest blob in the frame for
+         verify_ratio of the last verify_window seconds. If something else is
+         hotter by retarget_margin, consistently and in a fixed place, the
+         aircraft RETARGETS onto it instead.
+
+THE SERVO, AND WHY A DRY RUN MAY NOT MOVE IT
+    Two commands, and they are not interchangeable:
+
+      servo_command:=set_actuator (default)
+          MAV_CMD_DO_SET_ACTUATOR. The one for FLIGHT. It needs the output
+          assigned to "Offboard Actuator Set <servo_index>" in QGC's
+          Actuators tab -- an output left on "RC AUX 1" is an RC passthrough
+          and ignores it. PX4 applies offboard actuator values to the outputs
+          only while ARMED, so on a disarmed bench this can be accepted and
+          still move nothing.
+
+      servo_command:=actuator_test
+          MAV_CMD_ACTUATOR_TEST, which is what the QGC Actuators sliders
+          send, and the one that works DISARMED. It addresses the output by
+          PX4 FUNCTION number, so servo_function must be set too (Servo 1-8
+          are 201-208).
+
+    So: actuator_test for dry runs on the bench, set_actuator in the air --
+    unless the bench proves otherwise.
+
+    PX4's verdict on either is logged from /fmu/out/vehicle_command_ack, and
+    `ros2 run drone_testing servo_test` exercises both on their own.
+    release_enabled:=false flies the whole mission and logs the release
+    instead of commanding it.
 
 Everything that can hurt somebody -- arming, estimator health gates, the
 climb and descent ramps, touchdown -- is inherited from OffboardSequence,
@@ -63,14 +128,14 @@ import time
 
 import numpy as np
 import rclpy
-from px4_msgs.msg import VehicleAttitude, VehicleStatus
+from px4_msgs.msg import (VehicleAttitude, VehicleCommand, VehicleCommandAck,
+                          VehicleStatus)
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Image
 from std_msgs.msg import Bool, String
 
-from drone_testing.offboard_sequence import OffboardSequence, spin_node, wrap_pi
-
-H, W = 24, 32
+from drone_testing.offboard_sequence import OffboardSequence, spin_node
+from drone_testing.thermal_common import H, W, find_blobs
 
 
 def quat_rotate(q, v):
@@ -87,52 +152,29 @@ def quat_rotate(q, v):
     ])
 
 
-def find_blobs(grid, min_contrast, max_blobs=6):
-    """Warm blobs in a 24x32 grid, hottest first.
+class _SimPose:
+    """Everything the flight code reads off VehicleLocalPosition, simulated.
 
-    Each is {'peak', 'row', 'col', 'pixels'}; row/col are the temperature-
-    weighted centroid (floats), which is far steadier than argmax.
+    Used only by mode:=dryrun. It is a stand-in for the estimator, not for the
+    aircraft: horizontal position integrates towards whatever the mission
+    commands, altitude follows the commanded altitude, and that is all.
     """
-    ambient = float(np.median(grid))
-    used = np.zeros(grid.shape, dtype=bool)
-    blobs = []
-    for _ in range(max_blobs):
-        masked = np.where(used, -np.inf, grid)
-        r0, c0 = np.unravel_index(int(np.argmax(masked)), grid.shape)
-        peak = float(grid[r0, c0])
-        if peak < ambient + min_contrast:
-            break
-        # Half-way between ambient and the peak: the blob's edge.
-        thresh = max(ambient + 0.5 * min_contrast, ambient + 0.5 * (peak - ambient))
-        stack = [(r0, c0)]
-        pix = []
-        seen = {(r0, c0)}
-        while stack:
-            r, c = stack.pop()
-            if used[r, c] or grid[r, c] < thresh:
-                continue
-            pix.append((r, c))
-            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                rr, cc = r + dr, c + dc
-                if 0 <= rr < H and 0 <= cc < W and (rr, cc) not in seen:
-                    seen.add((rr, cc))
-                    stack.append((rr, cc))
-        if not pix:
-            used[r0, c0] = True
-            continue
-        rows = np.array([p[0] for p in pix], dtype=float)
-        cols = np.array([p[1] for p in pix], dtype=float)
-        wts = np.array([grid[p] - thresh for p in pix], dtype=float) + 0.05
-        blobs.append({
-            'peak': peak,
-            'row': float(np.sum(rows * wts) / np.sum(wts)),
-            'col': float(np.sum(cols * wts) / np.sum(wts)),
-            'pixels': len(pix),
-        })
-        # Blank the blob and a one-pixel ring so its shoulder is not a new blob.
-        for r, c in pix:
-            used[max(0, r - 1):r + 2, max(0, c - 1):c + 2] = True
-    return blobs, ambient
+
+    def __init__(self, x, y, alt, heading=0.0, vz=0.0):
+        self.x, self.y, self.z = float(x), float(y), -float(alt)
+        self.vx = self.vy = 0.0
+        self.vz = float(vz)
+        self.heading = float(heading)
+        self.xy_valid = self.z_valid = True
+        self.v_xy_valid = self.v_z_valid = True
+        self.dist_bottom = float(alt)
+        self.dist_bottom_valid = True
+        self.xy_reset_counter = 0
+        self.z_reset_counter = 0
+        self.heading_reset_counter = 0
+        self.delta_xy = [0.0, 0.0]
+        self.delta_z = 0.0
+        self.delta_heading = 0.0
 
 
 class ThermalDrop(OffboardSequence):
@@ -142,7 +184,8 @@ class ThermalDrop(OffboardSequence):
     APPROACH = "APPROACH"
     DESCEND = "DESCEND"
     HOVER = "HOVER"
-    DROP_STAGES = (SURVEY, APPROACH, DESCEND, HOVER)
+    RETREAT = "RETREAT"
+    DROP_STAGES = (SURVEY, APPROACH, DESCEND, HOVER, RETREAT)
 
     MIN_DROP_ALTITUDE = 0.50    # m. Hard floor, not a parameter.
     MAX_SURVEY_ALTITUDE = 1.60  # m. Above this the MLX readings are not usable.
@@ -152,8 +195,10 @@ class ThermalDrop(OffboardSequence):
         num = self._declare_number
 
         self.MODE = str(self.declare_parameter('mode', 'fly').value).strip().lower()
-        if self.MODE not in ('bench', 'fly'):
-            self.get_logger().error(f"Unknown mode '{self.MODE}'; using bench.")
+        if self.MODE not in ('bench', 'dryrun', 'fly'):
+            self.get_logger().error(
+                f"Unknown mode '{self.MODE}'; expected bench | dryrun | fly. "
+                "Using bench, which commands nothing.")
             self.MODE = 'bench'
 
         # ---- the sensor ----
@@ -163,6 +208,7 @@ class ThermalDrop(OffboardSequence):
         self.FLIP_LR = bool(self.declare_parameter('flip_lr', False).value)
         self.FLIP_UD = bool(self.declare_parameter('flip_ud', False).value)
         self.MIN_CONTRAST = float(num('min_contrast', 3.0))
+        self.MIN_BLOB_PIXELS = int(num('min_blob_pixels', 2))
         self.FRAME_LATENCY = float(num('frame_latency', 0.06))
         self.MAX_RAY_ANGLE = math.radians(float(num('max_ray_angle_deg', 60.0)))
 
@@ -210,9 +256,42 @@ class ThermalDrop(OffboardSequence):
         self.DESCEND_SPEED = float(num('descend_speed', 0.12))
         self.ALIGN_TOLERANCE = float(num('align_tolerance', 0.08))
         self.ALIGN_SETTLE = float(num('align_settle_seconds', 2.0))
-        self.HOVER_SECONDS = float(num('hover_seconds', 10.0))
-        self.LAND_AFTER_HOVER = bool(self.declare_parameter('land_after_hover', True).value)
+        self.HOVER_SECONDS = float(num('hover_seconds', 2.0))
+        self.LAND_AFTER_DROP = bool(self.declare_parameter('land_after_drop', True).value)
         self.STAGE_TIMEOUT = float(num('stage_timeout', 45.0))
+
+        # ---- confirming it really is THE hot box ----
+        self.VERIFY_FRAMES = int(num('verify_frames', 5))
+        self.VERIFY_WINDOW = float(num('verify_window', 4.0))
+        self.VERIFY_RATIO = float(num('verify_ratio', 0.7))
+        self.RETARGET_MARGIN = float(num('retarget_margin', 1.5))
+
+        # ---- the drop, and what happens after it ----
+        self.SERVO_INDEX = int(num('servo_index', 1))
+        self.SERVO_DROP_VALUE = float(num('servo_drop_value', 1.0))
+        self.SERVO_NEUTRAL_VALUE = float(num('servo_neutral_value', -1.0))
+        self.SERVO_HOLD_SECONDS = float(num('servo_hold_seconds', 2.0))
+        self.RELEASE_ENABLED = bool(self.declare_parameter('release_enabled', True).value)
+        self.SERVO_COMMAND = str(self.declare_parameter(
+            'servo_command', 'set_actuator').value).strip().lower()
+        if self.SERVO_COMMAND not in ('set_actuator', 'actuator_test'):
+            self.get_logger().error(
+                f"servo_command '{self.SERVO_COMMAND}' is not set_actuator or "
+                "actuator_test; using set_actuator.")
+            self.SERVO_COMMAND = 'set_actuator'
+        self.SERVO_FUNCTION = int(num('servo_function', 0))
+        if self.SERVO_COMMAND == 'actuator_test' and self.SERVO_FUNCTION <= 0:
+            self.get_logger().error(
+                "servo_command is actuator_test but servo_function is 0. That "
+                "is the PX4 OUTPUT FUNCTION number of the servo (the same "
+                "function QGC's Actuators tab shows for that output), not the "
+                "offboard set index. Nothing will move until it is set.")
+        self.SERVO_TEST_ON_START = bool(self.declare_parameter(
+            'servo_test_on_start', False).value)
+        self.SIM_DESCEND_SPEED = float(num('sim_descend_speed', 0.25))
+        self.RETREAT_ALTITUDE = float(num('retreat_altitude', 1.2))
+        self.RETREAT_RIGHT = float(num('retreat_right', 0.5))
+        self.RETREAT_TIMEOUT = float(num('retreat_timeout', 30.0))
 
         self.TRACK_GATE = float(num('track_gate', 0.40))
         self.TRACK_WINDOW = float(num('track_window', 1.5))
@@ -226,8 +305,12 @@ class ThermalDrop(OffboardSequence):
         self.clusters = []          # survey map
         self.collecting = False
         self.track = collections.deque(maxlen=40)          # (monotonic t, xy, peak)
+        self.hot_hits = collections.deque(maxlen=80)       # (t, target was hottest)
+        self.rivals = collections.deque(maxlen=80)         # (t, xy, peak) of a
+                                                           # blob that outranks it
         self.chosen = None          # {'xy', 'score'}
         self.frames_seen = 0
+        self.verify_count = 0
         self.last_blobs = []
         self.last_ambient = None
 
@@ -241,6 +324,13 @@ class ThermalDrop(OffboardSequence):
             'image_topic', 'thermal/image').value), self.image_callback, 5,
             callback_group=self.sensor_cbg)
 
+        # PX4's verdict on the servo command. Without this the log can only
+        # say "command sent", which is exactly the ambiguity that made a
+        # non-moving servo impossible to diagnose from a flight log.
+        self.create_subscription(VehicleCommandAck, '/fmu/out/vehicle_command_ack',
+                                 self.command_ack_callback, sensor_qos,
+                                 callback_group=self.sensor_cbg)
+        self.led_pub = self.create_publisher(String, 'led/command', 10)
         self.ready_pub = self.create_publisher(Bool, 'thermal_drop/ready', 10)
         self.target_pub = self.create_publisher(String, 'thermal_drop/target', 10)
 
@@ -253,8 +343,22 @@ class ThermalDrop(OffboardSequence):
         self.in_band_since = None
         self.track_lost_since = None
         self.drop_ready = False
+        self.released_at = None
+        self.servo_returned = False
+        self.servo_ack_seen = False
+        self._last_actuator_send = 0.0
+        self.retreat_target = None
+        self.led_mode = None
         self.outcome = 'not attempted'
         self._xy_counter = None
+
+        self.sim_xy = np.zeros(2)
+        self.sim_alt = self.SURVEY_ALTITUDE
+        self._dryrun_done_logged = False
+
+        if self.MODE == 'dryrun':
+            self._start_dryrun()
+            return
 
         if self.MODE == 'bench':
             self.stream_setpoints = False
@@ -270,7 +374,9 @@ class ThermalDrop(OffboardSequence):
             f"{self.EXPECTED_BOXES} boxes, fly the drop point over the hottest, "
             f"descend to {self.DROP_ALTITUDE:.2f} m, align to "
             f"{self.ALIGN_TOLERANCE * 100:.0f} cm, hover {self.HOVER_SECONDS:.0f} s, "
-            f"then {'land' if self.LAND_AFTER_HOVER else 'stay up'}. Camera is "
+            f"release the servo, climb to {self.RETREAT_ALTITUDE:.2f} m, step "
+            f"{self.RETREAT_RIGHT:.2f} m right and "
+            f"{'land' if self.LAND_AFTER_DROP else 'hold'}. Camera is "
             f"({cam_f:+.2f} fwd, {cam_r:+.2f} right) of the drop point. Hard "
             f"limit {self.FLIGHT_SECONDS:.0f} s. q = descend, k = force-disarm.")
 
@@ -288,7 +394,30 @@ class ThermalDrop(OffboardSequence):
             with self._lock:
                 self.pose_buffer.append((time.time(), q, (lp.x, lp.y, lp.z)))
 
+    def command_ack_callback(self, msg):
+        if msg.command not in (187, 310):
+            return
+        results = {0: 'ACCEPTED (if the servo did not move, the OUTPUT MAPPING '
+                      'is wrong, not the command)',
+                   1: 'TEMPORARILY_REJECTED (disarmed is the usual reason: PX4 '
+                      'applies offboard actuator values only while ARMED)',
+                   2: 'DENIED', 3: 'UNSUPPORTED by this firmware',
+                   4: 'FAILED', 5: 'IN_PROGRESS', 6: 'CANCELLED'}
+        name = 'DO_SET_ACTUATOR' if msg.command == 187 else 'ACTUATOR_TEST'
+        self.servo_ack_seen = True
+        level = (self.get_logger().warning if msg.result == 0
+                 else self.get_logger().error)
+        level(f"PX4 ack for {name}: "
+              f"{results.get(msg.result, f'result {msg.result}')}",
+              throttle_duration_sec=1.0)
+
     def local_position_callback(self, msg):
+        if self.MODE == 'dryrun':
+            # The simulated vehicle IS the vehicle here. If PX4 happens to be
+            # connected, its real estimate -- sitting on the floor with
+            # xy_valid false -- would otherwise overwrite the simulated pose
+            # between ticks and every frame would be discarded as unlocalised.
+            return
         # Keep our own NED points in the same frame as the base class's hold.
         if self._xy_counter is None:
             self._xy_counter = msg.xy_reset_counter
@@ -383,7 +512,8 @@ class ThermalDrop(OffboardSequence):
             return
         grid = np.frombuffer(bytes(msg.data), dtype=np.float32).reshape(H, W)
         self.frames_seen += 1
-        blobs, ambient = find_blobs(grid.astype(float), self.MIN_CONTRAST)
+        blobs, ambient = find_blobs(grid.astype(float), self.MIN_CONTRAST,
+                                    min_pixels=self.MIN_BLOB_PIXELS)
         self.last_blobs, self.last_ambient = blobs, ambient
 
         stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
@@ -414,9 +544,25 @@ class ThermalDrop(OffboardSequence):
                     ref = self.chosen['xy']
                 near = [(xy, b) for xy, b in fixes
                         if np.linalg.norm(xy - ref) <= self.TRACK_GATE]
+                if not near and blobs:
+                    # The box we are tracking is not among this frame's blobs.
+                    # That is evidence against it, and counting it is what
+                    # stops the confidence sitting at "building" for ever.
+                    self.hot_hits.append((now, False))
                 if near:
                     xy, b = max(near, key=lambda f: f[1]['peak'])
                     self.track.append((now, xy, b['peak']))
+                    # Is the box we are tracking still the hottest thing in the
+                    # frame? One frame proves nothing -- a pixel of noise on a
+                    # radiator, a person, a sunlit patch -- so this is counted
+                    # over a window and read by APPROACH before it commits.
+                    top = blobs[0]
+                    is_hottest = top['peak'] <= b['peak'] + self.RETARGET_MARGIN
+                    self.hot_hits.append((now, is_hottest))
+                    if not is_hottest:
+                        rival_xy = self.project(top, q, p_ned)
+                        if rival_xy is not None:
+                            self.rivals.append((now, rival_xy, top['peak']))
 
     def _add_to_map(self, xy, peak):
         if (self.survey_centre is not None
@@ -437,6 +583,38 @@ class ThermalDrop(OffboardSequence):
                     'frames': len(cl['peaks'])}
                    for cl in self.clusters if len(cl['peaks']) >= self.MIN_CLUSTER_FRAMES]
         return sorted(out, key=lambda c: -c['score'])
+
+    def _hot_confidence(self):
+        """Fraction of recent frames in which the target was the hottest blob.
+
+        None until there is enough evidence to answer, which is what stops the
+        descent starting on a single lucky frame.
+        """
+        now = time.monotonic()
+        with self._lock:
+            recent = [ok for t, ok in self.hot_hits if now - t <= self.VERIFY_WINDOW]
+        self.verify_count = len(recent)
+        if len(recent) < self.VERIFY_FRAMES:
+            return None
+        return sum(1 for ok in recent if ok) / len(recent)
+
+    def _rival_target(self):
+        """A consistently hotter blob somewhere else, or None.
+
+        It has to be hotter by retarget_margin, in at least verify_frames
+        frames, and in the SAME place each time -- a wandering rival is noise,
+        and noise must not be able to drag the aircraft off the real box.
+        """
+        now = time.monotonic()
+        with self._lock:
+            fresh = [xy for t, xy, _ in self.rivals if now - t <= self.VERIFY_WINDOW]
+        if len(fresh) < self.VERIFY_FRAMES:
+            return None
+        arr = np.array(fresh)
+        med = np.median(arr, axis=0)
+        if float(np.max(np.linalg.norm(arr - med, axis=1))) > 2.0 * self.CLUSTER_RADIUS:
+            return None
+        return med
 
     def _track_estimate_locked(self, now):
         fresh = [xy for t, xy, _ in self.track if now - t <= self.TRACK_WINDOW]
@@ -466,6 +644,9 @@ class ThermalDrop(OffboardSequence):
         if self.MODE == 'bench':
             self._handle_bench()
             return
+        if self.MODE == 'dryrun':
+            self._dryrun_tick()
+            return
         if self._check_flight_clock():
             return
         if self.current_stage not in self.DROP_STAGES:
@@ -493,7 +674,8 @@ class ThermalDrop(OffboardSequence):
         {self.SURVEY: self._handle_survey,
          self.APPROACH: self._handle_approach,
          self.DESCEND: self._handle_descend,
-         self.HOVER: self._handle_hover}[self.current_stage]()
+         self.HOVER: self._handle_hover,
+         self.RETREAT: self._handle_retreat}[self.current_stage]()
 
     def _handle_takeoff(self):
         if self.flight_start is None:
@@ -648,16 +830,38 @@ class ThermalDrop(OffboardSequence):
         err = self._horizontal_error(target)
         self._publish_target(box, err)
 
-        if err <= self.APPROACH_TOLERANCE and live:
+        # Something else is consistently hotter, in a fixed place. Go there
+        # instead -- the mission is the HOTTEST box, not the first one found.
+        rival = self._rival_target()
+        if rival is not None and np.linalg.norm(rival - box) > self.CLUSTER_RADIUS:
+            with self._lock:
+                self.chosen['xy'] = rival.copy()
+                self.track.clear()
+                self.hot_hits.clear()
+                self.rivals.clear()
+            self.in_band_since = None
+            self._restart_stage_clock()
+            self.get_logger().warning(
+                f"RETARGET: a hotter blob sits at ({rival[0]:+.2f}, "
+                f"{rival[1]:+.2f}) NED, more than {self.RETARGET_MARGIN:.1f} C "
+                "above the one we were tracking. Going there instead.")
+            return
+
+        confidence = self._hot_confidence()
+        confirmed = confidence is not None and confidence >= self.VERIFY_RATIO
+
+        if err <= self.APPROACH_TOLERANCE and live and confirmed:
             if self.in_band_since is None:
                 self.in_band_since = time.monotonic()
             elif time.monotonic() - self.in_band_since >= 1.0:
                 self.desired_alt = self.relative_altitude()
                 self.in_band_since = None
+                self._set_led('blink_red')
                 self._enter_stage(self.DESCEND)
                 self.get_logger().warning(
-                    f"DESCEND: over the box ({err * 100:.0f} cm), stepping down "
-                    f"to {self.DROP_ALTITUDE:.2f} m.")
+                    f"DESCEND: over the box ({err * 100:.0f} cm), hottest in "
+                    f"{confidence * 100:.0f}% of recent frames. Stepping down to "
+                    f"{self.DROP_ALTITUDE:.2f} m, LED blinking red.")
                 return
         else:
             self.in_band_since = None
@@ -666,8 +870,12 @@ class ThermalDrop(OffboardSequence):
             self._finish("could not settle over the box at survey altitude", land=True)
             return
         self.get_logger().info(
-            f"APPROACH: {err:.2f} m to go, track {'LIVE' if live else 'lost'}.",
-            throttle_duration_sec=1.0)
+            f"APPROACH: {err:.2f} m to go, track {'LIVE' if live else 'lost'}, "
+            f"hottest-in-frame "
+            + (f"{self.verify_count}/{self.VERIFY_FRAMES} frames of evidence"
+               if confidence is None else
+               f"{confidence * 100:.0f}% (want {self.VERIFY_RATIO * 100:.0f}%)")
+            + ".", throttle_duration_sec=1.0)
 
     # -------------------------------------------------------------- DESCEND
 
@@ -685,7 +893,9 @@ class ThermalDrop(OffboardSequence):
 
         if self._lost_for() > self.TRACK_LOST_SECONDS:
             self.get_logger().warning(
-                "DESCEND: lost the box; climbing back to survey altitude to reacquire.")
+                "DESCEND: lost the box; climbing back to survey altitude to "
+                "reacquire. LED off until the descent restarts.")
+            self._set_led('off')
             with self._lock:
                 self.track.clear()
             self.track_lost_since = None
@@ -732,6 +942,7 @@ class ThermalDrop(OffboardSequence):
         if not self.drop_ready:
             if self._lost_for() > self.TRACK_LOST_SECONDS:
                 self.get_logger().warning("HOVER: lost the box; back to APPROACH.")
+                self._set_led('off')
                 with self._lock:
                     self.track.clear()
                 self.track_lost_since = None
@@ -741,14 +952,7 @@ class ThermalDrop(OffboardSequence):
                 if self.in_band_since is None:
                     self.in_band_since = now
                 elif now - self.in_band_since >= self.ALIGN_SETTLE:
-                    self.drop_ready = True
-                    self._restart_stage_clock()
-                    self.outcome = (f"ALIGNED over the hot box to {err * 100:.0f} cm "
-                                    f"at {self.relative_altitude():.2f} m")
-                    self.get_logger().warning(
-                        f"DROP POSITION CONFIRMED: {self.outcome}. Hovering "
-                        f"{self.HOVER_SECONDS:.0f} s.")
-                    self._release_payload()
+                    self._release_payload(err)
             else:
                 self.in_band_since = None
                 if self._in_stage_for() > self.STAGE_TIMEOUT:
@@ -760,31 +964,303 @@ class ThermalDrop(OffboardSequence):
                 throttle_duration_sec=0.5)
             return
 
-        remaining = self.HOVER_SECONDS - self._in_stage_for()
-        if remaining <= 0.0:
-            if self.LAND_AFTER_HOVER:
-                self._finish("hover over the hot box complete", land=True)
-            else:
-                self.get_logger().info("Hovering over the box (land_after_hover false).",
-                                       throttle_duration_sec=5.0)
+        # Released. Hold the servo open long enough for the payload to clear,
+        # put it back, then settle briefly before climbing away.
+        elapsed = now - self.released_at
+        if elapsed < self.SERVO_HOLD_SECONDS:
+            self._send_actuator(self.SERVO_DROP_VALUE)
+            self.get_logger().info(
+                f"DROP: servo open, {self.SERVO_HOLD_SECONDS - elapsed:.1f} s left.",
+                throttle_duration_sec=0.5)
             return
-        self.get_logger().info(
-            f"HOVER over the box: {remaining:.1f} s left, err {err * 100:.0f} cm.",
-            throttle_duration_sec=1.0)
+        if not self.servo_returned:
+            self.servo_returned = True
+            if self.RELEASE_ENABLED and not self.servo_ack_seen:
+                self.get_logger().error(
+                    "PX4 never acknowledged the servo command. Nothing moved "
+                    "because nothing arrived: check the DDS agent, and try "
+                    "`ros2 run drone_testing servo_test` on the bench.")
+            self._send_actuator(self.SERVO_NEUTRAL_VALUE, force=True)
+            self._set_led('off')
+            self.get_logger().warning("Servo back to neutral, LED off.")
+        if elapsed < self.SERVO_HOLD_SECONDS + self.HOVER_SECONDS:
+            self.get_logger().info("Settling after the drop.", throttle_duration_sec=1.0)
+            return
+        self.retreat_target = None
+        self._enter_stage(self.RETREAT)
+        self.get_logger().warning(
+            f"RETREAT: climbing back to {self.RETREAT_ALTITUDE:.2f} m, then "
+            f"{self.RETREAT_RIGHT:.2f} m to the right before landing.")
 
-    def _release_payload(self):
-        """Hook for the drop mechanism. Deliberately does nothing yet."""
-        self.get_logger().warning("(drop mechanism not fitted -- release skipped)")
+    def _release_payload(self, err):
+        """Commit: open the servo over the box.
+
+        MAV_CMD_DO_SET_ACTUATOR, so it goes down the DDS link the rest of the
+        mission already uses. The PX4 output must be assigned to "Offboard
+        Actuator Set <servo_index>" in QGC's Actuators tab -- an output left on
+        "RC AUX 1" is an RC passthrough and ignores this command entirely.
+        """
+        self.drop_ready = True
+        self.released_at = time.monotonic()
+        self.servo_returned = False
+        self._restart_stage_clock()
+        self.outcome = (f"DROPPED on the hot box, {err * 100:.0f} cm off centre "
+                        f"at {self.relative_altitude():.2f} m")
+        if not self.RELEASE_ENABLED:
+            self.get_logger().warning(
+                f"DROP POSITION CONFIRMED ({err * 100:.0f} cm) but "
+                "release_enabled is false: NOT commanding the servo.")
+            return
+        self.servo_ack_seen = False
+        self._send_actuator(self.SERVO_DROP_VALUE, force=True)
+        self.get_logger().warning(
+            f"DROP: {self.outcome}. Servo set {self.SERVO_DROP_VALUE:+.2f} via "
+            + (f"actuator_test function {self.SERVO_FUNCTION}."
+               if self.SERVO_COMMAND == 'actuator_test'
+               else f"DO_SET_ACTUATOR on offboard actuator set "
+                    f"{self.SERVO_INDEX}.")
+            + " Watching for PX4's ack.")
+
+    def _send_actuator(self, value, force=False):
+        """MAV_CMD_DO_SET_ACTUATOR. NaN leaves the other outputs alone."""
+        if not self.RELEASE_ENABLED:
+            return
+        now = time.monotonic()
+        if not force and now - self._last_actuator_send < 0.25:
+            return
+        self._last_actuator_send = now
+        nan = float('nan')
+        msg = VehicleCommand()
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+        if self.SERVO_COMMAND == 'actuator_test':
+            # What QGC's Actuators tab uses. This is the one that works while
+            # DISARMED, which is the only way a dry run can move the servo --
+            # but it needs the PX4 output FUNCTION number, not the offboard
+            # set index, and PX4 stops the test when the timeout expires.
+            msg.command = 310      # MAV_CMD_ACTUATOR_TEST
+            msg.param1 = float(value)
+            msg.param2 = float(self.SERVO_HOLD_SECONDS)
+            msg.param3 = msg.param4 = 0.0
+            msg.param5 = float(self.SERVO_FUNCTION)
+            msg.param6 = msg.param7 = 0.0
+        else:
+            params = [nan] * 6
+            params[max(1, min(6, self.SERVO_INDEX)) - 1] = float(value)
+            msg.command = 187      # MAV_CMD_DO_SET_ACTUATOR
+            (msg.param1, msg.param2, msg.param3,
+             msg.param4, msg.param5, msg.param6) = params
+            msg.param7 = 0.0       # actuator set index group
+        msg.target_system = 1
+        msg.target_component = 1
+        msg.source_system = 1
+        msg.source_component = 1
+        msg.from_external = True
+        self.vehicle_command_pub.publish(msg)
+
+    def _set_led(self, mode):
+        if mode == self.led_mode:
+            return
+        self.led_mode = mode
+        self.led_pub.publish(String(data=mode))
+
+    # -------------------------------------------------------------- RETREAT
+
+    def _handle_retreat(self):
+        """Up first, then sideways. Never sideways at drop height: the payload
+        is on the floor there and so is everything else in the arena."""
+        alt = self.relative_altitude()
+        lp = self.local_position
+        if alt is None or lp is None:
+            return
+        self._set_altitude(self.RETREAT_ALTITUDE)
+
+        if self.retreat_target is None:
+            self.moving = False
+            if abs(alt - self.RETREAT_ALTITUDE) <= self.ALTITUDE_TOLERANCE:
+                hdg = lp.heading
+                right = np.array([-math.sin(hdg), math.cos(hdg)])
+                self.retreat_target = np.array([lp.x, lp.y]) + right * self.RETREAT_RIGHT
+                self._restart_stage_clock()
+                self.get_logger().warning(
+                    f"RETREAT: at {alt:.2f} m; stepping {self.RETREAT_RIGHT:.2f} m "
+                    f"right to ({self.retreat_target[0]:+.2f}, "
+                    f"{self.retreat_target[1]:+.2f}) NED.")
+            elif self._in_stage_for() > self.RETREAT_TIMEOUT:
+                self._finish("could not climb away after the drop", land=True)
+            else:
+                self.get_logger().info(
+                    f"RETREAT: climbing {alt:.2f} -> {self.RETREAT_ALTITUDE:.2f} m.",
+                    throttle_duration_sec=1.0)
+            return
+
+        self._move_to(self.retreat_target)
+        dist = math.hypot(self.retreat_target[0] - lp.x, self.retreat_target[1] - lp.y)
+        if dist <= self.MOVE_TOLERANCE or self._in_stage_for() > self.RETREAT_TIMEOUT:
+            self._finish("payload dropped, clear of the box",
+                         land=self.LAND_AFTER_DROP)
+            if not self.LAND_AFTER_DROP:
+                self.get_logger().info(
+                    "Clear of the box and holding (land_after_drop is false). "
+                    "q to descend.", throttle_duration_sec=5.0)
+            return
+        self.get_logger().info(f"RETREAT: {dist:.2f} m to go.",
+                               throttle_duration_sec=1.0)
 
     def _finish(self, reason, land):
         if self.outcome == 'not attempted':
             self.outcome = f"ENDED: {reason}"
         self.drop_ready = False
+        self._set_led('off')
         with self._lock:
             self.collecting = False
         self.moving = False
+        if self.MODE == 'dryrun':
+            self._enter_stage(self.DONE)
+            return
         if land:
             self._begin_landing(reason)
+
+    # -------------------------------------------------------------- dry run
+
+    def _start_dryrun(self):
+        """Run the whole mission with a SIMULATED vehicle.
+
+        Nothing reaches PX4 except the servo command: no arming, no Offboard
+        request, no heartbeat, no setpoint -- publish_vehicle_command is
+        blocked below and stream_setpoints is off, so the motors cannot be
+        commanded even by a bug in a stage handler. What IS real is the
+        thermal camera, the blob detection, the survey, the hottest-box
+        verification, the LED and the servo.
+
+        How it closes the loop: the simulated vehicle never changes what the
+        camera sees, so the horizontal error the mission measures is simply
+        where the hot object sits relative to the drop point, at the simulated
+        height. YOU are the position controller -- move the hot object (or the
+        airframe) until the green box on :8082 sits on the crosshair, and the
+        mission will descend, blink, and fire the servo exactly as it would in
+        the air.
+        """
+        self.stream_setpoints = False
+        self.home_z = 0.0
+        self.home_yaw = 0.0
+        self.hold_xy = True
+        self.hold_x = self.hold_y = 0.0
+        self.target_z = -self.SURVEY_ALTITUDE
+        self.setpoint_z = -self.SURVEY_ALTITUDE
+        self.commanded_altitude = self.SURVEY_ALTITUDE
+        self.local_position = _SimPose(0.0, 0.0, self.sim_alt)
+        self.survey_centre = np.zeros(2)
+        # One survey point: the ring exists to see boxes from nearer nadir,
+        # and a simulated move does not change the view.
+        self.survey_points = [np.zeros(2)]
+        self.survey_index = 0
+        self.survey_arrived_since = None
+        self.flight_start = time.monotonic()
+        with self._lock:
+            self.clusters = []
+            self.collecting = True
+        self._enter_stage(self.SURVEY)
+        self.get_logger().warning(
+            "DRY RUN: the full mission on a SIMULATED vehicle. Nothing is "
+            "armed and no setpoint is sent -- the motors cannot spin. The "
+            "thermal camera, the survey, the LED and the servo are REAL. "
+            f"Simulated height starts at {self.SURVEY_ALTITUDE:.2f} m; put a "
+            "hot object under the camera and centre it (watch the stream on "
+            f":8082) to walk it down to {self.DROP_ALTITUDE:.2f} m and fire "
+            "the servo. q aborts."
+            + ("" if self.RELEASE_ENABLED else
+               " release_enabled is FALSE: the servo will NOT move."))
+        if self.SERVO_TEST_ON_START:
+            self._servo_test_once()
+
+    def _servo_test_once(self):
+        """Open and close the servo once at startup, before anything else."""
+        self.get_logger().warning(
+            f"SERVO TEST: {self.SERVO_DROP_VALUE:+.2f} for "
+            f"{self.SERVO_HOLD_SECONDS:.1f} s, then "
+            f"{self.SERVO_NEUTRAL_VALUE:+.2f}.")
+        self._send_actuator(self.SERVO_DROP_VALUE, force=True)
+        time.sleep(self.SERVO_HOLD_SECONDS)
+        self._send_actuator(self.SERVO_NEUTRAL_VALUE, force=True)
+        self.get_logger().warning(
+            "SERVO TEST done. If nothing moved, see the servo notes in the "
+            "launch file: the output must be an 'Offboard Actuator Set', and "
+            "while DISARMED PX4 may only accept servo_command:=actuator_test.")
+
+    def _sim_step(self):
+        """Advance the simulated vehicle one tick towards what was commanded."""
+        dt = 0.05
+        delta = self.commanded_altitude - self.sim_alt
+        speed = self.CLIMB_SPEED if delta > 0 else self.SIM_DESCEND_SPEED
+        step = speed * dt
+        vz = 0.0
+        if abs(delta) > step:
+            self.sim_alt += math.copysign(step, delta)
+            vz = -math.copysign(speed, delta)
+        else:
+            self.sim_alt = self.commanded_altitude
+
+        if self.moving and self.move_target_x is not None:
+            d = np.array([self.move_target_x, self.move_target_y]) - self.sim_xy
+            remaining = float(np.linalg.norm(d))
+            mstep = self.MOVE_SPEED * dt
+            self.sim_xy = (self.sim_xy + d if remaining <= mstep
+                           else self.sim_xy + d / remaining * mstep)
+        self.hold_x, self.hold_y = float(self.sim_xy[0]), float(self.sim_xy[1])
+
+        self.local_position = _SimPose(self.sim_xy[0], self.sim_xy[1],
+                                       self.sim_alt, vz=vz)
+        # A pose for the projection to use. Real attitude if PX4 happens to be
+        # connected -- which makes the dry run a tilt-compensation test too --
+        # and level if it is not.
+        q = self.attitude_q if self.attitude_q is not None else [1.0, 0.0, 0.0, 0.0]
+        with self._lock:
+            self.pose_buffer.append(
+                (time.time(), q, (float(self.sim_xy[0]), float(self.sim_xy[1]),
+                                  -self.sim_alt)))
+
+    def _dryrun_tick(self):
+        self._sim_step()
+        self.publish_status()
+        self.ready_pub.publish(Bool(data=self.drop_ready))
+
+        if self.kill_requested or self.abort_requested:
+            self.abort_requested = False
+            self.kill_requested = False
+            self._finish("operator abort", land=False)
+            return
+
+        if self.current_stage not in self.DROP_STAGES:
+            if not self._dryrun_done_logged:
+                self._dryrun_done_logged = True
+                self._set_led('off')
+                self.get_logger().warning(
+                    f"DRY RUN COMPLETE: {self.outcome}. Ctrl-C to quit.")
+            return
+
+        self.get_logger().info(
+            f"SIM: {self.current_stage} at {self.sim_alt:.2f} m, "
+            f"({self.sim_xy[0]:+.2f}, {self.sim_xy[1]:+.2f}) NED.",
+            throttle_duration_sec=2.0)
+
+        {self.SURVEY: self._handle_survey,
+         self.APPROACH: self._handle_approach,
+         self.DESCEND: self._handle_descend,
+         self.HOVER: self._handle_hover,
+         self.RETREAT: self._handle_retreat}[self.current_stage]()
+
+    def publish_vehicle_command(self, command, param1=0.0, param2=0.0, force=False):
+        """In a dry run, nothing that could move the aircraft leaves this node.
+
+        The servo goes out through _send_actuator, which builds its own
+        message and deliberately does not come through here.
+        """
+        if self.MODE in ('bench', 'dryrun'):
+            self.get_logger().warning(
+                f"{self.MODE}: suppressed vehicle command {command}.",
+                throttle_duration_sec=5.0)
+            return
+        super().publish_vehicle_command(command, param1, param2, force)
 
     # ---------------------------------------------------------------- bench
 
@@ -838,7 +1314,9 @@ class ThermalDrop(OffboardSequence):
         if self.current_stage == self.SURVEY:
             detail = f"pt{self.survey_index + 1} n{len(self._real_clusters())}"
         elif self.current_stage == self.HOVER:
-            detail = 'READY' if self.drop_ready else 'align'
+            detail = 'DROPPED' if self.drop_ready else 'align'
+        elif self.current_stage == self.RETREAT:
+            detail = 'up' if self.retreat_target is None else 'right'
         else:
             detail = f"{self.desired_alt:.2f}" if self.desired_alt else ''
         self.status_pub.publish(String(data="|".join([

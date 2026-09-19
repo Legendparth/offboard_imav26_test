@@ -3,10 +3,10 @@ import board
 import neopixel_spi as neopixel
 
 # Configuration
-NUM_PIXELS = 1      # Number of LEDs in your module/strip
-PIXEL_ORDER = neopixel.GRB # WS2812B standard color order
+NUM_PIXELS = 5      # Updated to 5 LEDs
+PIXEL_ORDER = neopixel.GRB 
 
-# Initialize the SPI bus. board.SPI() automatically maps to SPI1 (Pin 19 MOSI)
+# Initialize the SPI bus
 spi = board.SPI()
 
 # Create the NeoPixel object
@@ -18,24 +18,21 @@ pixels = neopixel.NeoPixel_SPI(
 )
 
 try:
-    # print("Turning LED Blue...")
-    # Set the first LED (index 0) to Blue (Red=0, Green=0, Blue=255)
+    print("Turning all 5 LEDs Red blindking...")
     
-    
+    # .fill() applies the color to every LED in the series simultaneously
     for i in range(10):
-        pixels[0] = (255, 0, 0)
-        pixels.show()  # Update the LED to show the color
-        time.sleep(1)  # Wait for 1 second
-        pixels[0] = (0, 0, 0)
+        pixels.fill((255, 0, 0))  # Red color
         pixels.show()
-        time.sleep(1)
-
+        time.sleep(0.5)
+        
+        pixels.fill((0, 0, 0))  # NO color
+        pixels.show()
+        time.sleep(0.5)
     
-    # Turn it off
-    # print("Turning LED Off...")
-    
+    pixels.fill((0, 0, 0))  # Turn off all LEDs
+    pixels.show()
 
 except KeyboardInterrupt:
-    # Ensure LED turns off if you exit the script manually
-    pixels[0] = (0, 0, 0)
+    pixels.fill((0, 0, 0))
     pixels.show()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MLX90640 -> ROS 2. The camera side of the thermal drop mission, and nothing else.
+MLX90640 -> ROS 2, plus a browser view of what it is looking at.
 
 Wraps homography_mlx_rgb/thermal_image.py's MLX90640Reader (retry/backoff on
 I2C errors, background acquisition thread) and publishes every NEW frame:
@@ -9,20 +9,39 @@ I2C errors, background acquisition thread) and publishes every NEW frame:
                       header.stamp is the wall-clock time the frame was read,
                       which is what thermal_drop uses to pick the attitude
                       the frame was taken at.
-    thermal/hotspot   std_msgs/String  max_temp|row|col|ambient  (bench aid)
-    thermal/preview   sensor_msgs/Image, bgr8, upscaled inferno colormap.
-                      Only if publish_preview is true -- it costs CPU.
+    thermal/hotspot   std_msgs/String  max_temp|row|col|ambient
+    thermal/preview   sensor_msgs/Image, bgr8, the annotated view below.
+                      Off by default; the MJPEG stream is the cheap way to
+                      watch it.
 
-Kept as its own process on purpose, like bar_detect: the I2C bus is slow and
-occasionally stalls under vibration, and none of that may ever sit on the
-thread that produces the offboard heartbeat.
+THE VIDEO STREAM
+
+    http://<jetson>:8082/         in any browser on the same network.
+
+    NOT 8080 or 8081 -- window_detect owns 8080 and bar_detect owns 8081, and
+    more than one of them may be up at once.
+
+    What you see: the 32x24 frame upscaled with an inferno colormap, a THICK
+    GREEN BOX round the hottest blob (the one the mission would fly to) with
+    its temperature, a yellow cross on that blob's weighted centroid (the
+    exact point the flight node aims at), thin grey boxes round every other
+    warm blob, and a white crosshair at the centre of the frame -- which with
+    the lens level is straight down, so the job of the flight is to bring the
+    green box onto the crosshair.
+
+    The boxes come from the SAME find_blobs() the flight node runs, so what
+    you are watching is the detection itself and not a second opinion.
+
+    stream_port:=0 turns it off.
 
 Bench:
     ros2 run drone_testing thermal_sensor
     ros2 topic echo /thermal/hotspot
 """
 
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import numpy as np
 import rclpy
@@ -31,7 +50,89 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
-H, W = 24, 32
+from drone_testing.thermal_common import H, W, annotate, find_blobs
+
+
+class _MjpegHandler(BaseHTTPRequestHandler):
+    """Serves the newest annotated frame as multipart JPEG, for a browser."""
+
+    node = None     # set by MjpegServer before the server starts
+
+    def do_GET(self):
+        if self.path in ('/', '/index.html'):
+            self._send_page()
+        elif self.path.startswith('/stream'):
+            self._send_stream()
+        elif self.path.startswith('/snapshot'):
+            self._send_snapshot()
+        else:
+            self.send_error(404)
+
+    def _send_page(self):
+        body = (b"<html><head><title>thermal</title>"
+                b"<style>body{background:#111;color:#eee;font-family:sans-serif;"
+                b"margin:0;text-align:center}img{max-width:100%;"
+                b"image-rendering:pixelated}</style></head>"
+                b"<body><img src='/stream.mjpg'></body></html>")
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_snapshot(self):
+        frame = self.node.latest_jpeg()
+        if frame is None:
+            self.send_error(503, "no frame yet")
+            return
+        self.send_response(200)
+        self.send_header('Content-Type', 'image/jpeg')
+        self.send_header('Content-Length', str(len(frame)))
+        self.end_headers()
+        self.wfile.write(frame)
+
+    def _send_stream(self):
+        self.send_response(200)
+        self.send_header('Cache-Control', 'no-cache, private')
+        self.send_header('Content-Type',
+                         'multipart/x-mixed-replace; boundary=frame')
+        self.end_headers()
+        last = None
+        try:
+            while True:
+                frame = self.node.latest_jpeg()
+                if frame is None or frame is last:
+                    time.sleep(0.02)
+                    continue
+                last = frame
+                self.wfile.write(b"--frame\r\n")
+                self.wfile.write(b"Content-Type: image/jpeg\r\n")
+                self.wfile.write(f"Content-Length: {len(frame)}\r\n\r\n".encode())
+                self.wfile.write(frame)
+                self.wfile.write(b"\r\n")
+        except (BrokenPipeError, ConnectionResetError):
+            pass    # the viewer closed the tab; not an error
+
+    def log_message(self, *args):
+        pass        # the default handler logs every frame to stderr
+
+
+class MjpegServer:
+    """Threaded HTTP server that never blocks the ROS callbacks."""
+
+    def __init__(self, node, port):
+        handler = type('_Handler', (_MjpegHandler,), {'node': node})
+        self.server = ThreadingHTTPServer(('0.0.0.0', port), handler)
+        self.server.daemon_threads = True
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+    def shutdown(self):
+        try:
+            self.server.shutdown()
+            self.server.server_close()
+        except Exception:
+            pass
 
 
 class ThermalSensor(Node):
@@ -42,6 +143,12 @@ class ThermalSensor(Node):
         self.refresh_hz = int(self.declare_parameter('refresh_hz', 8).value)
         self.publish_preview = bool(self.declare_parameter('publish_preview', False).value)
         self.preview_scale = int(self.declare_parameter('preview_scale', 20).value)
+        self.stream_port = int(self.declare_parameter('stream_port', 8082).value)
+        self.jpeg_quality = int(self.declare_parameter('jpeg_quality', 70).value)
+        # Same defaults as the flight node's, so the boxes drawn here are the
+        # boxes it would fly to. Change them together or the stream lies.
+        self.min_contrast = float(self.declare_parameter('min_contrast', 3.0).value)
+        self.min_blob_pixels = int(self.declare_parameter('min_blob_pixels', 2).value)
 
         # Imported here, not at module level, so a missing Blinka install fails
         # with a clear message instead of an import trace from setup's entry point.
@@ -68,14 +175,22 @@ class ThermalSensor(Node):
         self.preview_pub = (self.create_publisher(Image, 'thermal/preview', 10)
                             if self.publish_preview else None)
 
+        self._jpeg = None
+        self._jpeg_lock = threading.Lock()
+        self.stream = MjpegServer(self, self.stream_port) if self.stream_port else None
+
         self.last_ts = None
         self.frames = 0
         self.started = time.monotonic()
         self.create_timer(0.02, self.poll)
 
         self.get_logger().warning(
-            f"MLX90640 up at {self.refresh_hz} Hz. Publishing thermal/image "
-            "(32FC1, deg C).")
+            f"MLX90640 up at {self.refresh_hz} Hz, publishing thermal/image "
+            "(32FC1, deg C)"
+            + (f". WATCH IT AT http://<this-jetson>:{self.stream_port}/"
+               if self.stream else ", no video stream (stream_port 0)."))
+
+    # ------------------------------------------------------------ the frames
 
     def poll(self):
         frame = self.reader.get_latest_frame()
@@ -105,33 +220,44 @@ class ThermalSensor(Node):
         msg.data = grid.tobytes()
         self.image_pub.publish(msg)
 
-        ambient = float(np.median(grid))
+        blobs, ambient = find_blobs(grid.astype(float), self.min_contrast,
+                                    min_pixels=self.min_blob_pixels)
         row, col = frame.max_pixel
         self.hotspot_pub.publish(String(
             data=f"{frame.max_temp:.2f}|{row}|{col}|{ambient:.2f}"))
 
-        if self.preview_pub is not None:
-            self._publish_preview(grid, stamp)
+        if self.preview_pub is not None or self.stream is not None:
+            self._render(grid.astype(float), blobs, ambient, stamp)
 
-    def _publish_preview(self, grid, stamp):
+    def _render(self, grid, blobs, ambient, stamp):
         import cv2
-        lo, hi = float(grid.min()), float(grid.max())
-        if hi - lo < 0.1:
-            hi = lo + 0.1
-        norm = np.uint8((grid - lo) * 255.0 / (hi - lo))
-        img = cv2.applyColorMap(norm, cv2.COLORMAP_INFERNO)
-        img = cv2.resize(img, (W * self.preview_scale, H * self.preview_scale),
-                         interpolation=cv2.INTER_NEAREST)
-        msg = Image()
-        msg.header.stamp = stamp
-        msg.header.frame_id = 'thermal_camera'
-        msg.height, msg.width = img.shape[0], img.shape[1]
-        msg.encoding = 'bgr8'
-        msg.step = img.shape[1] * 3
-        msg.data = img.tobytes()
-        self.preview_pub.publish(msg)
+        img = annotate(grid, blobs, ambient, scale=self.preview_scale,
+                       note=f"{self.refresh_hz}Hz #{self.frames}")
+
+        if self.stream is not None:
+            ok, buf = cv2.imencode('.jpg', img,
+                                   [cv2.IMWRITE_JPEG_QUALITY, self.jpeg_quality])
+            if ok:
+                with self._jpeg_lock:
+                    self._jpeg = buf.tobytes()
+
+        if self.preview_pub is not None:
+            msg = Image()
+            msg.header.stamp = stamp
+            msg.header.frame_id = 'thermal_camera'
+            msg.height, msg.width = img.shape[0], img.shape[1]
+            msg.encoding = 'bgr8'
+            msg.step = img.shape[1] * 3
+            msg.data = img.tobytes()
+            self.preview_pub.publish(msg)
+
+    def latest_jpeg(self):
+        with self._jpeg_lock:
+            return self._jpeg
 
     def destroy_node(self):
+        if self.stream is not None:
+            self.stream.shutdown()
         try:
             self.reader.close()
         except Exception as exc:

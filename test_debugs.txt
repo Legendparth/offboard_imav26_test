@@ -1,16 +1,285 @@
-[course_fsm-5] [INFO] [1789295108.948304516] [course_fsm]: alt=+0.50 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.53 m rng_ok=False vz=+0.13 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,-0.01) | hdg=-104 deg yaw_sp=-102 deg
-[window_detect-4] [INFO] [1789295109.380463732] [window_detect]: window: YES  centre=(430,102) offset=-0.33 area=18688px dist=0.81m
-[course_fsm-5] [INFO] [1789295109.996082211] [course_fsm]: alt=+0.36 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.39 m rng_ok=False vz=+0.11 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.03,-0.02) | hdg=-104 deg yaw_sp=-102 deg
-[window_detect-4] [INFO] [1789295110.413607644] [window_detect]: window: YES  centre=(771,139) offset=+0.20 area=45310px dist=5.14m
-[course_fsm-5] [INFO] [1789295110.889238820] [course_fsm]: window: no usable pose (0/6 fresh samples, 178 accepted ever, 158 truncated; rejections: corner depths disagree x112, corners not coplanar x21, implausible window size x4)
-[course_fsm-5] [INFO] [1789295111.044657806] [course_fsm]: alt=+0.24 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.26 m rng_ok=False vz=+0.12 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.13,+0.01) | hdg=-103 deg yaw_sp=-102 deg
-[window_detect-4] [INFO] [1789295111.553945095] [window_detect]: window: YES  centre=(652,145) offset=+0.02 area=16742px dist=4.95m
-[course_fsm-5] [INFO] [1789295112.087594375] [course_fsm]: alt=+0.16 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.18 m rng_ok=False vz=-0.12 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.02) | hdg=-98 deg yaw_sp=-102 deg
-[course_fsm-5] [WARN] [1789295112.547628641] [course_fsm]: Descent has stalled against something solid; PX4's land detector still says airborne. Confirming touchdown ourselves over 2 s.
-[window_detect-4] [INFO] [1789295112.582380965] [window_detect]: window: YES  centre=(319,107) offset=-0.50 area=17261px dist=0.00m
-[course_fsm-5] [INFO] [1789295112.890589443] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 168 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-5] [INFO] [1789295113.088188297] [course_fsm]: alt=+0.15 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.16 m rng_ok=False vz=-0.01 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,+0.01) | hdg=-98 deg yaw_sp=-102 deg
-[window_detect-4] [INFO] [1789295113.609371766] [window_detect]: window: YES  centre=(309,129) offset=-0.52 area=17786px dist=0.00m
-[course_fsm-5] [INFO] [1789295114.089320678] [course_fsm]: alt=+0.12 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.14 m rng_ok=False vz=+0.03 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.01,-0.01) | hdg=-98 deg yaw_sp=-102 deg
-[course_fsm-5] [ERROR] [1789295114.550086049] [course_fsm]: Touchdown confirmed by stalled descent, NOT by PX4's land detector. Check MPC_LAND_SPEED against land_speed and the LNDMC_* thresholds.
-[course_fsm-5] [WARN] [1789295114.550986921] [course_fsm]: Touchdown detected. Disarming.
+ark-jetson-orin@localhost:~/imav26_ws$ ros2 launch drone_testing thermal_drop.launch.py agent_only:=false mode:=dryrun
+[INFO] [launch]: All log files can be found below /home/ark-jetson-orin/.ros/log/2026-09-19-18-44-38-243350-localhost.localdomain-68964
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [thermal_sensor-2]: process started with pid [68968]
+[INFO] [led_status-3]: process started with pid [68969]
+[INFO] [micro_ros_agent-1]: process started with pid [68967]
+[micro_ros_agent-1] [1789823678.423336] info     | TermiosAgentLinux.cpp | init                     | running...             | fd: 12
+[micro_ros_agent-1] [1789823678.423839] info     | Root.cpp           | set_verbose_level        | logger setup           | verbose_level: 4
+[micro_ros_agent-1] [1789823678.663564] info     | Root.cpp           | create_client            | create                 | client_key: 0x00000001, session_id: 0x81
+[micro_ros_agent-1] [1789823678.663651] info     | SessionManager.hpp | establish_session        | session established    | client_key: 0x00000001, address: 1
+[micro_ros_agent-1] [1789823678.681322] info     | ProxyClient.cpp    | create_participant       | participant created    | client_key: 0x00000001, participant_id: 0x001(1)
+[led_status-3] [INFO] [1789823679.144673759] [led_status]: WS2812B up: 5 pixels on SPI.
+[thermal_sensor-2] /home/ark-jetson-orin/.local/lib/python3.12/site-packages/adafruit_blinka/microcontroller/generic_linux/i2c.py:30: RuntimeWarning: I2C frequency is not settable in python, ignoring!
+[thermal_sensor-2]   warnings.warn(
+[thermal_sensor-2] 2026-09-19 18:44:39,281 [INFO] MLX90640 acquisition thread started.
+[thermal_sensor-2] [WARN] [1789823679.332288322] [thermal_sensor]: MLX90640 up at 8 Hz, publishing thermal/image (32FC1, deg C). WATCH IT AT http://<this-jetson>:8082/
+[micro_ros_agent-1] [1789823684.448145] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x800(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.448376] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x800(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.450256] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x800(6), subscriber_id: 0x800(4)
+[micro_ros_agent-1] [1789823684.453758] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x801(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.453864] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x801(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.455302] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x801(6), subscriber_id: 0x801(4)
+[micro_ros_agent-1] [1789823684.458483] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x802(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.458601] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x802(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.460268] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x802(6), subscriber_id: 0x802(4)
+[micro_ros_agent-1] [1789823684.463620] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x803(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.463749] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x803(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.464698] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x803(6), subscriber_id: 0x803(4)
+[micro_ros_agent-1] [1789823684.468380] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x804(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.468470] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x804(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.469603] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x804(6), subscriber_id: 0x804(4)
+[micro_ros_agent-1] [1789823684.472730] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x805(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.473458] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x805(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.475305] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x805(6), subscriber_id: 0x805(4)
+[micro_ros_agent-1] [1789823684.478466] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x806(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.478549] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x806(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.479417] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x806(6), subscriber_id: 0x806(4)
+[micro_ros_agent-1] [1789823684.482872] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x807(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.482944] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x807(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.483720] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x807(6), subscriber_id: 0x807(4)
+[micro_ros_agent-1] [1789823684.487012] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x808(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.487079] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x808(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.488034] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x808(6), subscriber_id: 0x808(4)
+[micro_ros_agent-1] [1789823684.491023] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x809(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.491100] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x809(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.492072] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x809(6), subscriber_id: 0x809(4)
+[micro_ros_agent-1] [1789823684.495169] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80A(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.495252] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80A(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.496741] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80A(6), subscriber_id: 0x80A(4)
+[micro_ros_agent-1] [1789823684.499699] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.499784] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80B(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.500873] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80B(6), subscriber_id: 0x80B(4)
+[micro_ros_agent-1] [1789823684.505444] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80C(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.505539] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80C(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.506557] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80C(6), subscriber_id: 0x80C(4)
+[micro_ros_agent-1] [1789823684.510602] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80D(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.510717] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80D(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.512190] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80D(6), subscriber_id: 0x80D(4)
+[micro_ros_agent-1] [1789823684.515174] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80E(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.515302] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80E(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.516610] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80E(6), subscriber_id: 0x80E(4)
+[micro_ros_agent-1] [1789823684.519605] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x80F(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.519768] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x80F(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.520968] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x80F(6), subscriber_id: 0x80F(4)
+[micro_ros_agent-1] [1789823684.524239] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x810(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.524353] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x810(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.525242] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x810(6), subscriber_id: 0x810(4)
+[micro_ros_agent-1] [1789823684.528578] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x811(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.528664] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x811(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.530073] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x811(6), subscriber_id: 0x811(4)
+[micro_ros_agent-1] [1789823684.533196] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x812(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.533264] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x812(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.534072] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x812(6), subscriber_id: 0x812(4)
+[micro_ros_agent-1] [1789823684.537129] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x813(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.537202] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x813(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.537997] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x813(6), subscriber_id: 0x813(4)
+[micro_ros_agent-1] [1789823684.541128] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x814(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.541178] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x814(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.541944] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x814(6), subscriber_id: 0x814(4)
+[micro_ros_agent-1] [1789823684.544884] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x815(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.544935] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x815(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.545687] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x815(6), subscriber_id: 0x815(4)
+[micro_ros_agent-1] [1789823684.548711] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x816(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.548761] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x816(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.549470] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x816(6), subscriber_id: 0x816(4)
+[micro_ros_agent-1] [1789823684.552508] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x817(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.552562] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x817(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.553391] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x817(6), subscriber_id: 0x817(4)
+[micro_ros_agent-1] [1789823684.556213] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x818(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.556264] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x818(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.556982] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x818(6), subscriber_id: 0x818(4)
+[micro_ros_agent-1] [1789823684.559806] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x819(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.559883] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x819(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.560771] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x819(6), subscriber_id: 0x819(4)
+[micro_ros_agent-1] [1789823684.563725] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81A(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.563823] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81A(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.564746] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81A(6), subscriber_id: 0x81A(4)
+[micro_ros_agent-1] [1789823684.568080] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.568137] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81B(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.568854] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81B(6), subscriber_id: 0x81B(4)
+[micro_ros_agent-1] [1789823684.572034] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81C(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.572098] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81C(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.572960] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81C(6), subscriber_id: 0x81C(4)
+[micro_ros_agent-1] [1789823684.576433] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81D(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.576512] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81D(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.577474] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81D(6), subscriber_id: 0x81D(4)
+[micro_ros_agent-1] [1789823684.580814] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81E(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.580903] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81E(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.581953] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81E(6), subscriber_id: 0x81E(4)
+[micro_ros_agent-1] [1789823684.585094] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x81F(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.585181] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x81F(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.586086] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x81F(6), subscriber_id: 0x81F(4)
+[micro_ros_agent-1] [1789823684.589587] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x820(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.589669] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x820(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.591320] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x820(6), subscriber_id: 0x820(4)
+[micro_ros_agent-1] [1789823684.594798] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x821(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.594881] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x821(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.596316] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x821(6), subscriber_id: 0x821(4)
+[micro_ros_agent-1] [1789823684.599791] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x822(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.599868] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x822(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.600732] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x822(6), subscriber_id: 0x822(4)
+[micro_ros_agent-1] [1789823684.604075] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x823(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.604155] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x823(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.605299] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x823(6), subscriber_id: 0x823(4)
+[micro_ros_agent-1] [1789823684.608300] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x824(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.608372] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x824(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.609241] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x824(6), subscriber_id: 0x824(4)
+[micro_ros_agent-1] [1789823684.612494] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x825(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.612565] info     | ProxyClient.cpp    | create_subscriber        | subscriber created     | client_key: 0x00000001, subscriber_id: 0x825(4), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.613629] info     | ProxyClient.cpp    | create_datareader        | datareader created     | client_key: 0x00000001, datareader_id: 0x825(6), subscriber_id: 0x825(4)
+[micro_ros_agent-1] [1789823684.616818] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0CD(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.616924] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0CD(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.617945] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0CD(5), publisher_id: 0x0CD(3)
+[micro_ros_agent-1] [1789823684.620946] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x010(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.621021] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x010(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.621906] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x010(5), publisher_id: 0x010(3)
+[micro_ros_agent-1] [1789823684.624583] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x09D(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.624647] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x09D(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.625360] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x09D(5), publisher_id: 0x09D(3)
+[micro_ros_agent-1] [1789823684.628075] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x014(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.628154] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x014(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.628974] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x014(5), publisher_id: 0x014(3)
+[micro_ros_agent-1] [1789823684.632444] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x01B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.632512] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x01B(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.633148] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x01B(5), publisher_id: 0x01B(3)
+[micro_ros_agent-1] [1789823684.636296] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x055(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.636364] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x055(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.637153] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x055(5), publisher_id: 0x055(3)
+[micro_ros_agent-1] [1789823684.639816] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x05B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.639888] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x05B(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.640557] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x05B(5), publisher_id: 0x05B(3)
+[micro_ros_agent-1] [1789823684.643371] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x094(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.643437] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x094(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.644151] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x094(5), publisher_id: 0x094(3)
+[micro_ros_agent-1] [1789823684.646983] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x09A(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.647042] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x09A(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.647724] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x09A(5), publisher_id: 0x09A(3)
+[micro_ros_agent-1] [1789823684.650615] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0C0(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.650677] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0C0(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.651382] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0C0(5), publisher_id: 0x0C0(3)
+[micro_ros_agent-1] [1789823684.654310] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0E1(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.654369] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0E1(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.654977] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0E1(5), publisher_id: 0x0E1(3)
+[micro_ros_agent-1] [1789823684.657544] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0F9(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.657602] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0F9(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.658394] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0F9(5), publisher_id: 0x0F9(3)
+[micro_ros_agent-1] [1789823684.661100] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x0FC(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.661164] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x0FC(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.661850] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x0FC(5), publisher_id: 0x0FC(3)
+[micro_ros_agent-1] [1789823684.664596] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x115(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.664658] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x115(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.665268] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x115(5), publisher_id: 0x115(3)
+[micro_ros_agent-1] [1789823684.667945] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x108(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.668005] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x108(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.668644] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x108(5), publisher_id: 0x108(3)
+[micro_ros_agent-1] [1789823684.671267] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x10F(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.671319] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x10F(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.672056] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x10F(5), publisher_id: 0x10F(3)
+[micro_ros_agent-1] [1789823684.709989] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x10C(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.710081] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x10C(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.711143] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x10C(5), publisher_id: 0x10C(3)
+[micro_ros_agent-1] [1789823684.714027] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x110(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.714120] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x110(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.715119] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x110(5), publisher_id: 0x110(3)
+[micro_ros_agent-1] [1789823684.717944] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x112(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.718037] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x112(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.719033] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x112(5), publisher_id: 0x112(3)
+[micro_ros_agent-1] [1789823684.722051] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x116(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.722146] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x116(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.723009] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x116(5), publisher_id: 0x116(3)
+[micro_ros_agent-1] [1789823684.899196] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x11B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.899357] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x11B(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.900734] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x11B(5), publisher_id: 0x11B(3)
+[micro_ros_agent-1] [1789823684.903497] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x120(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.903587] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x120(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.904804] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x120(5), publisher_id: 0x120(3)
+[micro_ros_agent-1] [1789823684.907833] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x00D(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.907972] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x00D(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.909451] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x00D(5), publisher_id: 0x00D(3)
+[micro_ros_agent-1] [1789823684.912490] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x129(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.912587] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x129(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.913629] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x129(5), publisher_id: 0x129(3)
+[micro_ros_agent-1] [1789823684.916425] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x080(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.916531] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x080(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.917752] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x080(5), publisher_id: 0x080(3)
+[micro_ros_agent-1] [1789823684.920957] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x12B(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.921048] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x12B(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.922133] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x12B(5), publisher_id: 0x12B(3)
+[micro_ros_agent-1] [1789823684.925870] info     | ProxyClient.cpp    | create_topic             | topic created          | client_key: 0x00000001, topic_id: 0x06E(2), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.925983] info     | ProxyClient.cpp    | create_publisher         | publisher created      | client_key: 0x00000001, publisher_id: 0x06E(3), participant_id: 0x001(1)
+[micro_ros_agent-1] [1789823684.927141] info     | ProxyClient.cpp    | create_datawriter        | datawriter created     | client_key: 0x00000001, datawriter_id: 0x06E(5), publisher_id: 0x06E(3)
+[micro_ros_agent-1] [1789823684.934459] info     | ProxyClient.cpp    | create_replier           | replier created        | client_key: 0x00000001, requester_id: 0x800(7), participant_id: 0x001(1)
+[INFO] [thermal_drop-4]: process started with pid [69230]
+[thermal_drop-4] [WARN] [1789823687.459941607] [thermal_drop]: stdin is not a tty; q/k abort is unavailable.
+[thermal_drop-4] [WARN] [1789823687.460459767] [thermal_drop]: DRY RUN: the full mission on a SIMULATED vehicle. Nothing is armed and no setpoint is sent -- the motors cannot spin. The thermal camera, the survey, the LED and the servo are REAL. Simulated height starts at 1.50 m; put a hot object under the camera and centre it (watch the stream on :8082) to walk it down to 0.50 m and fire the servo. q aborts.
+[thermal_drop-4] [INFO] [1789823687.464249416] [thermal_drop]: SIM: SURVEY at 1.50 m, (+0.00, +0.00) NED.
+[thermal_drop-4] [INFO] [1789823687.465059488] [thermal_drop]: SURVEY point 1/1: no boxes yet (0 frames)
+[thermal_drop-4] [INFO] [1789823688.481540267] [thermal_drop]: SURVEY point 1/1: no boxes yet (0 frames)
+[thermal_drop-4] [INFO] [1789823688.736530984] [thermal_drop]: nav_state -> OFFBOARD(14)
+[thermal_drop-4] [INFO] [1789823688.870441958] [thermal_drop]: PX4 failsafe (expected on this airframe, harmless): home_position_invalid
+[thermal_drop-4] [ERROR] [1789823688.871970068] [thermal_drop]: PX4 failsafe SET: offboard_control_signal_lost, manual_control_signal_lost
+[thermal_drop-4] [INFO] [1789823689.477974911] [thermal_drop]: SIM: SURVEY at 1.50 m, (+0.00, +0.00) NED.
+[thermal_drop-4] [INFO] [1789823689.528592710] [thermal_drop]: SURVEY point 1/1: no boxes yet (2 frames)
+[thermal_drop-4] [INFO] [1789823690.534471507] [thermal_drop]: SURVEY point 1/1: 34.3C@(+0.02,+0.03), 32.4C@(+0.38,+1.41), 31.8C@(-0.70,+0.57)
+[thermal_drop-4] [INFO] [1789823691.480816653] [thermal_drop]: SIM: SURVEY at 1.50 m, (+0.00, +0.00) NED.
+[thermal_drop-4] [WARN] [1789823691.483106226] [thermal_drop]:   box 1: (-0.03, +0.04) NED, 34.3 C, 10 frames
+[thermal_drop-4] [WARN] [1789823691.490170917] [thermal_drop]:   box 2: (+0.32, +1.42) NED, 32.7 C, 7 frames
+[thermal_drop-4] [WARN] [1789823691.491530669] [thermal_drop]:   box 3: (-0.73, +0.57) NED, 31.7 C, 9 frames
+[thermal_drop-4] [WARN] [1789823691.494460389] [thermal_drop]: The hottest box leads by only 1.6 C (want 2.0). Taking it anyway.
+[thermal_drop-4] [WARN] [1789823691.502392594] [thermal_drop]: APPROACH: hottest box at (-0.03, +0.04) NED, 34.3 C.
+[thermal_drop-4] [INFO] [1789823691.539350497] [thermal_drop]: APPROACH: 0.05 m to go, track lost, hottest-in-frame 0/8 frames of evidence.
+[thermal_drop-4] [INFO] [1789823692.540661795] [thermal_drop]: APPROACH: 0.00 m to go, track LIVE, hottest-in-frame 4/8 frames of evidence.
+[thermal_drop-4] [INFO] [1789823693.529932221] [thermal_drop]: SIM: APPROACH at 1.50 m, (-0.02, +0.10) NED.
+[thermal_drop-4] [INFO] [1789823693.580367134] [thermal_drop]: APPROACH: 0.02 m to go, track LIVE, hottest-in-frame 100% (want 70%).
+[led_status-3] [INFO] [1789823694.534925291] [led_status]: LED -> blink_red
+[thermal_drop-4] [WARN] [1789823694.535017134] [thermal_drop]: DESCEND: over the box (2 cm), hottest in 100% of recent frames. Stepping down to 0.50 m, LED blinking red.
+[thermal_drop-4] [INFO] [1789823694.581414519] [thermal_drop]: DESCEND: alt 1.50 -> 1.49 m, err 1 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823695.082400224] [thermal_drop]: DESCEND: alt 1.44 -> 1.43 m, err 3 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823695.581451568] [thermal_drop]: SIM: DESCEND at 1.38 m, (+0.08, +0.28) NED.
+[thermal_drop-4] [INFO] [1789823695.584258435] [thermal_drop]: DESCEND: alt 1.38 -> 1.37 m, err 4 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823696.089924952] [thermal_drop]: DESCEND: alt 1.32 -> 1.31 m, err 3 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823696.635073863] [thermal_drop]: DESCEND: alt 1.25 -> 1.25 m, err 1 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823697.141317325] [thermal_drop]: DESCEND: alt 1.19 -> 1.19 m, err 4 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823697.637542503] [thermal_drop]: SIM: DESCEND at 1.13 m, (+0.26, +0.56) NED.
+[thermal_drop-4] [INFO] [1789823697.683680840] [thermal_drop]: DESCEND: alt 1.13 -> 1.12 m, err 1 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823698.238286896] [thermal_drop]: DESCEND: alt 1.06 -> 1.06 m, err 0 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823698.738583043] [thermal_drop]: DESCEND: alt 1.00 -> 1.00 m, err 0 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823699.282106432] [thermal_drop]: DESCEND: alt 0.94 -> 0.93 m, err 2 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823699.678335953] [thermal_drop]: SIM: DESCEND at 0.89 m, (+0.49, +0.82) NED.
+[thermal_drop-4] [INFO] [1789823699.789776398] [thermal_drop]: DESCEND: alt 0.88 -> 0.87 m, err 4 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823700.332281100] [thermal_drop]: DESCEND: alt 0.81 -> 0.80 m, err 3 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823700.839654322] [thermal_drop]: DESCEND: alt 0.76 -> 0.76 m, err 9 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823701.379067571] [thermal_drop]: DESCEND: alt 0.70 -> 0.69 m, err 8 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823701.683205223] [thermal_drop]: SIM: DESCEND at 0.66 m, (+0.94, +0.98) NED.
+[thermal_drop-4] [INFO] [1789823701.884663458] [thermal_drop]: DESCEND: alt 0.64 -> 0.63 m, err 2 cm, track LIVE.
+[thermal_drop-4] [INFO] [1789823702.441949720] [thermal_drop]: DESCEND: alt 0.57 -> 0.56 m, err 3 cm, track LIVE.
+[thermal_drop-4] [WARN] [1789823702.981771397] [thermal_drop]: HOVER: at 0.50 m, confirming alignment to 8 cm.
+[thermal_drop-4] [INFO] [1789823703.039957869] [thermal_drop]: HOVER: err 1 cm (want 8), track LIVE.
+[thermal_drop-4] [INFO] [1789823703.540377409] [thermal_drop]: HOVER: err 2 cm (want 8), track LIVE.
+[thermal_drop-4] [INFO] [1789823703.737159313] [thermal_drop]: SIM: HOVER at 0.50 m, (+1.25, +1.05) NED.
+[thermal_drop-4] [INFO] [1789823704.084290311] [thermal_drop]: HOVER: err 7 cm (want 8), track LIVE.
+[thermal_drop-4] [INFO] [1789823704.638365628] [thermal_drop]: HOVER: err 0 cm (want 8), track LIVE.
+[thermal_drop-4] [INFO] [1789823705.139748460] [thermal_drop]: HOVER: err 3 cm (want 8), track LIVE.
+[thermal_drop-4] [INFO] [1789823705.682262215] [thermal_drop]: HOVER: err 0 cm (want 8), track LIVE.
+[thermal_drop-4] [INFO] [1789823705.781386805] [thermal_drop]: SIM: HOVER at 0.50 m, (+1.68, +1.08) NED.
+[thermal_drop-4] [INFO] [1789823706.238129681] [thermal_drop]: HOVER: err 6 cm (want 8), track LIVE.
+[thermal_drop-4] [WARN] [1789823706.282024398] [thermal_drop]: DROP: DROPPED on the hot box, 6 cm off centre at 0.50 m. Servo set +1.00 on actuator set 1.
+[thermal_drop-4] [INFO] [1789823706.345437202] [thermal_drop]: DROP: servo open, 1.9 s left.
+[thermal_drop-4] [INFO] [1789823706.881108545] [thermal_drop]: DROP: servo open, 1.4 s left.
+[thermal_drop-4] [INFO] [1789823707.386044186] [thermal_drop]: DROP: servo open, 0.9 s left.
+[thermal_drop-4] [INFO] [1789823707.836248018] [thermal_drop]: SIM: HOVER at 0.50 m, (+2.07, +1.16) NED.
+[thermal_drop-4] [INFO] [1789823707.940171854] [thermal_drop]: DROP: servo open, 0.3 s left.
+[led_status-3] [INFO] [1789823708.298872508] [led_status]: LED -> off
+[thermal_drop-4] [WARN] [1789823708.302352772] [thermal_drop]: Servo back to neutral, LED off.
+[thermal_drop-4] [INFO] [1789823708.304655337] [thermal_drop]: Settling after the drop.
+[thermal_drop-4] [INFO] [1789823709.339413504] [thermal_drop]: Settling after the drop.
+[thermal_drop-4] [INFO] [1789823709.837705937] [thermal_drop]: SIM: HOVER at 0.50 m, (+2.39, +1.19) NED.
+[thermal_drop-4] [WARN] [1789823710.285520257] [thermal_drop]: RETREAT: climbing back to 1.20 m, then 0.50 m to the right before landing.
+[thermal_drop-4] [INFO] [1789823710.338248774] [thermal_drop]: RETREAT: climbing 0.50 -> 1.20 m.
+[thermal_drop-4] [INFO] [1789823711.357142049] [thermal_drop]: RETREAT: climbing 0.85 -> 1.20 m.
+[thermal_drop-4] [INFO] [1789823711.880060145] [thermal_drop]: SIM: RETREAT at 1.04 m, (+2.40, +1.20) NED.
+[thermal_drop-4] [WARN] [1789823712.137832442] [thermal_drop]: RETREAT: at 1.13 m; stepping 0.50 m right to (+2.40, +1.70) NED.
+[thermal_drop-4] [INFO] [1789823712.180963393] [thermal_drop]: RETREAT: 0.50 m to go.
+[thermal_drop-4] [INFO] [1789823713.181814432] [thermal_drop]: RETREAT: 0.25 m to go.
+[thermal_drop-4] [WARN] [1789823713.680214899] [thermal_drop]: DRY RUN COMPLETE: DROPPED on the hot box, 6 cm off centre at 0.50 m. Ctrl-C to quit.
