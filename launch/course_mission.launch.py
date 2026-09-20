@@ -348,6 +348,8 @@ def generate_launch_description():
                     'tube_allow_shift_right': LaunchConfiguration('tube_allow_shift_right'),
                     'window_after_tubes': LaunchConfiguration('window_after_tubes'),
                     'window2_exit_distance': LaunchConfiguration('window2_exit_distance'),
+                    'window2_altitude': LaunchConfiguration('window2_altitude'),
+                    'window2_hold_seconds': LaunchConfiguration('window2_hold_seconds'),
                     'pad': LaunchConfiguration('pad'),
                     'pad_right': LaunchConfiguration('pad_right'),
                     'pad_search_distance': LaunchConfiguration('pad_search_distance'),
@@ -995,6 +997,18 @@ def generate_launch_description():
                         'switched back on and its estimator emptied first, so '
                         'the second pass measures the second window and '
                         'nothing of the first.'),
+        DeclareLaunchArgument(
+            'window2_altitude', default_value='0.0',
+            description='m the aircraft climbs back to after the tubes, '
+                        'before it starts looking for the second window. '
+                        '0 = takeoff_altitude, the height the FIRST window '
+                        'was searched for from. The tubes end below the cross '
+                        'tube, which is no height to look for a window from.'),
+        DeclareLaunchArgument(
+            'window2_hold_seconds', default_value='2.0',
+            description='s stationary at that altitude before the search '
+                        'starts, so the climb has stopped moving the camera '
+                        'before a frame is measured.'),
         DeclareLaunchArgument(
             'window2_exit_distance', default_value='0.0',
             description='m beyond the SECOND window the traverse ends. 0 '

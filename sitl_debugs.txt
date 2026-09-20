@@ -1,227 +1,242 @@
-[course_fsm-9] [WARN] [1789874050.672908353] [course_fsm]: tube detection ON.
-[tube_detect-8] [WARN] [1789874050.673010433] [tube_detect]: Detection ENABLED by /tube_detect/enable.
-[course_fsm-9] [WARN] [1789874050.673366990] [course_fsm]: TUBE_CLIMB: past the blue bars. Straight up to 1.98 m where we are, then -1.10 m to sit 2.64 m short of the tube plane and sweep +/-25 deg across it.
-[tube_detect-8] [INFO] [1789874050.685426672] [tube_detect]: First frame from /camera/rgb/image_raw: 640x480.
-[course_fsm-9] [INFO] [1789874050.722233282] [course_fsm]: TUBE_CLIMB: -0.02 m to go, alt 1.13/1.98 m.
-[tube_detect-8] [INFO] [1789874050.794124770] [tube_detect]: tubes: no  (2 tube(s): d=3.90 az=-10, d=1.79 az=+19 | no hole (no enclosed cell in the mask); 1 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874051.071583217] [course_fsm]: alt=+1.14 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.14 m rng_ok=True vz=-0.16 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.47,+0.05) | hdg=+5 deg yaw_sp=+5 deg
-[course_fsm-9] [INFO] [1789874051.321828190] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874051.723673051] [course_fsm]: TUBE_CLIMB: -0.27 m to go, alt 1.31/1.98 m.
-[tube_detect-8] [INFO] [1789874051.824995474] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 2.21 m; 12 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874052.071790188] [course_fsm]: alt=+1.48 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.39 m rng_ok=True vz=-0.62 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.10,-0.04) | hdg=+5 deg yaw_sp=+5 deg
-[course_fsm-9] [INFO] [1789874052.772496342] [course_fsm]: TUBE_CLIMB: -0.15 m to go, alt 1.70/1.98 m.
-[tube_detect-8] [INFO] [1789874052.910261294] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 23 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874053.123541636] [course_fsm]: alt=+1.77 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.73 m rng_ok=True vz=-0.26 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.22,-0.03) | hdg=+5 deg yaw_sp=+5 deg
-[course_fsm-9] [INFO] [1789874053.371728680] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [WARN] [1789874053.371995324] [course_fsm]: TUBE_APPROACH: -1.10 m to the look-from point, 2.64 m short of the tube plane. Stopping early if an upright comes up closer than that.
-[course_fsm-9] [INFO] [1789874053.422442879] [course_fsm]: TUBE_APPROACH: -1.16 m to go, nearest upright 3.99 m.
-[tube_detect-8] [INFO] [1789874053.955082823] [tube_detect]: tubes: no  (1 tube(s): d=1.62 az=+19 | no hole (need two uprights for the plane depth); 33 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874054.172852348] [course_fsm]: alt=+1.89 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.88 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.18,+0.03) | hdg=+5 deg yaw_sp=+5 deg
-[course_fsm-9] [INFO] [1789874054.471876274] [course_fsm]: TUBE_APPROACH: -1.09 m to go, nearest upright n/a.
-[tube_detect-8] [INFO] [1789874055.167071833] [tube_detect]: tubes: no  (2 tube(s): d=3.91 az=-11, d=1.80 az=+16 | no hole (no enclosed cell in the mask); 43 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874055.220991662] [course_fsm]: alt=+1.94 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.95 m rng_ok=True vz=-0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.55,-0.05) | hdg=+5 deg yaw_sp=+5 deg
-[tube_detect-8] [WARN] [1789874055.303753643] [tube_detect]: TUBES DETECTED
-[course_fsm-9] [INFO] [1789874055.421980524] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874055.473302349] [course_fsm]: TUBE_APPROACH: -0.80 m to go, nearest upright n/a.
-[course_fsm-9] [INFO] [1789874056.221741009] [course_fsm]: alt=+1.95 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.96 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.75,-0.12) | hdg=+5 deg yaw_sp=+5 deg
-[tube_detect-8] [INFO] [1789874056.229035584] [tube_detect]: tubes: YES (1 tube(s): d=2.26 az=+13 | no hole (need two uprights for the plane depth) | rejected: depth spread 2.19 m; 52 frames, 686 skipped)
-[tube_detect-8] [WARN] [1789874056.311981571] [tube_detect]: Tubes LOST.
-[course_fsm-9] [INFO] [1789874056.474518594] [course_fsm]: TUBE_APPROACH: -0.29 m to go, nearest upright 2.59 m.
-[course_fsm-9] [WARN] [1789874056.572638644] [course_fsm]: TUBE_SCAN: On the look-from point. Holding still and sweeping +/-25 deg for 8 s to see both openings.
-[course_fsm-9] [INFO] [1789874056.624287703] [course_fsm]: TUBE_SCAN: 0.1/8 s (extending to 20 s, nothing seen yet), no opening yet
-[course_fsm-9] [INFO] [1789874057.224065869] [course_fsm]: alt=+1.96 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.97 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.41,-0.09) | hdg=+6 deg yaw_sp=+16 deg
-[tube_detect-8] [INFO] [1789874057.285610571] [tube_detect]: tubes: no  (2 tube(s): d=2.52 az=-33, d=2.73 az=+10 | holes az=-1 el=-7 quad | rejected: depth spread 2.06 m; 64 frames, 686 skipped)
-[tube_detect-8] [WARN] [1789874057.316706907] [tube_detect]: TUBES DETECTED
-[course_fsm-9] [INFO] [1789874057.422169375] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874057.673902487] [course_fsm]: TUBE_SCAN: 1.1/8 s (extending to 20 s, nothing seen yet), no opening yet
-[tube_detect-8] [WARN] [1789874058.000320502] [tube_detect]: Tubes LOST.
-[course_fsm-9] [INFO] [1789874058.224138190] [course_fsm]: alt=+1.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.98 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,-0.04) | hdg=+21 deg yaw_sp=+29 deg
-[tube_detect-8] [INFO] [1789874058.367609750] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 3.70 m; depth spread 2.27 m; 75 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874058.673955388] [course_fsm]: TUBE_SCAN: 2.1/8 s (extending to 20 s, nothing seen yet), no opening yet
-[course_fsm-9] [INFO] [1789874059.273762439] [course_fsm]: alt=+1.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.10,-0.05) | hdg=+33 deg yaw_sp=+27 deg
-[tube_detect-8] [WARN] [1789874059.358898826] [tube_detect]: TUBES DETECTED
-[course_fsm-9] [INFO] [1789874059.426500756] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[tube_detect-8] [INFO] [1789874059.465659262] [tube_detect]: tubes: YES (2 tube(s): d=4.12 az=-36, d=2.84 az=-17 | no hole (no enclosed cell in the mask); 85 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874059.724469465] [course_fsm]: TUBE_SCAN: 3.2/8 s (extending to 20 s, nothing seen yet), no opening yet
-[tube_detect-8] [WARN] [1789874059.935613671] [tube_detect]: Tubes LOST.
-[course_fsm-9] [INFO] [1789874060.322550485] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.07,+0.01) | hdg=+22 deg yaw_sp=+11 deg
-[tube_detect-8] [INFO] [1789874060.566317645] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 3.21 m; depth spread 2.31 m; 93 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874060.774679843] [course_fsm]: TUBE_SCAN: 4.2/8 s (extending to 20 s, nothing seen yet), no opening yet
-[course_fsm-9] [INFO] [1789874061.371562031] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.05,+0.13) | hdg=+2 deg yaw_sp=-9 deg
-[course_fsm-9] [INFO] [1789874061.472769373] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[tube_detect-8] [INFO] [1789874061.606002063] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 2.17 m; depth spread 2.51 m; depth spread 2.08 m; 103 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874061.824040817] [course_fsm]: TUBE_SCAN: 5.2/8 s (extending to 20 s, nothing seen yet), no opening yet
-[course_fsm-9] [INFO] [1789874062.420882624] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.22,+0.12) | hdg=-17 deg yaw_sp=-20 deg
-[tube_detect-8] [INFO] [1789874062.657687910] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 3.85 m; depth spread 3.27 m; depth spread 2.77 m; 112 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874062.873179247] [course_fsm]: TUBE_SCAN: 6.3/8 s (extending to 20 s, nothing seen yet), no opening yet
-[course_fsm-9] [INFO] [1789874063.423131623] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.15,+0.01) | hdg=-21 deg yaw_sp=-15 deg
-[tube_detect-8] [WARN] [1789874063.463193484] [tube_detect]: TUBES DETECTED
-[course_fsm-9] [INFO] [1789874063.521953427] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[tube_detect-8] [INFO] [1789874063.768006032] [tube_detect]: tubes: YES (3 tube(s): d=2.99 az=-7, d=4.64 az=+17, d=2.23 az=+36 | no hole (no enclosed cell in the mask); 120 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874063.922604806] [course_fsm]: TUBE_SCAN: 7.3/8 s (extending to 20 s, nothing seen yet), no opening yet
-[course_fsm-9] [INFO] [1789874064.423916682] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,-0.05) | hdg=-10 deg yaw_sp=+1 deg
-[course_fsm-9] [WARN] [1789874064.672694310] [course_fsm]: Flying the MEASURED opening, not the template: two layouts fit equally well (which tube is the middle?). 0.95 x 0.97 m, 1 uprights in the plane.
-[course_fsm-9] [INFO] [1789874064.674859052] [course_fsm]: TUBE_SCAN: squaring up. 0.93 m2 (0.95x0.97) at (+12.88,+1.48) x6
-[tube_detect-8] [INFO] [1789874064.911394739] [tube_detect]: tubes: YES (2 tube(s): d=2.79 az=-19, d=2.39 az=+26 | holes az=+17 el=-15 | rejected: depth spread 2.23 m; 128 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874065.425295819] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.09,-0.06) | hdg=+7 deg yaw_sp=+5 deg
-[course_fsm-9] [INFO] [1789874065.527104648] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874065.675996491] [course_fsm]: TUBE_SCAN: squaring up. 0.92 m2 (0.95x0.97) at (+12.87,+1.50) x7; 0.74 m2 (0.78x0.95) at (+12.55,+1.14) x6
-[tube_detect-8] [INFO] [1789874066.074125925] [tube_detect]: tubes: YES (1 tube(s): d=2.75 az=+7 | no hole (need two uprights for the plane depth) | rejected: depth spread 2.73 m; depth spread 3.20 m; 140 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874066.226573839] [course_fsm]: TUBE_SCAN saw: 0.92 m2 opening, 0.95 m wide, 0.97 m tall, 0.28 m to our RIGHT, roof rising 0.27 m/m to the LEFT, 7 frames
-[course_fsm-9] [WARN] [1789874066.226828045] [course_fsm]: TUBE_SCAN saw: 0.74 m2 opening, 0.78 m wide, 0.95 m tall, 0.03 m to our LEFT, roof rising 0.90 m/m to the LEFT, 8 frames   <== CHOSEN
-[course_fsm-9] [WARN] [1789874066.227067299] [course_fsm]: TUBE_SCAN: flying the opening 0.03 m to our LEFT (0.74 m2), the left one of 2 within 25%.
-[course_fsm-9] [WARN] [1789874066.276069800] [course_fsm]: TUBE_LOCK: RIGHT gap at (+12.76, +1.43), 0.94 m wide, 0 uprights matched, hole centre +0.11 m off the midpoint at 1.36 m, ceiling 1.88, floor 0.91, roof rising +0.26 m/m left.
-[course_fsm-9] [INFO] [1789874066.323739740] [course_fsm]: TUBE_LOCK: settling. RIGHT gap at (+12.77, +1.43), 0.94 m wide, 0 uprights matched, hole centre +0.11 m off the midpoint at 1.36 m, ceiling 1.88, floor 0.91, roof rising +0.26 m/m left
-[course_fsm-9] [INFO] [1789874066.472976171] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.13,-0.04) | hdg=+6 deg yaw_sp=+5 deg
-[course_fsm-9] [WARN] [1789874066.672999897] [course_fsm]: The back upright was not in view; assuming it stands 2.20 m behind the plane, on the middle upright's line.
-[course_fsm-9] [WARN] [1789874066.673243292] [course_fsm]: Crossing the tubes at 1.40 m: the camera puts the cell at 1.04-1.99 m over the track, centre of area 1.51 m (template said 1.81 m).
-[course_fsm-9] [WARN] [1789874066.673440933] [course_fsm]: TUBE PLAN: cross the MEASURED opening, 0.78 m wide, aiming 0.07 m to its LEFT of centre, at 1.40 m. MEASURED the roof: rises 0.90 m/m to the LEFT. Then 0.88 m to the LEFT and 3.30 m on, passing the back upright 1.10 m to our RIGHT.
-[course_fsm-9] [WARN] [1789874066.673647914] [course_fsm]: TUBE_ALIGN: gap at (+12.79, +1.11), heading +3 deg. Entry 2.64 m short of it at 1.40 m.
-[course_fsm-9] [INFO] [1789874066.722727813] [course_fsm]: TUBE_ALIGN: +0.33 along / -0.00 across (tol 0.11), alt 1.98/1.40. RIGHT gap at (+12.79, +1.11), 0.78 m wide, 0 uprights matched, hole centre +0.07 m off the midpoint at 1.51 m, ceiling 1.99, floor 1.04, roof rising +0.90 m/m left
-[tube_detect-8] [INFO] [1789874067.151881041] [tube_detect]: tubes: YES (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 3.74 m; depth spread 3.10 m; depth spread 2.44 m; 150 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874067.522884698] [course_fsm]: alt=+1.93 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.96 m rng_ok=True vz=+0.18 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.03,+0.01) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874067.574542590] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874067.723333429] [course_fsm]: TUBE_ALIGN: +0.38 along / +0.01 across (tol 0.11), alt 1.90/1.40. RIGHT gap at (+12.77, +1.13), 0.79 m wide, 0 uprights matched, hole centre +0.07 m off the midpoint at 1.51 m, ceiling 2.00, floor 1.03, roof rising +0.90 m/m left
-[tube_detect-8] [INFO] [1789874068.177221305] [tube_detect]: tubes: YES (3 tube(s): d=2.73 az=-29, d=4.94 az=-6, d=2.81 az=+13 | no hole (cell runs off the frame); 158 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874068.526563213] [course_fsm]: alt=+1.75 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.81 m rng_ok=True vz=+0.35 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.30,+0.06) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874068.724082359] [course_fsm]: TUBE_ALIGN: +0.20 along / +0.06 across (tol 0.11), alt 1.69/1.40. RIGHT gap at (+12.77, +1.13), 0.79 m wide, 0 uprights matched, hole centre +0.08 m off the midpoint at 1.51 m, ceiling 2.00, floor 1.03, roof rising +0.91 m/m left
-[tube_detect-8] [INFO] [1789874069.276478175] [tube_detect]: tubes: YES (2 tube(s): d=2.49 az=-32, d=2.58 az=+13 | holes az=+2 el=-4 quad | rejected: depth spread 2.18 m; 167 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874069.572916571] [course_fsm]: alt=+1.54 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.58 m rng_ok=True vz=+0.17 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.22,+0.01) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874069.575305795] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [WARN] [1789874069.674032210] [course_fsm]: Flying the MEASURED opening, not the template: two layouts fit equally well (which tube is the middle?). 0.79 x 0.97 m, 2 uprights in the plane.
-[course_fsm-9] [INFO] [1789874069.726863439] [course_fsm]: TUBE_ALIGN: -0.01 along / +0.06 across (tol 0.11), alt 1.52/1.40. RIGHT gap at (+12.78, +1.17), 0.79 m wide, 0 uprights matched, hole centre +0.08 m off the midpoint at 1.49 m, ceiling 1.98, floor 1.01, roof rising +0.91 m/m left
-[tube_detect-8] [INFO] [1789874070.292701931] [tube_detect]: tubes: YES (3 tube(s): d=2.37 az=-33, d=4.63 az=-7, d=2.47 az=+14 | no hole (no enclosed cell in the mask); 176 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874070.575990793] [course_fsm]: alt=+1.46 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.49 m rng_ok=True vz=+0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.04,-0.03) | hdg=+3 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874071.321170716] [tube_detect]: tubes: YES (2 tube(s): d=2.35 az=-33, d=2.43 az=+15 | holes az=+3 el=+0 quad | rejected: depth spread 2.20 m; 186 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874071.624077954] [course_fsm]: alt=+1.43 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.44 m rng_ok=True vz=+0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.04,-0.00) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874071.624488667] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [WARN] [1789874072.223588428] [course_fsm]: TUBE_PASS: committed, through the gap. The camera is no longer steering.
-[course_fsm-9] [INFO] [1789874072.274183101] [course_fsm]: TUBE_PASS: -2.62 m past the plane.
-[tube_detect-8] [INFO] [1789874072.371282610] [tube_detect]: tubes: YES (2 tube(s): d=2.36 az=-32, d=2.45 az=+16 | holes az=+3 el=+2 quad | rejected: depth spread 2.20 m; 196 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874072.672984098] [course_fsm]: alt=+1.41 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.42 m rng_ok=True vz=+0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,+0.02) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874072.778942084] [course_fsm]: TUBE_PASS: -2.63 m past the plane.
-[course_fsm-9] [INFO] [1789874073.322991246] [course_fsm]: TUBE_PASS: -2.61 m past the plane.
-[tube_detect-8] [INFO] [1789874073.413528522] [tube_detect]: tubes: YES (2 tube(s): d=2.35 az=-32, d=2.44 az=+15 | holes az=+3 el=+4 quad | rejected: depth spread 2.15 m; 203 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874073.624741525] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874073.722380102] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.15,+0.03) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874073.826331056] [course_fsm]: TUBE_PASS: -2.57 m past the plane.
-[course_fsm-9] [INFO] [1789874074.373101529] [course_fsm]: TUBE_PASS: -2.47 m past the plane.
-[tube_detect-8] [INFO] [1789874074.488363426] [tube_detect]: tubes: YES (2 tube(s): d=2.21 az=-34, d=2.31 az=+16 | holes az=+3 el=+4 quad | rejected: depth spread 2.19 m; 214 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874074.721390096] [course_fsm]: No tube plane (no uprights ahead), so squaring the crossing to the COURSE heading and taking the range from the opening itself. The uprights are being rejected; the opening is not.
-[course_fsm-9] [WARN] [1789874074.721822062] [course_fsm]: Flying the MEASURED opening, not the template: no uprights ahead. 0.81 x 0.98 m, 0 uprights in the plane.
-[course_fsm-9] [INFO] [1789874074.722478086] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.36,+0.03) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874074.876038012] [course_fsm]: TUBE_PASS: -2.34 m past the plane.
-[course_fsm-9] [INFO] [1789874075.423997502] [course_fsm]: TUBE_PASS: -2.18 m past the plane.
-[tube_detect-8] [INFO] [1789874075.561576365] [tube_detect]: tubes: YES (1 tube(s): d=2.07 az=+18 | no hole (need two uprights for the plane depth) | rejected: depth spread 2.19 m; 225 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874075.674770520] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[tube_detect-8] [WARN] [1789874075.688804050] [tube_detect]: Tubes LOST.
-[course_fsm-9] [INFO] [1789874075.772671509] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.47,+0.03) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874075.924654349] [course_fsm]: TUBE_PASS: -2.02 m past the plane.
-[course_fsm-9] [INFO] [1789874076.424876583] [course_fsm]: TUBE_PASS: -1.85 m past the plane.
-[tube_detect-8] [INFO] [1789874076.635209366] [tube_detect]: tubes: no  (1 tube(s): d=1.70 az=+20 | no hole (need two uprights for the plane depth) | rejected: depth spread 2.15 m; 235 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874076.822333023] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.47,+0.03) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874076.974914670] [course_fsm]: TUBE_PASS: -1.68 m past the plane.
-[course_fsm-9] [INFO] [1789874077.523054113] [course_fsm]: TUBE_PASS: -1.51 m past the plane.
-[tube_detect-8] [INFO] [1789874077.708200907] [tube_detect]: tubes: no  (1 tube(s): d=3.51 az=-9 | no hole (need two uprights for the plane depth); 246 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874077.722639580] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874077.822526730] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.45,+0.03) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874078.025502735] [course_fsm]: TUBE_PASS: -1.36 m past the plane.
-[course_fsm-9] [INFO] [1789874078.572230425] [course_fsm]: TUBE_PASS: -1.20 m past the plane.
-[tube_detect-8] [INFO] [1789874078.768969679] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 256 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874078.872341154] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.44,+0.02) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874079.123404532] [course_fsm]: TUBE_PASS: -1.03 m past the plane.
-[course_fsm-9] [INFO] [1789874079.674803188] [course_fsm]: TUBE_PASS: -0.85 m past the plane.
-[course_fsm-9] [WARN] [1789874079.772392663] [course_fsm]: Flying the MEASURED opening, not the template: two layouts fit equally well (which tube is the middle?). 0.78 x 0.95 m, 1 uprights in the plane.
-[course_fsm-9] [INFO] [1789874079.773730059] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[tube_detect-8] [INFO] [1789874079.818282417] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 2.77 m; 266 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874079.872448627] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.44,+0.02) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874080.223642179] [course_fsm]: TUBE_PASS: -0.68 m past the plane.
-[course_fsm-9] [INFO] [1789874080.772359169] [course_fsm]: TUBE_PASS: -0.52 m past the plane.
-[tube_detect-8] [INFO] [1789874080.901366449] [tube_detect]: tubes: no  (1 tube(s): d=2.54 az=-13 | no hole (need two uprights for the plane depth); 277 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874080.926151369] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.43,+0.02) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874081.273070441] [course_fsm]: TUBE_PASS: -0.37 m past the plane.
-[course_fsm-9] [INFO] [1789874081.773455954] [course_fsm]: TUBE_PASS: -0.22 m past the plane.
-[course_fsm-9] [INFO] [1789874081.821826888] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[tube_detect-8] [INFO] [1789874081.952701688] [tube_detect]: tubes: no  (1 tube(s): d=2.22 az=-15 | no hole (need two uprights for the plane depth); 287 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874081.973018278] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.42,+0.02) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874082.323574940] [course_fsm]: TUBE_PASS: -0.07 m past the plane.
-[course_fsm-9] [INFO] [1789874082.872702957] [course_fsm]: TUBE_PASS: +0.07 m past the plane.
-[course_fsm-9] [INFO] [1789874082.973271789] [course_fsm]: alt=+1.22 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.10 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.40,+0.01) | hdg=+3 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874083.037262950] [tube_detect]: tubes: no  (2 tube(s): d=1.91 az=-17, d=5.26 az=+7 | no hole (no enclosed cell in the mask); 297 frames, 686 skipped)
-[tube_detect-8] [WARN] [1789874083.143476939] [tube_detect]: TUBES DETECTED
-[course_fsm-9] [WARN] [1789874083.270922765] [course_fsm]: No tube plane (no uprights ahead), so squaring the crossing to the COURSE heading and taking the range from the opening itself. The uprights are being rejected; the opening is not.
-[course_fsm-9] [INFO] [1789874083.373367724] [course_fsm]: TUBE_PASS: +0.18 m past the plane.
-[course_fsm-9] [INFO] [1789874083.821965186] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874083.922293802] [course_fsm]: TUBE_PASS: +0.35 m past the plane.
-[course_fsm-9] [INFO] [1789874084.021568663] [course_fsm]: alt=+1.36 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.43 m rng_ok=True vz=-0.15 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.46,+0.00) | hdg=+3 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874084.130851779] [tube_detect]: tubes: YES (2 tube(s): d=1.60 az=-20, d=4.94 az=+7 | no hole (no enclosed cell in the mask); 308 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874084.422378824] [course_fsm]: TUBE_PASS: +0.52 m past the plane.
-[course_fsm-9] [WARN] [1789874084.822006620] [course_fsm]: Flying the MEASURED opening, not the template: no uprights ahead. 0.78 x 0.95 m, 0 uprights in the plane.
-[course_fsm-9] [INFO] [1789874084.924182411] [course_fsm]: TUBE_PASS: +0.70 m past the plane.
-[course_fsm-9] [INFO] [1789874085.023255695] [course_fsm]: alt=+1.54 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.60 m rng_ok=True vz=+0.11 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.49,+0.03) | hdg=+3 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874085.221195259] [tube_detect]: tubes: YES (3 tube(s): d=1.21 az=-26, d=4.52 az=-4, d=4.58 az=+8 | no hole (no enclosed cell in the mask); 318 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874085.473040347] [course_fsm]: TUBE_PASS: +0.91 m past the plane.
-[course_fsm-9] [INFO] [1789874085.822685743] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874085.973821823] [course_fsm]: TUBE_PASS: +1.06 m past the plane.
-[course_fsm-9] [INFO] [1789874086.073038755] [course_fsm]: alt=+1.51 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.54 m rng_ok=True vz=+0.13 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.31,+0.04) | hdg=+3 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874086.224165947] [tube_detect]: tubes: YES (3 tube(s): d=0.88 az=-33, d=4.24 az=-5, d=4.29 az=+8 | no hole (no enclosed cell in the mask); 328 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874086.273568006] [course_fsm]: TUBE_EXIT: through. One diagonal leg +0.88 m (left) and 3.30 m on, round the back upright.
-[course_fsm-9] [INFO] [1789874087.122280144] [course_fsm]: alt=+1.44 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.44 m rng_ok=True vz=+0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.05,-0.02) | hdg=+3 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874087.277560704] [tube_detect]: tubes: YES (3 tube(s): d=0.79 az=-35, d=4.08 az=-4, d=4.13 az=+9 | no hole (no enclosed cell in the mask); 337 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874087.822688226] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874088.172425746] [course_fsm]: alt=+1.39 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.38 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.11,-0.10) | hdg=+3 deg yaw_sp=+3 deg
-[course_fsm-9] [WARN] [1789874088.271057719] [course_fsm]: No tube plane (no uprights ahead), so squaring the crossing to the COURSE heading and taking the range from the opening itself. The uprights are being rejected; the opening is not.
-[tube_detect-8] [INFO] [1789874088.379876049] [tube_detect]: tubes: YES (3 tube(s): d=0.72 az=-35, d=3.96 az=-3, d=4.01 az=+10 | no hole (no enclosed cell in the mask); 347 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874089.221975575] [course_fsm]: alt=+1.37 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.36 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.28,-0.14) | hdg=+3 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874089.430182733] [tube_detect]: tubes: YES (3 tube(s): d=0.58 az=-34, d=3.83 az=-3, d=3.88 az=+11 | no hole (no enclosed cell in the mask); 357 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874089.872677474] [course_fsm]: Flying the MEASURED opening, not the template: no uprights ahead. 0.78 x 0.95 m, 0 uprights in the plane.
-[course_fsm-9] [INFO] [1789874089.873648895] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [INFO] [1789874090.271957873] [course_fsm]: alt=+1.37 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.37 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.35,-0.13) | hdg=+3 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874090.460989924] [tube_detect]: tubes: YES (2 tube(s): d=3.65 az=-1, d=3.70 az=+13 | holes az=+6 el=+21 quad; 367 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874091.321534360] [course_fsm]: alt=+1.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.39 m rng_ok=True vz=-0.68 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+6.69,+4.26) | hdg=-28 deg yaw_sp=+3 deg
-[tube_detect-8] [WARN] [1789874091.490055798] [tube_detect]: Tubes LOST.
-[tube_detect-8] [INFO] [1789874091.558932468] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 379 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874091.772327807] [course_fsm]: Flow unhealthy: reverting to zero-velocity hold.
-[course_fsm-9] [ERROR] [1789874091.773131095] [course_fsm]: COURSE_HOLD: flow lost on the way out during TUBE_EXIT. Hovering here and waiting up to 45 s for it to come back, then carrying on. NOT landing.
-[course_fsm-9] [WARN] [1789874091.823637889] [course_fsm]: COURSE_HOLD: waiting (flow lost on the way out); rangefinder_ok=True flow_hold=False lidar=0.00 m, 45 s left.
-[course_fsm-9] [INFO] [1789874091.921447162] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [WARN] [1789874091.993224272] [course_fsm]: EKF2 height reset: delta_z=-5.62 m, shifted altitude reference to match.
-[course_fsm-9] [INFO] [1789874092.321671148] [course_fsm]: alt=-16.32 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=True vz=+30.20 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-35.59,+17.88) | hdg=-119 deg yaw_sp=+3 deg
-[course_fsm-9] [WARN] [1789874092.526611684] [course_fsm]: EKF2 height reset: delta_z=-13.33 m, shifted altitude reference to match.
-[tube_detect-8] [INFO] [1789874092.650098215] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 388 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874092.871937283] [course_fsm]: COURSE_HOLD: waiting (flow lost on the way out); rangefinder_ok=True flow_hold=False lidar=0.00 m, 44 s left.
-[course_fsm-9] [INFO] [1789874093.370705419] [course_fsm]: alt=-33.72 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=True vz=+31.88 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-32.22,+16.38) | hdg=+122 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874093.710032422] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 398 frames, 686 skipped)
-[course_fsm-9] [INFO] [1789874093.922239578] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [WARN] [1789874093.924396770] [course_fsm]: COURSE_HOLD: waiting (flow lost on the way out); rangefinder_ok=True flow_hold=False lidar=0.00 m, 43 s left.
-[course_fsm-9] [INFO] [1789874094.371514634] [course_fsm]: alt=-39.26 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=True vz=+20.89 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-32.37,+17.35) | hdg=-158 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874094.782400877] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 409 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874094.971465675] [course_fsm]: COURSE_HOLD: waiting (flow lost on the way out); rangefinder_ok=False flow_hold=False lidar=0.00 m, 42 s left.
-[course_fsm-9] [INFO] [1789874095.420985592] [course_fsm]: alt=-40.91 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=False vz=+11.46 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-32.28,+17.48) | hdg=+38 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874095.923003082] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[tube_detect-8] [INFO] [1789874095.925833038] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 419 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874095.972412549] [course_fsm]: COURSE_HOLD: waiting (flow lost on the way out); rangefinder_ok=False flow_hold=False lidar=0.00 m, 41 s left.
-[course_fsm-9] [INFO] [1789874096.471509288] [course_fsm]: alt=-48.38 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=False vz=+9.66 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-31.49,+16.85) | hdg=-32 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874096.971710083] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 428 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874096.972452339] [course_fsm]: COURSE_HOLD: waiting (flow lost on the way out); rangefinder_ok=False flow_hold=False lidar=0.00 m, 40 s left.
-[course_fsm-9] [INFO] [1789874097.522578775] [course_fsm]: alt=-55.74 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=False vz=+8.36 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-29.98,+16.32) | hdg=-16 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874097.971801461] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[tube_detect-8] [INFO] [1789874097.972230016] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 438 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874098.021746136] [course_fsm]: COURSE_HOLD: waiting (flow lost on the way out); rangefinder_ok=False flow_hold=False lidar=0.00 m, 39 s left.
-[course_fsm-9] [INFO] [1789874098.571266172] [course_fsm]: alt=-61.77 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=False vz=+6.06 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-28.12,+15.90) | hdg=+6 deg yaw_sp=+3 deg
-[tube_detect-8] [INFO] [1789874099.034300109] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 448 frames, 686 skipped)
-[course_fsm-9] [WARN] [1789874099.071612333] [course_fsm]: COURSE_HOLD: waiting (flow lost on the way out); rangefinder_ok=False flow_hold=False lidar=0.00 m, 38 s left.
-[bash-5] WARN  [mc_pos_control] invalid setpoints
-[bash-5] WARN  [mc_pos_control] Failsafe: blind land
-[course_fsm-9] [ERROR] [1789874099.367489008] [course_fsm]: PX4 failsafe SET: local_position_invalid, local_position_invalid_relaxed, local_velocity_invalid, offboard_control_signal_lost
-[bash-5] WARN  [failsafe] Failsafe activated	
-[bash-5] INFO  [tone_alarm] battery warning (fast)
-[course_fsm-9] [INFO] [1789874099.380978408] [course_fsm]: nav_state -> ALTCTL(1)
-[bash-5] ERROR [flight_mode_manager] Matching flight task was not able to run, Nav state: 1, Task: 1
-[course_fsm-9] [INFO] [1789874099.621176509] [course_fsm]: alt=-65.56 m airborne=True xy_valid=False z_valid=True | dist_bottom=0.00 m rng_ok=False vz=+2.83 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-26.30,+15.79) | hdg=-2 deg yaw_sp=+3 deg
-[course_fsm-9] [INFO] [1789874100.021945171] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 35 truncated; rejections: corner depth missing x152, corner depths disagree x24, corner depth out of range x1)
-[course_fsm-9] [WARN] [1789874100.121371354] [course_fsm]: COURSE_HOLD: waiting (flow lost on the way out); rangefinder_ok=False flow_hold=False lidar=0.00 m, 37 s left.
-[tube_detect-8] [INFO] [1789874100.131080297] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 458 frames, 686 skipped)
+[course_fsm-9] [WARN] [1789896627.085501403] [course_fsm]: tube detection ON.
+[tube_detect-8] [WARN] [1789896627.085657431] [tube_detect]: Detection ENABLED by /tube_detect/enable.
+[course_fsm-9] [WARN] [1789896627.085760697] [course_fsm]: TUBE_CLIMB: past the blue bars. Straight up to 1.98 m where we are, then -1.10 m to sit 2.64 m short of the tube plane and sweep +/-25 deg across it.
+[course_fsm-9] [INFO] [1789896627.135589308] [course_fsm]: TUBE_CLIMB: -0.03 m to go, alt 1.12/1.98 m.
+[tube_detect-8] [INFO] [1789896627.159529991] [tube_detect]: First frame from /camera/rgb/image_raw: 640x480.
+[tube_detect-8] [INFO] [1789896627.229658185] [tube_detect]: tubes: no  (1 tube(s): d=3.87 az=-8 | no hole (need two uprights for the plane depth); 1 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896627.935845472] [course_fsm]: alt=+1.24 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.20 m rng_ok=True vz=-0.50 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.19,+0.01) | hdg=+4 deg yaw_sp=+4 deg
+[course_fsm-9] [INFO] [1789896628.135815073] [course_fsm]: TUBE_CLIMB: -0.33 m to go, alt 1.33/1.98 m.
+[tube_detect-8] [INFO] [1789896628.250240429] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 2.21 m; 11 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896628.636161299] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896628.985799232] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.61 m rng_ok=True vz=-0.41 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.25,-0.06) | hdg=+4 deg yaw_sp=+4 deg
+[course_fsm-9] [INFO] [1789896629.137263551] [course_fsm]: TUBE_CLIMB: -0.20 m to go, alt 1.71/1.98 m.
+[tube_detect-8] [INFO] [1789896629.275258768] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 20 frames, 713 skipped)
+[course_fsm-9] [WARN] [1789896629.686109786] [course_fsm]: TUBE_APPROACH: -1.10 m to the look-from point, 2.64 m short of the tube plane. Stopping early if an upright comes up closer than that.
+[course_fsm-9] [INFO] [1789896629.737890277] [course_fsm]: TUBE_APPROACH: -1.19 m to go, nearest upright 3.97 m.
+[course_fsm-9] [INFO] [1789896630.035435439] [course_fsm]: alt=+1.85 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.84 m rng_ok=True vz=-0.15 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.21,-0.01) | hdg=+4 deg yaw_sp=+4 deg
+[tube_detect-8] [INFO] [1789896630.330827345] [tube_detect]: tubes: no  (1 tube(s): d=1.63 az=+23 | no hole (need two uprights for the plane depth) | rejected: depth spread 5.52 m; 31 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896630.687016882] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[tube_detect-8] [WARN] [1789896630.729423013] [tube_detect]: TUBES DETECTED
+[course_fsm-9] [INFO] [1789896630.786703482] [course_fsm]: TUBE_APPROACH: -1.08 m to go, nearest upright n/a.
+[course_fsm-9] [INFO] [1789896631.084891426] [course_fsm]: alt=+1.93 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.93 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.38,-0.01) | hdg=+4 deg yaw_sp=+4 deg
+[tube_detect-8] [WARN] [1789896631.244529244] [tube_detect]: Tubes LOST.
+[tube_detect-8] [INFO] [1789896631.386642159] [tube_detect]: tubes: no  (1 tube(s): d=1.82 az=+20 | no hole (need two uprights for the plane depth) | rejected: depth spread 2.13 m; 42 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896631.786877652] [course_fsm]: TUBE_APPROACH: -0.78 m to go, nearest upright n/a.
+[course_fsm-9] [INFO] [1789896632.085556680] [course_fsm]: alt=+1.95 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.96 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.74,-0.08) | hdg=+4 deg yaw_sp=+4 deg
+[tube_detect-8] [INFO] [1789896632.404702188] [tube_detect]: tubes: no  (2 tube(s): d=2.15 az=-34, d=2.26 az=+16 | holes az=-23 el=-1 quad roof-cut, az=+3 el=+19 roof-cut, az=+3 el=-11 quad | rejected: depth spread 2.17 m; 52 frames, 713 skipped)
+[tube_detect-8] [WARN] [1789896632.426820975] [tube_detect]: TUBES DETECTED
+[course_fsm-9] [INFO] [1789896632.687222510] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [WARN] [1789896632.736561373] [course_fsm]: TUBE_SCAN: On the look-from point. Holding still and sweeping +/-25 deg for 8 s to see both openings.
+[course_fsm-9] [INFO] [1789896632.785823187] [course_fsm]: TUBE_SCAN: 0.0/8 s (extending to 20 s, nothing seen yet), no opening yet
+[course_fsm-9] [INFO] [1789896633.135653893] [course_fsm]: alt=+1.96 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.97 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.53,-0.09) | hdg=+4 deg yaw_sp=+11 deg
+[tube_detect-8] [INFO] [1789896633.428418482] [tube_detect]: tubes: YES (2 tube(s): d=2.56 az=-30, d=2.74 az=+13 | holes az=-20 el=+3 quad roof-cut, az=+4 el=+19 quad roof-cut, az=+2 el=-6 quad, az=-13 el=+26 quad roof-cut | rejected: depth spread 2.07 m; 62 frames, 713 skipped)
+[course_fsm-9] [WARN] [1789896633.485630551] [course_fsm]: Flying the MEASURED opening, not the template: two layouts fit equally well (which tube is the middle?). 1.09 x 1.87 m, 2 uprights in the plane.
+[course_fsm-9] [INFO] [1789896633.790244019] [course_fsm]: TUBE_SCAN: 1.1/8 s, 2.04 m2 (1.09x1.87) at (+12.69,+0.07) x7
+[tube_detect-8] [WARN] [1789896634.109378486] [tube_detect]: Tubes LOST.
+[course_fsm-9] [INFO] [1789896634.137426983] [course_fsm]: alt=+1.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.98 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.10,-0.04) | hdg=+16 deg yaw_sp=+26 deg
+[tube_detect-8] [INFO] [1789896634.461508709] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 3.77 m; depth spread 2.27 m; 72 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896634.737554395] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896634.839502744] [course_fsm]: TUBE_SCAN: 2.1/8 s, 2.04 m2 (1.09x1.87) at (+12.69,+0.07) x7
+[course_fsm-9] [INFO] [1789896635.137808722] [course_fsm]: alt=+1.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.98 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.11,-0.04) | hdg=+31 deg yaw_sp=+28 deg
+[tube_detect-8] [INFO] [1789896635.496217820] [tube_detect]: tubes: no  (1 tube(s): d=2.94 az=-14 | no hole (need two uprights for the plane depth) | rejected: depth spread 4.33 m; 82 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896635.839630914] [course_fsm]: TUBE_SCAN: 3.1/8 s, 2.04 m2 (1.09x1.87) at (+12.69,+0.07) x7
+[course_fsm-9] [INFO] [1789896636.186130141] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.05,+0.00) | hdg=+25 deg yaw_sp=+16 deg
+[tube_detect-8] [INFO] [1789896636.505979647] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 2.45 m; depth spread 2.41 m; 91 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896636.785685656] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896636.886618357] [course_fsm]: TUBE_SCAN: 4.1/8 s, 2.04 m2 (1.09x1.87) at (+12.69,+0.07) x7
+[course_fsm-9] [INFO] [1789896637.236952623] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.10) | hdg=+7 deg yaw_sp=-4 deg
+[tube_detect-8] [INFO] [1789896637.523756953] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 2.12 m; depth spread 2.46 m; depth spread 2.07 m; 102 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896637.887900863] [course_fsm]: TUBE_SCAN: 5.1/8 s, 2.04 m2 (1.09x1.87) at (+12.69,+0.07) x7
+[course_fsm-9] [INFO] [1789896638.285302657] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.20,+0.11) | hdg=-14 deg yaw_sp=-19 deg
+[tube_detect-8] [INFO] [1789896638.527841449] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 3.18 m; depth spread 2.59 m; depth spread 2.62 m; 112 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896638.837328034] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896638.936273106] [course_fsm]: TUBE_SCAN: 6.2/8 s, 2.04 m2 (1.09x1.87) at (+12.69,+0.07) x7
+[course_fsm-9] [INFO] [1789896639.285319629] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.16,+0.03) | hdg=-22 deg yaw_sp=-19 deg
+[tube_detect-8] [INFO] [1789896639.547972442] [tube_detect]: tubes: no  (1 tube(s): d=2.96 az=-4 | no hole (need two uprights for the plane depth) | rejected: depth spread 2.04 m; 121 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896639.940442045] [course_fsm]: TUBE_SCAN: 7.2/8 s, 2.04 m2 (1.09x1.87) at (+12.69,+0.07) x7
+[course_fsm-9] [INFO] [1789896640.337089324] [course_fsm]: alt=+1.98 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.03,-0.05) | hdg=-14 deg yaw_sp=-4 deg
+[tube_detect-8] [INFO] [1789896640.562587779] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth) | rejected: depth spread 2.80 m; depth spread 3.88 m; depth spread 6.64 m; 130 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896640.787694506] [course_fsm]: TUBE_SCAN: squaring up. 2.04 m2 (1.09x1.87) at (+12.69,+0.07) x7
+[course_fsm-9] [INFO] [1789896640.887896449] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896641.385221912] [course_fsm]: alt=+1.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.98 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.09,-0.03) | hdg=+4 deg yaw_sp=+4 deg
+[tube_detect-8] [INFO] [1789896641.575723815] [tube_detect]: tubes: no  (2 tube(s): d=2.53 az=-31, d=2.71 az=+13 | holes az=-21 el=-1 quad roof-cut, az=-1 el=+19 roof-cut, az=+1 el=-11 quad | rejected: depth spread 5.01 m; 139 frames, 713 skipped)
+[tube_detect-8] [WARN] [1789896641.694491745] [tube_detect]: TUBES DETECTED
+[course_fsm-9] [INFO] [1789896641.787854067] [course_fsm]: TUBE_SCAN: squaring up. 2.07 m2 (1.10x1.89) at (+12.70,+0.07) x10
+[course_fsm-9] [WARN] [1789896642.086881322] [course_fsm]: Flying the MEASURED opening, not the template: two layouts fit equally well (which tube is the middle?). 1.14 x 2.03 m, 2 uprights in the plane.
+[course_fsm-9] [WARN] [1789896642.289075707] [course_fsm]: TUBE_SCAN saw: 2.26 m2 (at least) opening, 1.12 m wide, 2.02 m tall, 0.95 m to our LEFT, roof rising 0.90 m/m to the LEFT, 15 frames   <== CHOSEN
+[course_fsm-9] [WARN] [1789896642.289611665] [course_fsm]: TUBE_SCAN: flying the opening 0.95 m to our LEFT (2.26 m2).
+[course_fsm-9] [WARN] [1789896642.338977610] [course_fsm]: TUBE_LOCK: LEFT gap at (+12.81, +0.00), 1.13 m wide, 0 uprights matched, hole centre +0.11 m off the midpoint at 1.99 m, ceiling 3.01 (frame, roof is higher), floor 0.98, roof rising +0.91 m/m left.
+[course_fsm-9] [INFO] [1789896642.386377896] [course_fsm]: alt=+1.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.98 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.14,-0.04) | hdg=+6 deg yaw_sp=+4 deg
+[course_fsm-9] [INFO] [1789896642.386857717] [course_fsm]: TUBE_LOCK: settling. LEFT gap at (+12.81, +0.00), 1.13 m wide, 0 uprights matched, hole centre +0.11 m off the midpoint at 1.99 m, ceiling 3.01 (frame, roof is higher), floor 0.98, roof rising +0.91 m/m left
+[tube_detect-8] [INFO] [1789896642.594867539] [tube_detect]: tubes: YES (1 tube(s): d=2.84 az=+13 | no hole (need two uprights for the plane depth) | rejected: depth spread 1.30 m; depth spread 2.70 m; 149 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896642.937113215] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896643.386500159] [course_fsm]: alt=+1.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.98 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.08,-0.01) | hdg=+3 deg yaw_sp=+4 deg
+[course_fsm-9] [INFO] [1789896643.391201086] [course_fsm]: TUBE_LOCK: settling. LEFT gap at (+12.81, +0.00), 1.12 m wide, 0 uprights matched, hole centre +0.11 m off the midpoint at 2.00 m, ceiling 3.01 (frame, roof is higher), floor 0.98, roof rising +0.91 m/m left
+[tube_detect-8] [INFO] [1789896643.656910521] [tube_detect]: tubes: YES (3 tube(s): d=2.79 az=-26, d=5.02 az=-4, d=2.89 az=+15 | holes az=-10 el=-2 quad, az=+2 el=+20 quad roof-cut; 160 frames, 713 skipped)
+[course_fsm-9] [WARN] [1789896644.088220628] [course_fsm]: Back upright measured 2.14 m behind the plane, -0.68 m off the track (+ = left).
+[course_fsm-9] [WARN] [1789896644.088641649] [course_fsm]: Crossing the tubes at 1.67 m: the camera puts the cell at 0.98-3.01 m over the track, centre of area 2.00 m (template said 1.81 m). The ceiling is the top of the FRAME, not the diagonal, so the real cell is taller than this and the height flown is low in it -- which is the safe way round.
+[course_fsm-9] [WARN] [1789896644.089021937] [course_fsm]: TUBE PLAN: cross the MEASURED opening, 1.12 m wide, aiming 0.11 m to its LEFT of centre, at 1.67 m. MEASURED the roof: rises 0.91 m/m to the LEFT. Then 0.88 m to the LEFT and 3.30 m on, passing the back upright 0.68 m to our RIGHT.
+[course_fsm-9] [WARN] [1789896644.089405780] [course_fsm]: TUBE_ALIGN: gap at (+12.80, +0.01), heading +1 deg. Entry 2.64 m short of it at 1.67 m.
+[course_fsm-9] [INFO] [1789896644.139275287] [course_fsm]: TUBE_ALIGN: +0.41 along / +0.83 across (tol 0.11), alt 1.97/1.67. LEFT gap at (+12.80, +0.01), 1.11 m wide, 0 uprights matched, hole centre +0.11 m off the midpoint at 2.00 m, ceiling 3.01 (frame, roof is higher), floor 0.98, roof rising +0.91 m/m left
+[course_fsm-9] [INFO] [1789896644.387311884] [course_fsm]: alt=+1.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.99 m rng_ok=True vz=+0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.05,-0.01) | hdg=+4 deg yaw_sp=+1 deg
+[tube_detect-8] [INFO] [1789896644.685420579] [tube_detect]: tubes: YES (2 tube(s): d=2.78 az=-27, d=2.90 az=+15 | holes az=-17 el=+2 quad, az=+2 el=+19 roof-cut, az=+3 el=-9 quad | rejected: depth spread 3.26 m; 170 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896644.937611949] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896645.193399030] [course_fsm]: TUBE_ALIGN: +0.34 along / +0.78 across (tol 0.11), alt 1.90/1.67. LEFT gap at (+12.80, +0.02), 1.06 m wide, 0 uprights matched, hole centre +0.11 m off the midpoint at 2.00 m, ceiling 3.01, floor 0.99, roof rising +0.94 m/m left
+[course_fsm-9] [INFO] [1789896645.440045250] [course_fsm]: alt=+1.86 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.91 m rng_ok=True vz=+0.23 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.18,-0.27) | hdg=+0 deg yaw_sp=+1 deg
+[tube_detect-8] [WARN] [1789896645.481276901] [tube_detect]: Tubes LOST.
+[tube_detect-8] [INFO] [1789896645.735009817] [tube_detect]: tubes: no  (1 tube(s): d=2.81 az=-21 | no hole (need two uprights for the plane depth) | rejected: depth spread 3.32 m; depth spread 4.71 m; 180 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896646.237351528] [course_fsm]: TUBE_ALIGN: +0.17 along / +0.51 across (tol 0.11), alt 1.76/1.67. LEFT gap at (+12.80, +0.02), 1.06 m wide, 0 uprights matched, hole centre +0.11 m off the midpoint at 2.00 m, ceiling 3.03 (frame, roof is higher), floor 0.99, roof rising +0.95 m/m left
+[course_fsm-9] [INFO] [1789896646.486465430] [course_fsm]: alt=+1.74 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.77 m rng_ok=True vz=+0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.26,-0.54) | hdg=-0 deg yaw_sp=+1 deg
+[tube_detect-8] [INFO] [1789896646.776819126] [tube_detect]: tubes: no  (1 tube(s): d=2.61 az=-16 | no hole (need two uprights for the plane depth) | rejected: depth spread 3.25 m; depth spread 2.17 m; 190 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896646.986905758] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [WARN] [1789896647.087228780] [course_fsm]: Flying the MEASURED opening, not the template: two layouts fit equally well (which tube is the middle?). 1.06 x 2.04 m, 2 uprights in the plane.
+[tube_detect-8] [WARN] [1789896647.091098397] [tube_detect]: TUBES DETECTED
+[course_fsm-9] [INFO] [1789896647.238583196] [course_fsm]: TUBE_ALIGN: +0.01 along / +0.11 across (tol 0.11), alt 1.71/1.67. LEFT gap at (+12.86, -0.10), 0.79 m wide, 0 uprights matched, hole centre +0.07 m off the midpoint at 1.99 m, ceiling 2.96 (frame, roof is higher), floor 0.99, roof rising +0.62 m/m left
+[course_fsm-9] [INFO] [1789896647.537379178] [course_fsm]: alt=+1.70 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.72 m rng_ok=True vz=+0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.11,-0.31) | hdg=+1 deg yaw_sp=+1 deg
+[tube_detect-8] [INFO] [1789896647.901991053] [tube_detect]: tubes: YES (2 tube(s): d=2.48 az=-11, d=2.49 az=+34 | holes az=+20 el=-2 quad, az=-2 el=+5 quad roof-cut, az=+24 el=+21 roof-cut | rejected: depth spread 2.82 m; 199 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896648.538284589] [course_fsm]: alt=+1.68 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.70 m rng_ok=True vz=+0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.00,-0.03) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [WARN] [1789896648.837359417] [course_fsm]: TUBE_PASS: committed, through the gap. The camera is no longer steering.
+[course_fsm-9] [INFO] [1789896648.891187327] [course_fsm]: TUBE_PASS: -2.62 m past the plane.
+[tube_detect-8] [INFO] [1789896648.951284594] [tube_detect]: tubes: YES (2 tube(s): d=2.45 az=-9, d=2.46 az=+35 | holes az=+21 el=-1 quad, az=-0 el=+7 quad roof-cut, az=+27 el=+21 quad roof-cut | rejected: depth spread 2.22 m; 210 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896648.987945307] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896649.437961893] [course_fsm]: TUBE_PASS: -2.63 m past the plane.
+[course_fsm-9] [INFO] [1789896649.588098981] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.05) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896649.941529208] [course_fsm]: TUBE_PASS: -2.62 m past the plane.
+[tube_detect-8] [INFO] [1789896650.017690215] [tube_detect]: tubes: YES (2 tube(s): d=2.43 az=-9, d=2.45 az=+35 | holes az=+21 el=+1 quad, az=-0 el=+8 quad roof-cut, az=+28 el=+21 roof-cut | rejected: depth spread 2.22 m; 221 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896650.443855247] [course_fsm]: TUBE_PASS: -2.57 m past the plane.
+[course_fsm-9] [INFO] [1789896650.639021304] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.23,+0.04) | hdg=+0 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896650.988848677] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896650.989195485] [course_fsm]: TUBE_PASS: -2.46 m past the plane.
+[tube_detect-8] [INFO] [1789896651.029975656] [tube_detect]: tubes: YES (3 tube(s): d=2.35 az=-10, d=4.52 az=+8, d=2.38 az=+36 | no hole (cell runs off the top of the frame); 228 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896651.541082312] [course_fsm]: TUBE_PASS: -2.31 m past the plane.
+[course_fsm-9] [INFO] [1789896651.640279920] [course_fsm]: alt=+1.66 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.67 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.40,+0.02) | hdg=+0 deg yaw_sp=+1 deg
+[tube_detect-8] [INFO] [1789896652.040606092] [tube_detect]: tubes: YES (2 tube(s): d=2.13 az=-12, d=4.33 az=+9 | no hole (no enclosed cell in the mask); 237 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896652.087383091] [course_fsm]: TUBE_PASS: -2.14 m past the plane.
+[course_fsm-9] [WARN] [1789896652.136137296] [course_fsm]: Flying the MEASURED opening, not the template: two layouts fit equally well (which tube is the middle?). 1.21 x 1.26 m, 2 uprights in the plane.
+[course_fsm-9] [INFO] [1789896652.587409735] [course_fsm]: TUBE_PASS: -1.98 m past the plane.
+[course_fsm-9] [INFO] [1789896652.686616657] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.46,+0.01) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896653.037064796] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[tube_detect-8] [INFO] [1789896653.087268779] [tube_detect]: tubes: YES (1 tube(s): d=1.82 az=-14 | no hole (need two uprights for the plane depth) | rejected: depth spread 2.17 m; 247 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896653.136853080] [course_fsm]: TUBE_PASS: -1.81 m past the plane.
+[tube_detect-8] [WARN] [1789896653.290587622] [tube_detect]: Tubes LOST.
+[course_fsm-9] [INFO] [1789896653.686737068] [course_fsm]: TUBE_PASS: -1.64 m past the plane.
+[course_fsm-9] [INFO] [1789896653.736927547] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.44,+0.01) | hdg=+1 deg yaw_sp=+1 deg
+[tube_detect-8] [INFO] [1789896654.117691526] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 258 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896654.236759804] [course_fsm]: TUBE_PASS: -1.48 m past the plane.
+[course_fsm-9] [INFO] [1789896654.736798873] [course_fsm]: TUBE_PASS: -1.33 m past the plane.
+[tube_detect-8] [WARN] [1789896654.751154930] [tube_detect]: TUBES DETECTED
+[course_fsm-9] [INFO] [1789896654.786731678] [course_fsm]: alt=+1.66 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.43,+0.01) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896655.086146518] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[tube_detect-8] [INFO] [1789896655.185284439] [tube_detect]: tubes: YES (2 tube(s): d=1.15 az=-22, d=6.65 az=+17 | no hole (no enclosed cell in the mask) | rejected: depth spread 3.27 m; 268 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896655.237576769] [course_fsm]: TUBE_PASS: -1.18 m past the plane.
+[course_fsm-9] [WARN] [1789896655.384953217] [course_fsm]: No tube plane (no uprights ahead), so squaring the crossing to the COURSE heading and taking the range from the opening itself. The uprights are being rejected; the opening is not.
+[course_fsm-9] [INFO] [1789896655.737653386] [course_fsm]: TUBE_PASS: -1.02 m past the plane.
+[course_fsm-9] [INFO] [1789896655.787600125] [course_fsm]: alt=+1.66 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.44,+0.00) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896656.239811882] [course_fsm]: TUBE_PASS: -0.86 m past the plane.
+[tube_detect-8] [INFO] [1789896656.244618145] [tube_detect]: tubes: YES (3 tube(s): d=0.94 az=-26, d=3.15 az=+11, d=6.45 az=+17 | no hole (no enclosed cell in the mask); 273 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896656.786296773] [course_fsm]: TUBE_PASS: -0.69 m past the plane.
+[course_fsm-9] [INFO] [1789896656.836746431] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.43,+0.01) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896657.086387204] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [WARN] [1789896657.186002940] [course_fsm]: Flying the MEASURED opening, not the template: two layouts fit equally well (which tube is the middle?). 1.12 x 2.02 m, 1 uprights in the plane.
+[course_fsm-9] [INFO] [1789896657.287168819] [course_fsm]: TUBE_PASS: -0.54 m past the plane.
+[tube_detect-8] [INFO] [1789896657.310267087] [tube_detect]: tubes: YES (3 tube(s): d=0.60 az=-36, d=2.80 az=+13, d=6.10 az=+18 | no hole (no enclosed cell in the mask); 282 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896657.837699265] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.42,+0.00) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896657.838370419] [course_fsm]: TUBE_PASS: -0.38 m past the plane.
+[tube_detect-8] [INFO] [1789896658.365789083] [tube_detect]: tubes: YES (2 tube(s): d=2.43 az=+14, d=5.73 az=+19 | no hole (no enclosed cell in the mask); 293 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896658.388369262] [course_fsm]: TUBE_PASS: -0.22 m past the plane.
+[course_fsm-9] [INFO] [1789896658.886534253] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.42,-0.00) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896658.936868749] [course_fsm]: TUBE_PASS: -0.07 m past the plane.
+[course_fsm-9] [INFO] [1789896659.087431440] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[tube_detect-8] [INFO] [1789896659.418966088] [tube_detect]: tubes: YES (2 tube(s): d=2.12 az=+16, d=5.42 az=+20 | no hole (no enclosed cell in the mask); 304 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896659.486802315] [course_fsm]: TUBE_PASS: +0.08 m past the plane.
+[course_fsm-9] [INFO] [1789896659.886926143] [course_fsm]: alt=+1.44 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.41 m rng_ok=True vz=-0.15 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.40,-0.00) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896659.988243114] [course_fsm]: TUBE_PASS: +0.19 m past the plane.
+[tube_detect-8] [WARN] [1789896660.405402114] [tube_detect]: Tubes LOST.
+[tube_detect-8] [INFO] [1789896660.478805287] [tube_detect]: tubes: no  (1 tube(s): d=1.76 az=+20 | no hole (need two uprights for the plane depth); 316 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896660.488635963] [course_fsm]: TUBE_PASS: +0.35 m past the plane.
+[course_fsm-9] [INFO] [1789896660.936194322] [course_fsm]: alt=+1.70 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.77 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.47,-0.00) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896661.037771936] [course_fsm]: TUBE_PASS: +0.54 m past the plane.
+[course_fsm-9] [INFO] [1789896661.088176441] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [WARN] [1789896661.485598066] [course_fsm]: No tube plane (no uprights ahead), so squaring the crossing to the COURSE heading and taking the range from the opening itself. The uprights are being rejected; the opening is not.
+[tube_detect-8] [INFO] [1789896661.492317486] [tube_detect]: tubes: no  (1 tube(s): d=1.37 az=+24 | no hole (need two uprights for the plane depth); 326 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896661.586554882] [course_fsm]: TUBE_PASS: +0.74 m past the plane.
+[course_fsm-9] [INFO] [1789896661.985806587] [course_fsm]: alt=+1.81 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.87 m rng_ok=True vz=+0.14 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.43,+0.02) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896662.086804835] [course_fsm]: TUBE_PASS: +0.91 m past the plane.
+[tube_detect-8] [WARN] [1789896662.217004166] [tube_detect]: TUBES DETECTED
+[course_fsm-9] [WARN] [1789896662.235197346] [course_fsm]: Flying the MEASURED opening, not the template: no uprights ahead. 1.12 x 2.02 m, 0 uprights in the plane.
+[tube_detect-8] [INFO] [1789896662.527231673] [tube_detect]: tubes: YES (2 tube(s): d=4.42 az=+24, d=1.10 az=+29 | no hole (no enclosed cell in the mask); 336 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896662.586961136] [course_fsm]: TUBE_PASS: +1.05 m past the plane.
+[course_fsm-9] [WARN] [1789896662.938435584] [course_fsm]: TUBE_EXIT: through. One diagonal leg +0.88 m (left) and 3.30 m on, round the back upright.
+[course_fsm-9] [INFO] [1789896662.986253897] [course_fsm]: alt=+1.76 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.78 m rng_ok=True vz=+0.12 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.20,+0.02) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896663.136502213] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[tube_detect-8] [INFO] [1789896663.569677479] [tube_detect]: tubes: YES (3 tube(s): d=4.21 az=+14, d=4.22 az=+25, d=0.90 az=+33 | no hole (no enclosed cell in the mask); 346 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896663.986901116] [course_fsm]: alt=+1.69 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.69 m rng_ok=True vz=+0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.05,-0.04) | hdg=+1 deg yaw_sp=+1 deg
+[tube_detect-8] [INFO] [1789896664.632698243] [tube_detect]: tubes: YES (3 tube(s): d=4.11 az=+15, d=4.12 az=+26, d=0.85 az=+35 | no hole (no enclosed cell in the mask); 356 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896665.037581804] [course_fsm]: alt=+1.65 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.64 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.17,-0.13) | hdg=+0 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896665.137273515] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[tube_detect-8] [INFO] [1789896665.719894664] [tube_detect]: tubes: YES (2 tube(s): d=3.96 az=+16, d=3.97 az=+28 | holes az=+22 el=+17 quad; 367 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896666.085832357] [course_fsm]: alt=+1.63 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.63 m rng_ok=True vz=-0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.31,-0.15) | hdg=+0 deg yaw_sp=+1 deg
+[course_fsm-9] [WARN] [1789896666.534724229] [course_fsm]: No tube plane (no uprights ahead), so squaring the crossing to the COURSE heading and taking the range from the opening itself. The uprights are being rejected; the opening is not.
+[tube_detect-8] [INFO] [1789896666.766335208] [tube_detect]: tubes: YES (1 tube(s): d=3.81 az=+30 | no hole (need two uprights for the plane depth) | rejected: 2 depth samples; 376 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896667.136204192] [course_fsm]: alt=+1.64 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.64 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.35,-0.13) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896667.185828090] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [WARN] [1789896667.285345123] [course_fsm]: Flying the MEASURED opening, not the template: no uprights ahead. 1.12 x 2.02 m, 0 uprights in the plane.
+[tube_detect-8] [INFO] [1789896667.799927112] [tube_detect]: tubes: YES (2 tube(s): d=3.52 az=+21, d=3.53 az=+33 | holes az=+27 el=+17 quad; 386 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896668.137283390] [course_fsm]: alt=+1.65 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.66 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.36,-0.11) | hdg=+1 deg yaw_sp=+1 deg
+[tube_detect-8] [INFO] [1789896668.843136929] [tube_detect]: tubes: YES (2 tube(s): d=3.27 az=+24, d=3.28 az=+36 | holes az=+30 el=+18 quad; 397 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896669.186530272] [course_fsm]: alt=+1.66 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.67 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.35,-0.11) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896669.186803278] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[tube_detect-8] [WARN] [1789896669.706146656] [tube_detect]: Tubes LOST.
+[tube_detect-8] [INFO] [1789896669.950506350] [tube_detect]: tubes: no  (1 tube(s): d=3.00 az=+27 | no hole (need two uprights for the plane depth); 406 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896670.235825809] [course_fsm]: alt=+1.66 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.67 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.34,-0.12) | hdg=+1 deg yaw_sp=+1 deg
+[tube_detect-8] [INFO] [1789896670.963784758] [tube_detect]: tubes: no  (1 tube(s): d=2.75 az=+31 | no hole (need two uprights for the plane depth); 414 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896671.236731313] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.33,-0.13) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896671.237022690] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [WARN] [1789896671.535310956] [course_fsm]: No tube plane (no uprights ahead), so squaring the crossing to the COURSE heading and taking the range from the opening itself. The uprights are being rejected; the opening is not.
+[tube_detect-8] [INFO] [1789896672.024620738] [tube_detect]: tubes: no  (1 tube(s): d=2.51 az=+35 | no hole (need two uprights for the plane depth); 423 frames, 713 skipped)
+[course_fsm-9] [WARN] [1789896672.288576197] [course_fsm]: Flying the MEASURED opening, not the template: no uprights ahead. 1.12 x 2.02 m, 0 uprights in the plane.
+[course_fsm-9] [INFO] [1789896672.289597112] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.33,-0.13) | hdg=+1 deg yaw_sp=+1 deg
+[tube_detect-8] [INFO] [1789896673.073110629] [tube_detect]: tubes: no  (0 tube(s):  | no hole (need two uprights for the plane depth); 434 frames, 713 skipped)
+[course_fsm-9] [INFO] [1789896673.286413750] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896673.336129279] [course_fsm]: alt=+1.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.68 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.30,-0.11) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [WARN] [1789896673.635981002] [course_fsm]: tube detection OFF.
+[course_fsm-9] [WARN] [1789896673.636223374] [course_fsm]: PAD_OFFSET: tubes done. 2.20 m RIGHT, clear of the line the obstacles stand on, then forward looking for the marker.
+[tube_detect-8] [WARN] [1789896673.636574858] [tube_detect]: Detection DISABLED by /tube_detect/enable.
+[course_fsm-9] [INFO] [1789896673.685454036] [course_fsm]: PAD_OFFSET: +2.20 m across to go.
+[course_fsm-9] [INFO] [1789896674.735161795] [course_fsm]: PAD_OFFSET: +2.22 m across to go.
+[course_fsm-9] [INFO] [1789896675.784826207] [course_fsm]: PAD_OFFSET: +1.85 m across to go.
+[course_fsm-9] [INFO] [1789896676.784861173] [course_fsm]: PAD_OFFSET: +1.22 m across to go.
+[course_fsm-9] [INFO] [1789896677.785799251] [course_fsm]: PAD_OFFSET: +0.60 m across to go.
+[course_fsm-9] [WARN] [1789896678.385231429] [course_fsm]: PAD_SEARCH: forward at 0.66 m/s, up to 5.50 m, until the marker is under us.
+[course_fsm-9] [INFO] [1789896678.435216280] [course_fsm]: PAD_SEARCH: 0.03/5.50 m, marker no.
+[course_fsm-9] [INFO] [1789896679.436702254] [course_fsm]: PAD_SEARCH: 0.34/5.50 m, marker no.
+[course_fsm-9] [INFO] [1789896680.485224102] [course_fsm]: PAD_SEARCH: 0.52/5.50 m, marker no.
+[course_fsm-9] [INFO] [1789896681.535306228] [course_fsm]: PAD_SEARCH: 1.08/5.50 m, marker no.
+[course_fsm-9] [INFO] [1789896682.585755288] [course_fsm]: PAD_SEARCH: 1.69/5.50 m, marker no.
+[course_fsm-9] [INFO] [1789896683.636116655] [course_fsm]: PAD_SEARCH: 2.34/5.50 m, marker no.
+[course_fsm-9] [INFO] [1789896684.684805633] [course_fsm]: PAD_SEARCH: 3.01/5.50 m, marker no.
+[course_fsm-9] [INFO] [1789896685.684891279] [course_fsm]: PAD_SEARCH: 3.65/5.50 m, marker no.
+[course_fsm-9] [INFO] [1789896686.685797309] [course_fsm]: PAD_SEARCH: 4.30/5.50 m, marker no.
+[course_fsm-9] [INFO] [1789896687.735286942] [course_fsm]: PAD_SEARCH: 4.96/5.50 m, marker no.
+[course_fsm-9] [WARN] [1789896688.234793604] [course_fsm]: PAD_SEARCH: no marker in 5.26 m. The course is flown; landing here.
+[course_fsm-9] [WARN] [1789896688.235022251] [course_fsm]: Landing: course complete, no marker to land on
+[course_fsm-9] [INFO] [1789896688.235205129] [course_fsm]: Horizontal control -> zero-velocity hold for descent.
+[course_fsm-9] [INFO] [1789896688.287343581] [course_fsm]: alt=+1.66 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.67 m rng_ok=True vz=-0.01 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.65,+0.05) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896688.287674958] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896689.334956645] [course_fsm]: alt=+1.41 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.49 m rng_ok=True vz=+0.43 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.13,+0.02) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896690.334959697] [course_fsm]: alt=+1.09 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.17 m rng_ok=True vz=+0.43 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.01,+0.01) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896690.335261859] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896691.385296110] [course_fsm]: alt=+0.75 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.82 m rng_ok=True vz=+0.43 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.01,+0.00) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896692.335714077] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896692.435489857] [course_fsm]: alt=+0.40 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.48 m rng_ok=True vz=+0.43 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.04,-0.02) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896693.485310568] [course_fsm]: alt=+0.28 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.21 m rng_ok=True vz=-0.51 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.44,-0.46) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896694.384950146] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896694.485462157] [course_fsm]: alt=+0.58 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.50 m rng_ok=True vz=-0.47 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.39,-0.36) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896695.535340083] [course_fsm]: alt=+0.60 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.47 m rng_ok=True vz=-0.29 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.02,+0.01) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [INFO] [1789896696.385381054] [course_fsm]: window: no usable pose (0/6 fresh samples, 147 accepted ever, 38 truncated; rejections: corner depth missing x162, corner depths disagree x21, corner depth out of range x1)
+[course_fsm-9] [INFO] [1789896696.585001993] [course_fsm]: alt=+0.38 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.34 m rng_ok=True vz=-0.07 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.09,+0.11) | hdg=+1 deg yaw_sp=+1 deg
+[course_fsm-9] [WARN] [1789896697.437122381] [course_fsm]: Descent has stalled against something solid; PX4's land detector still says airborne. Confirming touchdown ourselves over 2 s.
+[course_fsm-9] [INFO] [1789896697.585561941] [course_fsm]: alt=+0.20 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.24 m rng_ok=True vz=+0.04 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.06,+0.07) | hdg=+1 deg yaw_sp=+1 deg
 ^C[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
 [bash-5] 
 [bash-5] PX4 Exiting...

@@ -450,13 +450,20 @@ def generate_launch_description():
                 # To make it real, add a downward sensor to
                 # x500_drone.urdf.xacro, bridge it, put a marker on the floor
                 # past the tubes, and set pad_image_topic to the bridged topic.
-                'pad': 'true',
+                # An ARGUMENT rather than a constant, so pad:=false on the
+                # command line reaches the flight node instead of being
+                # silently dropped here -- which is what happened on the
+                # 2026-09-20 run: it flew the pad stages anyway.
+                'pad': LaunchConfiguration('pad'),
                 # ... but no detector: there is no /dev/video here, and
                 # aruco_pose opening a camera that does not exist is noise at
                 # best. The pad stages fly, find nothing, and land.
                 'pad_detector': 'false',
                 'window_after_tubes': LaunchConfiguration('window_after_tubes'),
-                'window2_exit_distance': s(1.00),
+                'window2_exit_distance': LaunchConfiguration('window2_exit_distance'),
+                'window2_altitude': LaunchConfiguration('window2_altitude'),
+                'window2_hold_seconds': LaunchConfiguration('window2_hold_seconds'),
+                'scan_span_deg': LaunchConfiguration('scan_span_deg'),
                 'pad_right': LaunchConfiguration('pad_right'),
                 'pad_search_distance': s(2.50),
                 'pad_search_speed': s(0.30),
@@ -523,6 +530,34 @@ def generate_launch_description():
                         'will not solve in THIS world -- see THE TUBE GATE in '
                         'the header -- so the default lands after the bars, '
                         'which is the whole course this arena contains.'),
+        DeclareLaunchArgument(
+            'pad', default_value='true',
+            description='false = land where the last obstacle finishes, with '
+                        'no step right and no creep forward. This world has '
+                        'nothing to land ON, so the pad stages here only fly '
+                        'the pattern and land at the end of it.'),
+        DeclareLaunchArgument(
+            'window2_altitude', default_value='0.0',
+            description='m the aircraft climbs back to after the tubes before '
+                        'looking for the second window. A WORLD altitude. '
+                        f'0 = takeoff_altitude, which here is {s(1.2)} m (the '
+                        f'real course\'s 1.2 m scaled by {SCALE}) -- the '
+                        'height the first window was searched for from.'),
+        DeclareLaunchArgument(
+            'window2_hold_seconds', default_value='2.0',
+            description='s stationary at that altitude before the search '
+                        'starts. Not a length: it is not scaled.'),
+        DeclareLaunchArgument(
+            'window2_exit_distance', default_value=s(1.00),
+            description='m beyond the SECOND window its traverse ends. A '
+                        'world distance. 0 keeps exit_distance, which the '
+                        'course pins to the window-to-red midpoint.'),
+        DeclareLaunchArgument(
+            'scan_span_deg', default_value='20.0',
+            description='Total yaw arc swept when searching for a window, '
+                        'about the heading the aircraft is holding. It covers '
+                        'the SECOND window search as well, which starts from '
+                        'wherever the tubes left the aircraft pointing.'),
         DeclareLaunchArgument(
             'window_after_tubes', default_value='false',
             description='true flies a SECOND window traversal -- the blue '

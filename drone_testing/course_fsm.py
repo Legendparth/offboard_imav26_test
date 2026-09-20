@@ -8,9 +8,24 @@ blue bar -> land. ARK Flow localisation, ZED as a camera only.
     q -> abort into a controlled descent.   k -> force-disarm.
 
     With window_after_tubes:=true the window mission is flown a SECOND time
-    once the tubes finish -- the same SCAN/LOCK/AIM/ALIGN/TRAVERSE code, with
+    once the tubes finish:
+
+        TUBE_EXIT -> WINDOW2_RISE -> WINDOW2_HOLD -> [the window mission] ->
+        the landing the tubes would have ended with
+
+    WINDOW2_RISE climbs straight up, where it stands, to window2_altitude
+    (takeoff_altitude by default) and WINDOW2_HOLD stands still there for
+    window2_hold_seconds before a frame is measured. That run-up is not
+    decoration: the tubes end at the gap altitude, UNDER the cross tube, and
+    ALIGN flies to a standoff point at the WINDOW's height -- so starting the
+    search from down there turns the approach into a long diagonal climb back
+    through the obstacle the aircraft has just squeezed under. Getting the
+    height back first, on the spot, makes the second pass the same flight the
+    first one was.
+
+    The traverse itself is the same SCAN/LOCK/AIM/ALIGN/TRAVERSE code, with
     the detector switched back on and the estimator emptied of the first
-    window -- and only then does the pad landing that would have followed the
+    window, and only then does the pad landing that would have followed the
     tubes. Nothing of the course geometry is applied to that pass: it is flown
     entirely on what the camera measures, so there has to BE a window past the
     gate.
@@ -138,6 +153,9 @@ class CourseFSM(WindowTraverse):
     TUBE_SHIFT = "TUBE_SHIFT"
     TUBE_EXIT = "TUBE_EXIT"
 
+    WINDOW2_RISE = "WINDOW2_RISE"   # back up to the search altitude
+    WINDOW2_HOLD = "WINDOW2_HOLD"   # stand still there before looking
+
     PAD_OFFSET = "PAD_OFFSET"       # step right, clear of the tube line
     PAD_SEARCH = "PAD_SEARCH"       # creep forward until the marker is seen
     PAD_CENTRE = "PAD_CENTRE"       # hold over it while the estimate settles
@@ -157,15 +175,19 @@ class CourseFSM(WindowTraverse):
     TUBE_STAGES = (TUBE_CLIMB, TUBE_APPROACH, TUBE_SCAN, TUBE_SEARCH,
                    TUBE_LOCK, TUBE_ALIGN, TUBE_PASS, TUBE_SHIFT, TUBE_EXIT)
     PAD_STAGES = (PAD_OFFSET, PAD_SEARCH, PAD_CENTRE, PAD_DESCEND)
+    # The run-up to the second window. Not TUBE_STAGES (the tube detector is
+    # off and there is no tube solution to update) and not the window
+    # mission's own stages either -- they begin at SCAN, after this.
+    WINDOW2_STAGES = (WINDOW2_RISE, WINDOW2_HOLD)
     COURSE_STAGES = ((RED_RISE, RED_CROSS, BLUE_DROP, BLUE_CROSS, COURSE_HOLD)
-                     + TUBE_STAGES + PAD_STAGES)
+                     + TUBE_STAGES + WINDOW2_STAGES + PAD_STAGES)
     # Where horizontal hold is judged on FLOW FUSION ALONE. Crossing a bar or
     # the cross tube steps dist_bottom by a metre or two, EKF2 drops
     # cs_rng_kin_consistent, and it only re-earns that at |vz| > 0.5 m/s -- so
     # it never comes back in a hover. Requiring it here is what landed the
     # aircraft just after the red bar.
     FLOW_ONLY_STAGES = ((RED_CROSS, BLUE_DROP, BLUE_CROSS, COURSE_HOLD)
-                        + TUBE_STAGES + PAD_STAGES)
+                        + TUBE_STAGES + WINDOW2_STAGES + PAD_STAGES)
 
     # ---- the course layout ------------------------------------------------
     WINDOW_TO_RED = 1.00        # m, window plane to red bar
@@ -317,6 +339,18 @@ class CourseFSM(WindowTraverse):
                                 # geometry applies to it: it is flown entirely
                                 # on what the camera measures, exactly as the
                                 # first one is.
+    WINDOW2_ALTITUDE = 0.0      # m the aircraft climbs back to before it
+                                # starts looking for the second window;
+                                # 0 = takeoff_altitude, the height the first
+                                # window was searched for from. The tubes end
+                                # at the gap altitude, which is BELOW the
+                                # cross tube's height and below anything a
+                                # window is hung at, and searching from down
+                                # there is what flew it into the obstacle.
+    WINDOW2_HOLD_SECONDS = 2.0  # s stationary at that altitude before the
+                                # search starts, so the climb has stopped
+                                # moving the camera before a single frame is
+                                # measured.
     WINDOW2_EXIT_DISTANCE = 0.0 # m beyond the second window the traverse
                                 # ends; 0 = keep exit_distance, which the
                                 # course has already pinned to the midpoint of
@@ -466,6 +500,12 @@ class CourseFSM(WindowTraverse):
             'window_after_tubes', self.WINDOW_AFTER_TUBES).value)
         self.WINDOW2_EXIT_DISTANCE = float(n('window2_exit_distance',
                                              self.WINDOW2_EXIT_DISTANCE))
+        self.WINDOW2_ALTITUDE = float(n('window2_altitude',
+                                        self.WINDOW2_ALTITUDE))
+        if self.WINDOW2_ALTITUDE <= 0.0:
+            self.WINDOW2_ALTITUDE = self.TAKEOFF_ALTITUDE
+        self.WINDOW2_HOLD_SECONDS = float(n('window2_hold_seconds',
+                                            self.WINDOW2_HOLD_SECONDS))
 
         self.PAD = bool(self.declare_parameter('pad', self.PAD).value)
         self.PAD_RIGHT = float(n('pad_right', self.PAD_RIGHT))
@@ -604,8 +644,10 @@ class CourseFSM(WindowTraverse):
                f"{self.tube_roof:.2f} m), aiming {self.TUBE_CROSS_DROP:.2f} m "
                f"under and {self.TUBE_CROSS_LEFT:.2f} m left of the middle of "
                f"the opening. " if self.TUBES else "Tubes disabled. ")
-            + ("Then the whole window mission again, on the next window, and "
-               "the landing after that. " if self.WINDOW_AFTER_TUBES else "")
+            + (f"Then back up to {self.WINDOW2_ALTITUDE:.2f} m, a "
+               f"{self.WINDOW2_HOLD_SECONDS:.1f} s hover, the whole window "
+               "mission again on the next window, and the landing after "
+               "that. " if self.WINDOW_AFTER_TUBES else "")
             + ("READY." if not self.course_problems else
                "The bars will NOT be attempted -- the aircraft lands after the "
                "window. See the errors above."))
@@ -779,11 +821,7 @@ class CourseFSM(WindowTraverse):
     def _restore_land_speed(self):
         if self.course_saved_land_speed is not None:
             self.LAND_SPEED = self.course_saved_land_speed
-            # 1 while the window before the bars is being flown, 2 once the
-        # tubes are done and the second pass has been started.
-        self.window_pass = 1
-
-        self.course_saved_land_speed = None
+            self.course_saved_land_speed = None
 
     def _begin_landing(self, reason):
         # Whatever ends the flight, the touchdown uses the real landing rate,
@@ -1952,7 +1990,7 @@ class CourseFSM(WindowTraverse):
         self.tubes_done = True
         self.set_detection('tube', False)
         if self.WINDOW_AFTER_TUBES and self.window_pass < 2:
-            self._begin_second_window()
+            self._begin_window2_rise()
             return
         self._after_the_course(reason)
 
@@ -1969,6 +2007,74 @@ class CourseFSM(WindowTraverse):
         self._begin_pad_offset()
 
     # ------------------------------------------------- the SECOND window
+
+    def _begin_window2_rise(self):
+        """Climb back to the search altitude, straight up, where we stand.
+
+        The tubes end at the gap altitude -- under the cross tube, which is
+        the lowest thing on the course -- and the window mission started from
+        one that cannot be measured from: ALIGN flies to a standoff point at
+        the WINDOW's height, so from down here the run-up to it is a long
+        diagonal climb through whatever the aircraft has just squeezed under.
+        Getting the height back first, on the spot, makes the second pass the
+        same flight the first one was: hold at the search altitude, look,
+        line up, go through.
+
+        Straight up and nowhere else: the aircraft is a metre or so past the
+        back upright and the only clear direction from here is up.
+        """
+        lp = self.local_position
+        if lp is not None:
+            x, y = lp.x, lp.y
+        elif self.move_target_x is not None:
+            x, y = self.move_target_x, self.move_target_y
+        else:
+            # No position at all: there is nothing to climb on and nothing to
+            # search from. Put it down where it is instead of pushing a
+            # setpoint at an estimator that has nothing to say.
+            self._begin_landing("no position estimate to start the second "
+                                "window from")
+            return
+        self.CLIMB_SPEED = self.COURSE_CLIMB_SPEED
+        self.MOVE_SPEED = self.APPROACH_SPEED
+        self._set_target(x, y, self.WINDOW2_ALTITUDE)
+        self._enter_course_stage(self.WINDOW2_RISE)
+        self.get_logger().warning(
+            f"WINDOW2_RISE: tubes done. Climbing straight up to "
+            f"{self.WINDOW2_ALTITUDE:.2f} m, holding position, before looking "
+            "for the second window.")
+
+    def _handle_window2_rise(self):
+        self._handle_vertical(self._begin_window2_hold,
+                              "the climb back to the window altitude")
+
+    def _begin_window2_hold(self):
+        self._enter_course_stage(self.WINDOW2_HOLD)
+        self.get_logger().warning(
+            f"WINDOW2_HOLD: at {self.WINDOW2_ALTITUDE:.2f} m. Standing still "
+            f"for {self.WINDOW2_HOLD_SECONDS:.1f} s, then the search.")
+
+    def _handle_window2_hold(self):
+        """Hover, stationary, so the search starts from a settled camera."""
+        if not self._still_flyable():
+            return
+        self._try_latch_xy_hold()
+        self.log_flight_state()
+        self._aim_yaw_at(self._course_heading())
+
+        lost = self._flow_lost_for()
+        if lost > self.COURSE_FLOW_TIMEOUT:
+            self._hold_and_wait(self.WINDOW2_HOLD,
+                                "optical flow lost before the second window")
+            return
+
+        remaining = self.WINDOW2_HOLD_SECONDS - self._in_stage_for()
+        if remaining <= 0.0:
+            self._begin_second_window()
+            return
+        self.get_logger().info(
+            f"WINDOW2_HOLD: {remaining:.1f} s to the search.",
+            throttle_duration_sec=0.5)
 
     def _begin_second_window(self):
         """Fly the window mission again, from wherever the tubes ended.
@@ -2425,6 +2531,8 @@ class CourseFSM(WindowTraverse):
             self.TUBE_PASS: self._handle_tube_pass,
             self.TUBE_SHIFT: self._handle_tube_shift,
             self.TUBE_EXIT: self._handle_tube_exit,
+            self.WINDOW2_RISE: self._handle_window2_rise,
+            self.WINDOW2_HOLD: self._handle_window2_hold,
             self.PAD_OFFSET: self._handle_pad_offset,
             self.PAD_SEARCH: self._handle_pad_search,
             self.PAD_CENTRE: self._handle_pad_centre,
