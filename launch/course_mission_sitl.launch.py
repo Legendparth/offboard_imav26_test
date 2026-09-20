@@ -83,6 +83,12 @@ WHAT IT NEEDS
 
 USEFUL ARGUMENTS
 
+    rng_dropout:=false  do NOT take the rangefinder away over the red bar.
+                        It is taken away by default (10 s, starting 2 s into
+                        RED_CROSS) because that is the failure the hardware
+                        actually has, and a course that has not been flown
+                        through it has not been tested. Watch for
+                        COURSE_HOLD in the log.
     tubes:=true         attempt the tube gate as well (it will not solve --
                         read THE TUBE GATE below before turning it on)
     window_after_tubes:=true
@@ -568,8 +574,11 @@ def generate_launch_description():
                         'the range-only configuration, where a dropout leaves '
                         'no height source at all.'),
         DeclareLaunchArgument(
-            'rng_dropout', default_value='false',
-            description='true starts rng_dropout, which deliberately takes '
+            'rng_dropout', default_value='true',
+            description='ON BY DEFAULT, because the point of this simulation '
+                        'is to fly the failures as well as the course: pass '
+                        'rng_dropout:=false for a clean run. It starts '
+                        'rng_dropout, which deliberately takes '
                         'EKF2\'s rangefinder away for a few seconds over the '
                         'red bar -- the hardware failure this course has to '
                         'survive. SITL only: it sets EKF2_RNG_CTRL through '
