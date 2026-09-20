@@ -400,6 +400,17 @@ class OffboardSequence(Node):
             'step_hold_seconds', self.STEP_HOLD_SECONDS))
         self.MOVE_SPEED = float(self._declare_number(
             'move_speed', self.MOVE_SPEED))
+        # Exposed because it, and not move_speed, is what actually sets the
+        # horizontal speed. The carrot is capped at this distance ahead of the
+        # measured position and PX4 flies that capped error, so the steady
+        # speed is roughly MPC_XY_P * MOVE_LEASH however fast the carrot is
+        # walked. A world at a different scale needs this at that scale too:
+        # in course_mission_sitl.launch.py, which flies an arena scaled up by
+        # 2.2, leaving it at 0.40 held the aircraft to ~0.28 m/s while every
+        # stage was commanding 0.99, and the blue crossing timed out 1.18 m
+        # short because of it.
+        self.MOVE_LEASH = float(self._declare_number(
+            'move_leash', self.MOVE_LEASH))
         self.YAW_RATE = float(self._declare_number('yaw_rate', self.YAW_RATE))
         self.TAKEOFF_RETURN_TO_PAD = bool(self.declare_parameter(
             'takeoff_return_to_pad', self.TAKEOFF_RETURN_TO_PAD).value)

@@ -16,6 +16,9 @@ it, and with the camera read moved onto its own thread.
                                                   published only on a frame
                                                   where the pose solved
     /aruco/info         std_msgs/String           one human-readable line
+
+    image_topic:=<topic> takes frames from ROS instead of a camera device,
+    which is how it runs in the simulator and off a bag.
     browser             http://<jetson-ip>:8080/  MJPEG of the annotated
                                                   frame. stream_port:=0 off.
 
@@ -86,6 +89,8 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PointStamped
 from std_msgs.msg import Bool, String
+
+from drone_testing.window_detect import imgmsg_to_bgr
 
 
 # OpenCV's optical frame is (x right, y DOWN, z FORWARD along the view axis).
@@ -279,18 +284,39 @@ class ArucoPose(Node):
         self._cal = (fx, fy, cx, cy)
         self.D = np.array(dist, dtype=np.float64).reshape(-1, 1)
 
-        try:
-            dictionary = cv2.aruco.getPredefinedDictionary(
-                getattr(cv2.aruco, dict_name))
-        except AttributeError:
+        if not hasattr(cv2.aruco, dict_name):
             raise SystemExit(f"Unknown aruco_dict '{dict_name}'.")
+        dict_id = getattr(cv2.aruco, dict_name)
 
-        params = cv2.aruco.DetectorParameters()
-        # Sub-pixel corner refinement. This is the difference between a corner
-        # good to a pixel and one good to a tenth, and every centimetre of
-        # lateral accuracy comes through those four corners.
-        params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
-        self._detector = cv2.aruco.ArucoDetector(dictionary, params)
+        # cv2.aruco was rewritten in OpenCV 4.7: getPredefinedDictionary and
+        # an ArucoDetector object replaced Dictionary_get and a free
+        # detectMarkers. ROS 2 Humble ships 4.5.4, which has only the old one.
+        # Both are supported here, chosen at runtime, because the alternative
+        # is a node that dies on import on half the machines it runs on --
+        # which is exactly what it did.
+        if hasattr(cv2.aruco, 'ArucoDetector'):
+            dictionary = cv2.aruco.getPredefinedDictionary(dict_id)
+            params = cv2.aruco.DetectorParameters()
+            # Sub-pixel corner refinement. This is the difference between a
+            # corner good to a pixel and one good to a tenth, and every
+            # centimetre of lateral accuracy comes through those four corners.
+            params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+            detector = cv2.aruco.ArucoDetector(dictionary, params)
+            self._detect = detector.detectMarkers
+        else:
+            dictionary = cv2.aruco.Dictionary_get(dict_id)
+            params = cv2.aruco.DetectorParameters_create()
+            params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+            self._detect = lambda gray: cv2.aruco.detectMarkers(
+                gray, dictionary, parameters=params)
+        self.get_logger().info(
+            f"OpenCV {cv2.__version__}, "
+            f"{'ArucoDetector' if hasattr(cv2.aruco, 'ArucoDetector') else 'legacy aruco'} API.")
+        if fx <= 0.0:
+            self.get_logger().warning(
+                f"No calibration given: fx derived from hfov_deg={self.hfov_deg:.1f}. "
+                "x/y are unaffected by a wrong FOV, HEIGHT is scaled by it, and "
+                "lens distortion is NOT corrected. Do not use the height.")
 
         s = self.marker_size / 2.0
         # TL, TR, BR, BL -- cv2.aruco's corner order, and the order
@@ -316,10 +342,77 @@ class ArucoPose(Node):
         self.point_pub = self.create_publisher(PointStamped, '/aruco/point', 10)
         self.info_pub = self.create_publisher(String, '/aruco/info', 10)
 
+        # A ROS image topic instead of a camera device. The simulator has no
+        # /dev/video, and on the bench it is sometimes easier to replay a bag
+        # than to point a camera at the floor. Everything downstream -- the
+        # detection, the solve, the frames, the stream -- is the same either
+        # way; only where the pixels come from changes.
+        self.image_topic = str(self.declare_parameter('image_topic', '').value).strip()
+        self.cap = None
+        if self.image_topic:
+            from sensor_msgs.msg import Image
+            from rclpy.qos import qos_profile_sensor_data
+            self.create_subscription(Image, self.image_topic,
+                                     self._on_image, qos_profile_sensor_data)
+            self.get_logger().warning(
+                f"Frames from {self.image_topic}, not from a camera device.")
+        else:
+            self._open_camera()
+
+        if self.cap is not None:
+            # The grab runs on its own thread and always keeps only the latest
+            # frame. cap.read() blocks for a frame interval, and doing that
+            # inside a ROS timer would stall this node's executor for 33 ms at
+            # a time.
+            self._grab_thread = threading.Thread(target=self._grab_loop, daemon=True)
+            self._grab_thread.start()
+
+        self.stream = None
+        if self.stream_port:
+            try:
+                self.stream = MjpegServer(self, self.stream_port)
+                self.get_logger().info(
+                    f"Browser stream on http://<jetson-ip>:{self.stream_port}/")
+            except Exception as exc:
+                self.get_logger().error(
+                    f"Could not start the stream on port {self.stream_port}: {exc}")
+
+        self.timer = self.create_timer(1.0 / max(detect_rate, 1.0), self.detect_once)
+        self.get_logger().warning(
+            f"ArUco down-camera pose: id {self.marker_id}, "
+            f"{self.marker_size * 100:.0f} cm marker, {dict_name}, "
+            f"processing at {detect_rate:.0f} Hz.")
+
+    def _on_image(self, msg):
+        """One frame off a ROS topic, into the same slot the grabber fills."""
+        try:
+            frame = imgmsg_to_bgr(msg)
+        except Exception as exc:
+            self.get_logger().error(f"Cannot convert image frame: {exc}",
+                                    throttle_duration_sec=5.0)
+            return
+        with self._frame_lock:
+            self._frame = frame
+            self._frame_seq += 1
+
+    def _open_camera(self):
+        """Open the capture device, or say why not and carry on without one.
+
+        Not opening is not fatal. This node is one detector among several in a
+        launch file, and exiting here used to take it out of a flight that had
+        no use for it yet -- in the simulator there is no /dev/video at all.
+        With no camera it simply never publishes, and the flight node already
+        treats "no marker" as a thing that happens.
+        """
         self.cap = cv2.VideoCapture(self.camera_index)
         if not self.cap.isOpened():
-            raise SystemExit(f"Could not open camera {self.camera_index}.")
-        if len(self.fourcc) == 4:
+            self.get_logger().error(
+                f"Could not open camera {self.camera_index}. This node will "
+                "publish nothing. Pass image_topic:=<topic> to take frames "
+                "from ROS instead of a device.")
+            self.cap = None
+            return
+        if len(self.fourcc) == 4:  # device path only, from _open_camera
             self.cap.set(cv2.CAP_PROP_FOURCC,
                          cv2.VideoWriter_fourcc(*self.fourcc))
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
@@ -333,36 +426,11 @@ class ArucoPose(Node):
         except Exception:
             pass
 
-        # The grab runs on its own thread and always keeps only the latest
-        # frame. cap.read() blocks for a frame interval, and doing that inside
-        # a ROS timer would stall this node's executor for 33 ms at a time.
-        self._grab_thread = threading.Thread(target=self._grab_loop, daemon=True)
-        self._grab_thread.start()
-
-        self.stream = None
-        if self.stream_port:
-            try:
-                self.stream = MjpegServer(self, self.stream_port)
-                self.get_logger().info(
-                    f"Browser stream on http://<jetson-ip>:{self.stream_port}/")
-            except Exception as exc:
-                self.get_logger().error(
-                    f"Could not start the stream on port {self.stream_port}: {exc}")
-
-        self.timer = self.create_timer(1.0 / max(detect_rate, 1.0), self.detect_once)
-
         actual_w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         actual_h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.get_logger().warning(
-            f"ArUco down-camera pose: id {self.marker_id}, "
-            f"{self.marker_size * 100:.0f} cm marker, {dict_name}, "
-            f"camera {actual_w}x{actual_h} @ {self.camera_fps:.0f} fps, "
-            f"processing at {detect_rate:.0f} Hz.")
-        if fx <= 0.0:
-            self.get_logger().warning(
-                f"No calibration given: fx derived from hfov_deg={self.hfov_deg:.1f}. "
-                "x/y are unaffected by a wrong FOV, HEIGHT is scaled by it, and "
-                "lens distortion is NOT corrected. Do not use the height.")
+        self.get_logger().info(
+            f"Camera {self.camera_index} open at {actual_w}x{actual_h} "
+            f"@ {self.camera_fps:.0f} fps.")
 
     # ------------------------------------------------------------- capture
 
@@ -413,7 +481,7 @@ class ArucoPose(Node):
             self.K = self._intrinsics(w, h)
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        corners, ids, _ = self._detector.detectMarkers(gray)
+        corners, ids, _ = self._detect(gray)
         seen = ids.flatten().tolist() if ids is not None else []
 
         pose = None

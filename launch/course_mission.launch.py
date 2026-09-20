@@ -76,6 +76,7 @@ def generate_launch_description():
         name='micro_xrce_dds_agent',
         output='screen',
         arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
+        condition=IfCondition(LaunchConfiguration('agent')),
     )
 
     zed_wrapper = IncludeLaunchDescription(
@@ -125,6 +126,8 @@ def generate_launch_description():
                     'stream_port': LaunchConfiguration('stream_port'),
                     'stream_scale': LaunchConfiguration('stream_scale'),
                     'jpeg_quality': LaunchConfiguration('jpeg_quality'),
+                    'enable_topic': '/window_detect/enable',
+                    'start_enabled': True,
                 }],
             )
         ],
@@ -156,16 +159,52 @@ def generate_launch_description():
                     'min_aspect': LaunchConfiguration('tube_min_aspect'),
                     'max_tilt_deg': LaunchConfiguration('tube_max_tilt_deg'),
                     'vertical_kernel_frac': LaunchConfiguration('tube_vertical_kernel_frac'),
+                    'hole_close_frac': LaunchConfiguration('tube_hole_close_frac'),
+                    'hole_min_area_frac': LaunchConfiguration('tube_hole_min_area_frac'),
+                    'hole_min_solidity': LaunchConfiguration('tube_hole_min_solidity'),
+                    'hole_max_area_error': LaunchConfiguration('tube_hole_max_area_error'),
+                    'far_tube_band': LaunchConfiguration('tube_far_tube_band'),
+                    'far_tube_grow': LaunchConfiguration('tube_far_tube_grow'),
                     'samples_along': LaunchConfiguration('tube_samples_along'),
                     'border_margin': LaunchConfiguration('tube_border_margin'),
                     'min_tubes': LaunchConfiguration('tube_min_tubes'),
                     'detect_frames': LaunchConfiguration('tube_detect_frames'),
                     'lost_frames': LaunchConfiguration('tube_lost_frames'),
                     'stream_port': LaunchConfiguration('tube_stream_port'),
+                    'enable_topic': '/tube_detect/enable',
+                    'start_enabled': False,
                 }],
             )
         ],
         condition=IfCondition(LaunchConfiguration('tubes')),
+    )
+
+    # The marker under the pad, for the landing at the end of the course.
+    # Its own camera, its own process: it looks DOWN while everything else
+    # looks forward, and it publishes nothing but where the marker is --
+    # course_fsm does the flying, as it does for every other obstacle.
+    aruco_node = TimerAction(
+        period=5.0,
+        actions=[
+            Node(
+                package='drone_testing',
+                executable='aruco_pose',
+                name='aruco_pose',
+                output='screen',
+                emulate_tty=True,
+                parameters=[{
+                    'camera_index': LaunchConfiguration('pad_camera_index'),
+                    'image_topic': LaunchConfiguration('pad_image_topic'),
+                    'marker_id': LaunchConfiguration('pad_marker_id'),
+                    'marker_size': LaunchConfiguration('pad_marker_size'),
+                    'hfov_deg': LaunchConfiguration('pad_hfov_deg'),
+                    'stream_port': LaunchConfiguration('pad_stream_port'),
+                    'stream_scale': LaunchConfiguration('stream_scale'),
+                    'jpeg_quality': LaunchConfiguration('jpeg_quality'),
+                }],
+            )
+        ],
+        condition=IfCondition(LaunchConfiguration('pad_detector')),
     )
 
     reboot_node = TimerAction(
@@ -225,6 +264,7 @@ def generate_launch_description():
                     'sill_bias': LaunchConfiguration('sill_bias'),
                     'align_alt_tolerance': LaunchConfiguration('align_alt_tolerance'),
                     'approach_speed': LaunchConfiguration('approach_speed'),
+                    'move_leash': LaunchConfiguration('move_leash'),
                     'traverse_speed': LaunchConfiguration('traverse_speed'),
                     'align_tolerance': LaunchConfiguration('align_tolerance'),
                     'align_cross_tolerance': LaunchConfiguration(
@@ -274,6 +314,8 @@ def generate_launch_description():
                     'tubes': LaunchConfiguration('tubes'),
                     'blue_bar_gap': LaunchConfiguration('blue_bar_gap'),
                     'blue_to_tube_distance': LaunchConfiguration('blue_to_tube_distance'),
+                    'tube_plane_from_blue': LaunchConfiguration('tube_plane_from_blue'),
+                    'tube_look_standoff': LaunchConfiguration('tube_look_standoff'),
                     'tube_spacing': LaunchConfiguration('tube_spacing'),
                     'tube_radius': LaunchConfiguration('tube_radius'),
                     'cross_bar_height': LaunchConfiguration('cross_bar_height'),
@@ -284,7 +326,38 @@ def generate_launch_description():
                     'tube_pass_exit': LaunchConfiguration('tube_pass_exit'),
                     'tube_shift_left': LaunchConfiguration('tube_shift_left'),
                     'tube_exit_distance': LaunchConfiguration('tube_exit_distance'),
+                    'tube_back_distance': LaunchConfiguration('tube_back_distance'),
+                    'tube_back_clear': LaunchConfiguration('tube_back_clear'),
+                    'tube_max_shift': LaunchConfiguration('tube_max_shift'),
+                    'tube_look_altitude': LaunchConfiguration('tube_look_altitude'),
+                    'tube_blue_clear': LaunchConfiguration('tube_blue_clear'),
+                    'tube_scan_yaw_deg': LaunchConfiguration('tube_scan_yaw_deg'),
+                    'tube_scan_rate_deg': LaunchConfiguration('tube_scan_rate_deg'),
+                    'tube_scan_seconds': LaunchConfiguration('tube_scan_seconds'),
+                    'tube_scan_max_seconds': LaunchConfiguration('tube_scan_max_seconds'),
+                    'tube_gap_prefer': LaunchConfiguration('tube_gap_prefer'),
+                    'tube_gap_tie': LaunchConfiguration('tube_gap_tie'),
+                    'tube_exit_forward': LaunchConfiguration('tube_exit_forward'),
+                    'tube_lateral_margin': LaunchConfiguration('tube_lateral_margin'),
+                    'tube_min_hole_width': LaunchConfiguration('tube_min_hole_width'),
+                    'tube_min_hole_height': LaunchConfiguration('tube_min_hole_height'),
                     'tube_clearance': LaunchConfiguration('tube_clearance'),
+                    'tube_cross_drop': LaunchConfiguration('tube_cross_drop'),
+                    'tube_cross_left': LaunchConfiguration('tube_cross_left'),
+                    'tube_merge_shift': LaunchConfiguration('tube_merge_shift'),
+                    'tube_allow_shift_right': LaunchConfiguration('tube_allow_shift_right'),
+                    'window_after_tubes': LaunchConfiguration('window_after_tubes'),
+                    'window2_exit_distance': LaunchConfiguration('window2_exit_distance'),
+                    'pad': LaunchConfiguration('pad'),
+                    'pad_right': LaunchConfiguration('pad_right'),
+                    'pad_search_distance': LaunchConfiguration('pad_search_distance'),
+                    'pad_search_speed': LaunchConfiguration('pad_search_speed'),
+                    'pad_centre_tolerance': LaunchConfiguration('pad_centre_tolerance'),
+                    'pad_descent_rate': LaunchConfiguration('pad_descent_rate'),
+                    'pad_handoff_height': LaunchConfiguration('pad_handoff_height'),
+                    'pad_gain': LaunchConfiguration('pad_gain'),
+                    'pad_max_nudge': LaunchConfiguration('pad_max_nudge'),
+                    'pad_lost_seconds': LaunchConfiguration('pad_lost_seconds'),
                     'tube_cross_tolerance': LaunchConfiguration('tube_cross_tolerance'),
                     'tube_search_timeout': LaunchConfiguration('tube_search_timeout'),
                     'tube_min_matched': LaunchConfiguration('tube_min_matched'),
@@ -335,6 +408,13 @@ def generate_launch_description():
             description='Start the support stack but not the flight node, so you '
                         'can run that by hand and keep the q/k keyboard aborts. '
                         'false = fly the whole thing from this launch file.'),
+        DeclareLaunchArgument(
+            'agent', default_value='true',
+            description='Start the uXRCE-DDS agent on the Jetson serial link to '
+                        'the flight controller. false when something else is '
+                        'already bridging to PX4 -- which is what SITL does, '
+                        'where the agent is MicroXRCEAgent on UDP. See '
+                        'course_mission_sitl.launch.py.'),
         DeclareLaunchArgument(
             'flight', default_value='true',
             description='false = camera side only: no DDS agent and no flight '
@@ -590,6 +670,15 @@ def generate_launch_description():
                         'the traverse.'),
         DeclareLaunchArgument('approach_speed', default_value='0.30'),
         DeclareLaunchArgument(
+            'move_leash', default_value='0.40',
+            description='m the commanded x/y is allowed to lead the measured '
+                        'x/y by. This, not the speed arguments, is what sets '
+                        'the horizontal speed actually flown: PX4 flies the '
+                        'capped position error, so the steady speed is about '
+                        'MPC_XY_P times this. Raise it only with the course '
+                        'distances -- a longer leash is also a longer '
+                        'overshoot at the far end of every leg.'),
+        DeclareLaunchArgument(
             'traverse_speed', default_value='0.45',
             description='m/s through the window. The estimate is frozen by then.'),
         DeclareLaunchArgument(
@@ -795,20 +884,76 @@ def generate_launch_description():
                         'straight on past both, because the second is '
                         'invisible from under the first.'),
         DeclareLaunchArgument(
-            'blue_to_tube_distance', default_value='2.00',
-            description='m past the second blue bar to stop, climb to the gap '
-                        'altitude and look for the tube uprights.'),
+            'blue_to_tube_distance', default_value='0.0',
+            description='DEPRECATED. > 0 flies this far on from where the blue '
+                        'crossing ENDED, which double-counts blue_exit and '
+                        'takes no standoff off -- that is what flew the '
+                        'aircraft into the tubes. 0 uses the two below.'),
+        DeclareLaunchArgument(
+            'tube_plane_from_blue', default_value='1.50',
+            description='m from the SECOND BLUE BAR to the plane the tube '
+                        'uprights stand on. A course measurement -- measure it.'),
+        DeclareLaunchArgument(
+            'tube_look_standoff', default_value='1.20',
+            description='m short of the tube plane to stop, climb and scan '
+                        'from. The aircraft never closes inside this before '
+                        'it has chosen an opening.'),
         DeclareLaunchArgument('tube_spacing', default_value='0.50'),
         DeclareLaunchArgument('tube_radius', default_value='0.025'),
         DeclareLaunchArgument('cross_bar_height', default_value='0.461'),
         DeclareLaunchArgument('diagonal_left_height', default_value='2.0'),
         DeclareLaunchArgument('diagonal_right_height', default_value='0.922'),
-        DeclareLaunchArgument('gap_side', default_value='left'),
+        DeclareLaunchArgument('gap_side', default_value='auto'),
         DeclareLaunchArgument('tube_standoff', default_value='1.20'),
         DeclareLaunchArgument('tube_pass_exit', default_value='0.50'),
         DeclareLaunchArgument('tube_shift_left', default_value='0.40'),
-        DeclareLaunchArgument('tube_exit_distance', default_value='1.20'),
+        DeclareLaunchArgument('tube_exit_distance', default_value='0.0'),
+        DeclareLaunchArgument('tube_back_distance', default_value='1.00'),
+        DeclareLaunchArgument('tube_back_clear', default_value='1.00'),
+        DeclareLaunchArgument('tube_lateral_margin', default_value='0.02'),
+        DeclareLaunchArgument('tube_hole_close_frac', default_value='0.02'),
+        DeclareLaunchArgument('tube_hole_min_area_frac', default_value='0.01'),
+        DeclareLaunchArgument('tube_hole_min_solidity', default_value='0.80'),
+        DeclareLaunchArgument('tube_hole_max_area_error', default_value='0.20'),
+        DeclareLaunchArgument('tube_max_shift', default_value='1.20'),
+        DeclareLaunchArgument(
+            'tube_look_altitude', default_value='1.10',
+            description='m to sit at while scanning the tube obstacle. A '
+                        'FLOOR, not the answer: it is raised automatically if '
+                        'it would not clear the blue bar the scan sits in '
+                        'front of.'),
+        DeclareLaunchArgument(
+            'tube_blue_clear', default_value='0.60',
+            description='m to stay in front of the second blue bar while at '
+                        'the scan altitude; caps how far back the look-from '
+                        'point may be.'),
+        DeclareLaunchArgument('tube_scan_yaw_deg', default_value='25.0'),
+        DeclareLaunchArgument('tube_scan_rate_deg', default_value='12.0'),
+        DeclareLaunchArgument(
+            'tube_scan_seconds', default_value='8.0',
+            description='s of yaw sweep before choosing an opening.'),
+        DeclareLaunchArgument(
+            'tube_scan_max_seconds', default_value='20.0',
+            description='s the sweep may run on for if NOTHING has been seen '
+                        'yet. Once an opening has been seen the sweep ends on '
+                        'tube_scan_seconds and the best of it is flown.'),
+        DeclareLaunchArgument(
+            'tube_gap_prefer', default_value='left',
+            description='left/right/none: which opening wins a near-tie on '
+                        'measured area.'),
+        DeclareLaunchArgument('tube_gap_tie', default_value='0.25'),
+        DeclareLaunchArgument(
+            'tube_exit_forward', default_value='1.50',
+            description='m past the tube plane where the tubes are done.'),
+        DeclareLaunchArgument('tube_allow_shift_right', default_value='false'),
+        DeclareLaunchArgument('tube_far_tube_band', default_value='0.40'),
+        DeclareLaunchArgument('tube_far_tube_grow', default_value='3.0'),
+        DeclareLaunchArgument('tube_min_hole_width', default_value='0.30'),
+        DeclareLaunchArgument('tube_min_hole_height', default_value='0.50'),
         DeclareLaunchArgument('tube_clearance', default_value='0.12'),
+        DeclareLaunchArgument('tube_cross_drop', default_value='0.15'),
+        DeclareLaunchArgument('tube_cross_left', default_value='0.05'),
+        DeclareLaunchArgument('tube_merge_shift', default_value='true'),
         DeclareLaunchArgument('tube_cross_tolerance', default_value='0.05'),
         DeclareLaunchArgument('tube_search_timeout', default_value='45.0'),
         DeclareLaunchArgument('tube_min_matched', default_value='3'),
@@ -832,6 +977,57 @@ def generate_launch_description():
         DeclareLaunchArgument('tube_lost_frames', default_value='5'),
         DeclareLaunchArgument('tube_stream_port', default_value='8082'),
 
+        # ---- the landing pad, after the tubes ----
+        DeclareLaunchArgument(
+            'pad', default_value='true',
+            description='false = land where the tubes finish, as before.'),
+        DeclareLaunchArgument(
+            'pad_detector', default_value='true',
+            description='Start aruco_pose. false flies the pad stages with no '
+                        'detector at all -- which is what the simulator wants, '
+                        'having neither a downward camera nor a floor marker.'),
+        DeclareLaunchArgument(
+            'window_after_tubes', default_value='false',
+            description='true flies the whole window mission a SECOND time '
+                        'once the tubes are done -- search, lock, align, '
+                        'traverse -- and only then does the landing that '
+                        'normally follows the tubes. The window detector is '
+                        'switched back on and its estimator emptied first, so '
+                        'the second pass measures the second window and '
+                        'nothing of the first.'),
+        DeclareLaunchArgument(
+            'window2_exit_distance', default_value='0.0',
+            description='m beyond the SECOND window the traverse ends. 0 '
+                        'keeps exit_distance, which the course pins to the '
+                        'midpoint of the window-to-red gap; there is no red '
+                        'bar after this window, so it may be longer.'),
+        DeclareLaunchArgument(
+            'pad_right', default_value='1.50',
+            description='m to the RIGHT after the last obstacle, off the line '
+                        'the obstacles stand on, before the creep forward '
+                        'looking for the marker.'),
+        DeclareLaunchArgument('pad_search_distance', default_value='6.00'),
+        DeclareLaunchArgument('pad_search_speed', default_value='0.30'),
+        DeclareLaunchArgument('pad_centre_tolerance', default_value='0.10'),
+        DeclareLaunchArgument('pad_descent_rate', default_value='0.20'),
+        DeclareLaunchArgument('pad_handoff_height', default_value='0.45'),
+        DeclareLaunchArgument('pad_gain', default_value='0.8'),
+        DeclareLaunchArgument('pad_max_nudge', default_value='0.30'),
+        DeclareLaunchArgument('pad_lost_seconds', default_value='2.0'),
+        DeclareLaunchArgument(
+            'pad_camera_index', default_value='0',
+            description='V4L2 index of the DOWNWARD camera.'),
+        DeclareLaunchArgument(
+            'pad_image_topic', default_value='',
+            description='A ROS image topic instead of a camera device -- for '
+                        'the simulator or a bag. Overrides pad_camera_index.'),
+        DeclareLaunchArgument('pad_marker_id', default_value='0'),
+        DeclareLaunchArgument(
+            'pad_marker_size', default_value='0.20',
+            description='m, the side of the printed marker. MEASURE IT.'),
+        DeclareLaunchArgument('pad_hfov_deg', default_value='90.0'),
+        DeclareLaunchArgument('pad_stream_port', default_value='8083'),
+
         # ---- the rest ----
         DeclareLaunchArgument(
             'reboot_fc', default_value='false',
@@ -851,4 +1047,5 @@ def generate_launch_description():
         zed_wrapper,
         detect_node,
         tube_detect_node,
+        aruco_node,
     ])

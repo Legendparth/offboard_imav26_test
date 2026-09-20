@@ -12,6 +12,14 @@ Flown as its own mission, one obstacle at a time, like bar_cross.
     blind, through the gap) -> SHIFT (sideways, left by default) -> EXIT
     (straight on, past the back tube) -> CLEAR -> land.
 
+    The gap is the BIG cell of the front structure -- the trapezium under the
+    high end of the diagonal -- and the aircraft crosses at its centre of
+    area, not at the middle of the two uprights and not at the middle of the
+    altitude band. Both of those sit low and off to one side of the opening,
+    which is how you end up skimming the diagonal. tube_detect measures the
+    cell directly (/tube_hole), and that decides which pair of uprights to fly
+    between and at what height; the template is only the fallback.
+
     q -> abort into a controlled descent.   k -> force-disarm.
 
 THE OBSTACLE (front view, as the aircraft approaches; mm)
@@ -45,12 +53,21 @@ WHY IT IS MEASURED AND NOT FLOWN BLIND
     are measured: each is placed on the ground plane in NED, exactly as
     bar_cross places the bar, points are clustered into tubes, and the known
     layout -- three uprights on a line, tube_spacing apart -- is fitted to
-    them. The gap is the midpoint of the MEASURED left and middle uprights,
-    not a template offset, so spacing errors in the build do not matter.
+    them. The crossing point is the MEASURED hole centre, clamped to stay
+    half_airframe off the two measured uprights either side of it, so neither
+    a spacing error in the build nor a bad frame from the camera can put the
+    aircraft into a tube.
 
     Matching three tubes to the template is what decides which tube is the
     middle one. With only two in view the answer is ambiguous (L+M or M+R),
     so min_matched_tubes defaults to 3 and the node waits rather than guess.
+
+    What the template CANNOT decide is which side of the middle tube the big
+    cell is on: three evenly spaced uprights look the same either way round,
+    so it depends on how the obstacle was built and which way the aircraft
+    came at it. /tube_hole answers that from the image. Without it, gap_side
+    ('auto' at start-up, resolved from the diagonal in the parameters) decides
+    and the crossing is flown blind to which cell is really the big one.
 
     The back upright is 1 m behind the plane; plane_band keeps it out of the
     fit.
@@ -67,12 +84,13 @@ THE ALTITUDE
                  - tube_radius - clearance - body_above
 
     The diagonal slopes, so its lowest point over the airframe is at the edge
-    nearest the middle tube. The crossing altitude is the middle of
-    [floor, roof]; if floor > roof the gap does not fit this aircraft with
-    this clearance and the node refuses at start-up.
+    nearest the middle tube. If floor > roof the gap does not fit this
+    aircraft with this clearance and the node refuses at start-up.
 
-    With the launch defaults (cam_z -0.04, clearance 0.12): floor 0.77,
-    roof 1.35, crossing at 1.06 m.
+    Inside that band the aircraft flies at the centre of AREA of the opening
+    -- from /tube_hole when the camera has it, from the template trapezium
+    otherwise. With the launch defaults (cam_z -0.04, clearance 0.12): floor
+    0.77, roof 1.35, template centre of area 1.11, so 1.11 m.
 
 THE COMMIT
     Like the window traverse, PASS commits: the target is frozen at the entry
@@ -108,7 +126,7 @@ from rclpy.qos import (DurabilityPolicy, HistoryPolicy, QoSProfile,
 from std_msgs.msg import Bool, Float32MultiArray, String
 
 from drone_testing.offboard_sequence import OffboardSequence, spin_node, wrap_pi
-from drone_testing.tube_detect import STRIDE
+from drone_testing.tube_detect import HOLE_STRIDE, STRIDE
 from drone_testing.window_traverse import quat_rotate, rpy_to_matrix_frd
 
 
@@ -121,7 +139,8 @@ class TubeEstimator:
 
     def __init__(self, depth_min, depth_max, tube_radius, min_top_height,
                  max_bottom_height, buffer_seconds, buffer_max, cluster_radius,
-                 min_samples):
+                 min_samples, min_hole_width=0.30, min_hole_height=0.50,
+                 max_hole_floor=None):
         self.depth_min = depth_min
         self.depth_max = depth_max
         self.tube_radius = tube_radius
@@ -130,11 +149,23 @@ class TubeEstimator:
         self.buffer_seconds = buffer_seconds
         self.cluster_radius = cluster_radius
         self.min_samples = min_samples
+        self.min_hole_width = min_hole_width
+        self.min_hole_height = min_hole_height
+        # Every cell the aircraft may fly SITS ON the cross tube. Sealing the
+        # top of the frame so the tall cell is visible at all also makes the
+        # space ABOVE the diagonal enclosed, and that space is bounded below
+        # by the diagonal rather than by the cross tube -- high, narrowing,
+        # and roofed by a top bar nobody has measured. This is where that gets
+        # thrown out: a floor well above the cross tube is not a cell of the
+        # gate the aircraft goes through.
+        self.max_hole_floor = max_hole_floor
 
         self._lock = threading.RLock()
         self.samples = collections.deque(maxlen=buffer_max)
+        self.hole_samples = collections.deque(maxlen=buffer_max)
         self.rejections = {}
         self.accepted_total = 0
+        self.holes_total = 0
 
     def add(self, row, q_att, p_ned, r_cam, t_cam, home_z, now):
         with self._lock:
@@ -178,6 +209,117 @@ class TubeEstimator:
         self.samples.append({'t': now, 'xy': xy})
         return True, ''
 
+    def add_hole(self, row, q_att, p_ned, r_cam, t_cam, home_z, now):
+        """One /tube_hole row -> the cell, placed in NED.
+
+        The depth is the depth of the UPRIGHTS: the ray through the centroid
+        goes through the hole and out the other side, so there is nothing
+        there for the camera to range on. The point wanted is where that ray
+        crosses the plane of the obstacle, which is exactly what this gives.
+
+        What comes back with it is the CEILING and the FLOOR of the cell over
+        that same ray -- the diagonal and the cross tube where the aircraft
+        will pass them, measured rather than taken from the template. Nothing
+        else in the node knows which way the diagonal really slopes.
+        """
+        with self._lock:
+            (az, el, az_l, az_r, el_top, el_bot, el_top_l, el_top_r,
+             depth, _, sides, roof_cut) = row
+            if not np.isfinite(depth) or not (self.depth_min <= depth <= self.depth_max):
+                return self._reject('hole depth out of range')
+            p = self._to_ned(depth, az, el, q_att, p_ned, r_cam, t_cam)
+            height = home_z - p[2]
+            if not (self.max_bottom_height <= height <= self.min_top_height + 1.0):
+                return self._reject(f'hole centre at {height:.2f} m is implausible')
+
+            width = depth * (math.tan(math.radians(az_r)) - math.tan(math.radians(az_l)))
+            if width < self.min_hole_width:
+                # Half a cell, most likely: something was standing in it.
+                return self._reject(f'hole only {width:.2f} m wide')
+            ceiling = home_z - self._to_ned(depth, az, el_top, q_att, p_ned,
+                                            r_cam, t_cam)[2]
+            floor = home_z - self._to_ned(depth, az, el_bot, q_att, p_ned,
+                                          r_cam, t_cam)[2]
+            if ceiling - floor < self.min_hole_height:
+                return self._reject(f'hole only {ceiling - floor:.2f} m tall')
+            if self.max_hole_floor is not None and floor > self.max_hole_floor:
+                return self._reject(
+                    f'hole floor at {floor:.2f} m is above the cross tube '
+                    f'(max {self.max_hole_floor:.2f} m) -- above the diagonal, '
+                    'not a cell of the gate')
+
+            self.holes_total += 1
+            # Which way the roof slopes, in metres of height per metre of
+            # lateral, + meaning it rises towards the aircraft's LEFT. This is
+            # the sign the template gets wrong.
+            shoulder = lambda e: home_z - self._to_ned(depth, az, e, q_att,
+                                                       p_ned, r_cam, t_cam)[2]
+            span = depth * (math.tan(math.radians(az_r))
+                            - math.tan(math.radians(az_l))) * 0.5
+            rise = ((shoulder(el_top_l) - shoulder(el_top_r)) / span
+                    if span > 1e-3 else 0.0)
+            self.hole_samples.append({'t': now, 'xy': p[:2].copy(), 'h': height,
+                                      'ceiling': ceiling, 'floor': floor,
+                                      'width': width, 'sides': sides,
+                                      'rise': rise, 'cut': float(roof_cut)})
+            return True, ''
+
+    def holes(self, now, buffer_seconds=None):
+        """Every cell seen lately, biggest OPENING first.
+
+        Clustered by where they are in NED, not averaged together. During a
+        yaw scan the camera sees both cells of the obstacle, and sometimes a
+        cell of something else entirely; taking the median of all of it puts
+        the answer in the tube between them. Each cluster is one cell, and
+        what ranks them is the measured area of the opening -- width times
+        height, in metres, at the place they actually are.
+
+        [{xy, height, ceiling, floor, width, rise, area, count, cut}, ...]
+
+        cut  the roof of this cell was above the top of the frame, so its
+             ceiling -- and therefore its area -- is a LOWER bound. It is the
+             tall cell of the obstacle seen from close in, and it still
+             outranks the short one on the clipped numbers.
+        """
+        with self._lock:
+            cutoff = now - (self.buffer_seconds if buffer_seconds is None
+                            else buffer_seconds)
+            fresh = [s for s in self.hole_samples if s['t'] >= cutoff]
+        groups = []
+        for s in fresh:
+            for g in groups:
+                if float(np.linalg.norm(s['xy'] - g['mean'])) <= self.cluster_radius:
+                    g['members'].append(s)
+                    g['mean'] = np.mean([m['xy'] for m in g['members']], axis=0)
+                    break
+            else:
+                groups.append({'members': [s], 'mean': s['xy'].copy()})
+
+        out = []
+        for g in groups:
+            members = g['members']
+            if len(members) < self.min_samples:
+                continue
+            med = lambda key: float(np.median([m[key] for m in members]))
+            cell = {'xy': np.median(np.array([m['xy'] for m in members]), axis=0),
+                    'height': med('h'), 'ceiling': med('ceiling'),
+                    'floor': med('floor'), 'width': med('width'),
+                    'rise': med('rise'), 'count': len(members),
+                    'cut': med('cut') >= 0.5}
+            cell['area'] = cell['width'] * max(0.0, cell['ceiling'] - cell['floor'])
+            out.append(cell)
+        out.sort(key=lambda c: -c['area'])
+        return out
+
+    def hole(self, now):
+        """The biggest cell as measured, in the old tuple form, or None."""
+        found = self.holes(now)
+        if not found:
+            return None
+        c = found[0]
+        return (c['xy'], c['height'], c['ceiling'], c['floor'], c['width'],
+                c['rise'], c['count'])
+
     def _reject(self, reason):
         self.rejections[reason] = self.rejections.get(reason, 0) + 1
         return False, reason
@@ -204,7 +346,7 @@ class TubeEstimator:
     def rotate(self, pivot, delta):
         c, s = math.cos(delta), math.sin(delta)
         with self._lock:
-            for sample in self.samples:
+            for sample in list(self.samples) + list(self.hole_samples):
                 dx = sample['xy'][0] - pivot[0]
                 dy = sample['xy'][1] - pivot[1]
                 sample['xy'] = np.array([pivot[0] + c * dx - s * dy,
@@ -218,14 +360,20 @@ class TubeEstimator:
         return ', '.join(f"{name} x{count}" for name, count in worst)
 
 
-def solve_gap(clusters, vehicle_xy, heading, spacing, plane_band, match_tol,
-              min_matched, max_plane_yaw, gap_side):
-    """Fit the three-upright layout to tube clusters and return the gap.
+def front_plane(clusters, vehicle_xy, heading, plane_band, max_plane_yaw):
+    """The plane the nearest uprights stand on, and what is behind it.
 
-    Returns (solution, reason). solution is a dict with 'point' (gap centre,
-    NED xy on the tube plane), 'normal' (unit, pointing through the obstacle),
-    'left' (unit, the aircraft's left when flying along normal), 'heading',
-    'width' (measured between the gap's two uprights), 'matched'.
+    This is the part of the fit that does NOT need to know the layout: which
+    uprights are in the front plane, which way that plane faces, and what is
+    standing behind it. Pulled out of solve_gap because the crossing can be
+    flown from a measured opening alone, and when the layout will not fit --
+    two uprights in view instead of three, or an obstacle that simply is not
+    three evenly spaced tubes -- this is still everything the aircraft needs.
+
+    Returns (plane, reason). plane is a dict with 'front' (the xy of the
+    uprights in it), 'u' (unit, along the plane, + to the aircraft's LEFT),
+    'normal' (unit, through the obstacle), 'heading', 'along' (m from the
+    aircraft to the plane) and 'behind' [(along, xy), ...] sorted near first.
     """
     v = np.asarray(vehicle_xy, dtype=float)
     fwd = np.array([math.cos(heading), math.sin(heading)])
@@ -233,8 +381,7 @@ def solve_gap(clusters, vehicle_xy, heading, spacing, plane_band, match_tol,
 
     ahead = []
     for xy, count in clusters:
-        rel = xy - v
-        along = float(np.dot(rel, fwd))
+        along = float(np.dot(xy - v, fwd))
         if along > 0.3:
             ahead.append((xy, along))
     if not ahead:
@@ -242,9 +389,11 @@ def solve_gap(clusters, vehicle_xy, heading, spacing, plane_band, match_tol,
 
     nearest = min(a for _, a in ahead)
     front = np.array([xy for xy, a in ahead if a <= nearest + plane_band])
+    behind = sorted(((a, xy) for xy, a in ahead if a > nearest + plane_band),
+                    key=lambda t: t[0])
 
-    # The line through the front uprights. With one tube there is no line,
-    # and the layout match below will refuse it anyway.
+    # The line through the front uprights. With one tube there is no line, so
+    # the course heading stands in for it.
     u = left.copy()
     if len(front) >= 2:
         centred = front - front.mean(axis=0)
@@ -257,6 +406,99 @@ def solve_gap(clusters, vehicle_xy, heading, spacing, plane_band, match_tol,
     normal = np.array([-u[1], u[0]])
     if float(np.dot(normal, fwd)) < 0.0:
         normal = -normal
+
+    return {'front': front, 'u': u, 'normal': normal,
+            'heading': math.atan2(normal[1], normal[0]),
+            'along': float(np.mean([np.dot(p - v, normal) for p in front])),
+            'behind': behind}, ''
+
+
+def structure_centre(plane, vehicle_xy, u, lateral):
+    """Where the MIDDLE of the obstacle is, relative to the crossing point.
+
+    + is the aircraft's left, as everywhere else. The midpoint of the
+    outermost uprights of the front plane, which is the one thing that says
+    which side of the structure the aircraft is actually crossing on -- the
+    cell it flew is not the cell the template picked, and anything that is
+    placed off gap_side alone (the upright behind, and the sideways step that
+    dodges it) ends up on the wrong side when those two disagree.
+
+    None when there are not two uprights to take a midpoint of.
+    """
+    front = plane.get('front')
+    if front is None or len(front) < 2:
+        return None
+    across = [float(np.dot(p - np.asarray(vehicle_xy), u)) for p in front]
+    return 0.5 * (min(across) + max(across)) - lateral
+
+
+def solve_from_hole(plane, vehicle_xy, cell_xy, cell_width, half_airframe,
+                    lean=0.0):
+    """A crossing built from a MEASURED opening, with no layout fit at all.
+
+    The opening is the thing the aircraft has to fit through, and the camera
+    has measured where it is, how wide it is and what its roof and floor are
+    doing. Three evenly spaced uprights are a way of guessing at that from a
+    drawing; where the drawing does not match what is really there -- a gate
+    with two posts instead of three, a build that is not to spec, a third
+    upright out of frame -- the opening is still right and the drawing is
+    still wrong.
+
+    The lateral clamp is the opening's OWN measured half-width less half an
+    airframe, so it does not matter that there is no upright position to
+    clamp against.
+    """
+    v = np.asarray(vehicle_xy, dtype=float)
+    u = plane['u']
+    centre = float(np.dot(np.asarray(cell_xy) - v, u))
+    free = max(0.0, 0.5 * cell_width - half_airframe)
+    lateral = min(max(centre + lean, centre - free), centre + free)
+    return {
+        'point': v + u * lateral + plane['normal'] * plane['along'],
+        'centre_offset': structure_centre(plane, v, u, lateral),
+        'normal': plane['normal'],
+        'left': u,
+        'heading': plane['heading'],
+        'width': cell_width,
+        'offset': lateral - centre,
+        'side': 'left' if centre >= 0.0 else 'right',
+        'matched': 0,
+        'residual': 0.0,
+        'source': 'hole',
+        'back': (None if not plane['behind'] else
+                 {'along': plane['behind'][0][0] - plane['along'],
+                  'lateral': float(np.dot(plane['behind'][0][1] - v, u)) - lateral}),
+    }
+
+
+def solve_gap(clusters, vehicle_xy, heading, spacing, plane_band, match_tol,
+              min_matched, max_plane_yaw, gap_side, prefer_lateral=None,
+              lateral_offset=0.0, half_airframe=0.0):
+    """Fit the three-upright layout to tube clusters and return the gap.
+
+    Returns (solution, reason). solution is a dict with 'point' (the crossing
+    point, NED xy on the tube plane), 'normal' (unit, pointing through the
+    obstacle), 'left' (unit, the aircraft's left when flying along normal),
+    'heading', 'width' (measured between the gap's two uprights), 'matched',
+    and 'back' -- the upright behind the obstacle as {'along', 'lateral'}
+    relative to the crossing point, or None if it was not in view.
+
+    prefer_lateral is where the camera says the middle of the big cell is, as
+    a lateral coordinate in the same frame as the clusters (+ LEFT of the
+    aircraft). Given one, it picks WHICH pair of uprights to fly between --
+    which is the only reliable way to tell the big cell from the small one,
+    since the layout of three evenly spaced tubes is the same either way round
+    -- and aims at it rather than at the midpoint, held to within
+    half_airframe of the uprights either side. Without one, gap_side decides
+    the pair and the crossing point is their midpoint plus lateral_offset --
+    where the template says the centre of area of that cell is.
+    """
+    v = np.asarray(vehicle_xy, dtype=float)
+    plane, why = front_plane(clusters, vehicle_xy, heading, plane_band, max_plane_yaw)
+    if plane is None:
+        return None, why
+    front, u, normal, behind = (plane['front'], plane['u'], plane['normal'],
+                                plane['behind'])
 
     lat = [float(np.dot(p - v, u)) for p in front]
     slots = (1, 0, -1)        # left, middle, right: + is LEFT
@@ -289,15 +531,44 @@ def solve_gap(clusters, vehicle_xy, heading, spacing, plane_band, match_tol,
     if len(used) < min_matched:
         return None, f'only {len(used)}/{min_matched} uprights fit the layout'
 
-    pair = (1, 0) if gap_side == 'left' else (0, -1)
-    if pair[0] not in used or pair[1] not in used:
+    pairs = [p for p in ((1, 0), (0, -1)) if p[0] in used and p[1] in used]
+    if not pairs:
         return None, 'the uprights either side of the gap are not both matched'
+    if prefer_lateral is None:
+        want = (1, 0) if gap_side == 'left' else (0, -1)
+        if want not in pairs:
+            return None, 'the uprights either side of the gap are not both matched'
+        pair = want
+    else:
+        pair = min(pairs, key=lambda p: abs(
+            0.5 * (used[p[0]][1] + used[p[1]][1]) - prefer_lateral))
     l_a, l_b = used[pair[0]][1], used[pair[1]][1]
 
-    along = float(np.mean([np.dot(p - v, normal) for p in front]))
-    point = v + u * (0.5 * (l_a + l_b)) + normal * along
+    mid = 0.5 * (l_a + l_b)
+    free = max(0.0, 0.5 * abs(l_a - l_b) - half_airframe)
+    want = mid + lateral_offset if prefer_lateral is None else prefer_lateral
+    lateral = min(max(want, mid - free), mid + free)
+    along = plane['along']
+    point = v + u * lateral + normal * along
+
+    # The free-standing upright behind the obstacle, if it is in the buffer.
+    # Measuring it is what stops the run ending in a hover in front of it:
+    # its distance behind the plane is a build number nobody has checked, and
+    # its lateral is the difference between stepping clear of it and stepping
+    # into it.
+    back = None
+    if behind:
+        back_along, back_xy = behind[0]
+        back = {'along': back_along - along,
+                'lateral': float(np.dot(back_xy - v, u)) - lateral}
     return {
         'point': point,
+        'centre_offset': structure_centre(
+            {'front': front}, v, u, lateral),
+        'source': 'layout',
+        'back': back,
+        'side': 'left' if pair == (1, 0) else 'right',
+        'offset': lateral - mid,
         'normal': normal,
         'left': u,
         'heading': math.atan2(normal[1], normal[0]),
@@ -327,15 +598,36 @@ class TubeCross(OffboardSequence):
     CROSS_BAR_HEIGHT = 0.461
     DIAGONAL_LEFT_HEIGHT = 2.000    # where the diagonal meets the LEFT upright
     DIAGONAL_RIGHT_HEIGHT = 0.922   # ... and the RIGHT one
-    GAP_SIDE = 'left'               # left = between L and M (the big one)
+    GAP_SIDE = 'auto'               # auto = the cell with the bigger opening,
+                                    # which is the one under the high end of
+                                    # the diagonal. 'left'/'right' force it.
 
     # ---- the path ---------------------------------------------------------
     STANDOFF_DISTANCE = 1.20    # m before the plane the pass starts from
     PASS_EXIT_DISTANCE = 0.50   # m past the plane before stepping sideways
-    SHIFT_LEFT = 0.40           # m, + = left. Clears the back upright.
-    EXIT_DISTANCE = 1.20        # m on from the shift point; the back upright
-                                # is 1 m behind the plane
+    SHIFT_LEFT = 0.40           # m, + = left. The SMALLEST step sideways
+                                # after the gap; where the back upright was
+                                # measured, whatever it takes to clear it.
+    BACK_TUBE_DISTANCE = 1.00   # m the back upright stands behind the plane
+    BACK_TUBE_CLEAR = 1.00      # m to be past it before the run is over
+    MAX_SHIFT = 1.20            # m sideways after the gap before going the
+                                # other way round the back upright instead
+    EXIT_DISTANCE = 0.0         # m from the shift point; 0 = work it out from
+                                # back_tube_distance + back_tube_clear
+    CROSS_DROP = 0.15           # m BELOW the centre of the opening to aim.
+                                # The roof of the cell is the diagonal and the
+                                # floor is a single horizontal tube: dropping
+                                # buys headroom against the thing that is
+                                # actually in the way. Clamped off the floor.
+    CROSS_LEFT = 0.05           # m LEFT of the centre of the opening to aim,
+                                # towards the high end of the diagonal and
+                                # towards the side the aircraft leaves on.
+                                # Clamped off the uprights.
+    MERGE_SHIFT = True          # fly the gap and the step round the back
+                                # upright as ONE diagonal leg
     CLEARANCE = 0.12            # m wanted between airframe and tube, vertically
+    LATERAL_MARGIN = 0.02       # m kept between airframe and upright when the
+                                # camera's hole centre is followed sideways
 
     # ---- the airframe (same numbers as window_traverse / bar_cross) -------
     GEAR_BELOW_CAMERA = 0.120
@@ -353,10 +645,15 @@ class TubeCross(OffboardSequence):
     ALT_TOLERANCE = 0.06
     SETTLE_SECONDS = 1.5
     ARRIVE_TOLERANCE = 0.10
+    CROSS_CLEAR = 0.30          # m off the exit line that still counts as
+                                # having gone round the back upright
     ARRIVE_SETTLE_SECONDS = 0.5
     REFINE_MIN_DISTANCE = 1.00      # m to the plane below which the camera
                                     # stops steering the entry point
     REFINE_MAX_JUMP = 0.20          # m a refinement may move the gap by
+    MIN_HOLE_WIDTH = 0.30       # m. Under this it is not a whole cell --
+                                # something was standing in front of it.
+    MIN_HOLE_HEIGHT = 0.50      # m, measured over the aircraft's own track
     MIN_GAP_WIDTH = 0.40
     MAX_GAP_WIDTH = 0.60
 
@@ -374,6 +671,7 @@ class TubeCross(OffboardSequence):
     # ---- the estimate -----------------------------------------------------
     GEOMETRY_TOPIC = 'tube_geometry'
     DETECT_TOPIC = 'tubes_detected'
+    HOLE_TOPIC = 'tube_hole'
     ATTITUDE_MAX_HZ = 30.0
     DEPTH_MIN = 0.40
     DEPTH_MAX = 6.00
@@ -402,13 +700,23 @@ class TubeCross(OffboardSequence):
         self.DIAGONAL_LEFT_HEIGHT = float(n('diagonal_left_height', self.DIAGONAL_LEFT_HEIGHT))
         self.DIAGONAL_RIGHT_HEIGHT = float(n('diagonal_right_height', self.DIAGONAL_RIGHT_HEIGHT))
         side = str(self.declare_parameter('gap_side', self.GAP_SIDE).value).strip().lower()
-        self.gap_side = side if side in ('left', 'right') else self.GAP_SIDE
+        self.gap_side = side if side in ('left', 'right', 'auto') else self.GAP_SIDE
 
         self.STANDOFF_DISTANCE = float(n('standoff_distance', self.STANDOFF_DISTANCE))
         self.PASS_EXIT_DISTANCE = float(n('pass_exit_distance', self.PASS_EXIT_DISTANCE))
         self.SHIFT_LEFT = float(n('shift_left', self.SHIFT_LEFT))
+        self.BACK_TUBE_DISTANCE = float(n('back_tube_distance', self.BACK_TUBE_DISTANCE))
+        self.BACK_TUBE_CLEAR = float(n('back_tube_clear', self.BACK_TUBE_CLEAR))
+        self.MAX_SHIFT = float(n('max_shift', self.MAX_SHIFT))
+        self.ALLOW_SHIFT_RIGHT = bool(self.declare_parameter(
+            'allow_shift_right', False).value)
         self.EXIT_DISTANCE = float(n('exit_distance', self.EXIT_DISTANCE))
+        self.CROSS_DROP = float(n('cross_drop', self.CROSS_DROP))
+        self.CROSS_LEFT = float(n('cross_left', self.CROSS_LEFT))
+        self.MERGE_SHIFT = bool(self.declare_parameter(
+            'merge_shift', self.MERGE_SHIFT).value)
         self.CLEARANCE = float(n('clearance', self.CLEARANCE))
+        self.LATERAL_MARGIN = float(n('lateral_margin', self.LATERAL_MARGIN))
         self.cross_altitude_override = float(n('cross_altitude', 0.0))
 
         self.GEAR_BELOW_CAMERA = float(n('gear_below_camera', self.GEAR_BELOW_CAMERA))
@@ -462,6 +770,10 @@ class TubeCross(OffboardSequence):
             buffer_max=self.BUFFER_MAX,
             cluster_radius=float(n('cluster_radius', self.CLUSTER_RADIUS)),
             min_samples=int(n('pose_min_samples', self.MIN_SAMPLES)),
+            min_hole_width=float(n('min_hole_width', self.MIN_HOLE_WIDTH)),
+            min_hole_height=float(n('min_hole_height', self.MIN_HOLE_HEIGHT)),
+            max_hole_floor=float(n('max_hole_floor',
+                                   self._default_hole_floor())),
         )
 
         self.cross_altitude, self.gap_floor, self.gap_roof = self._solve_altitude()
@@ -487,6 +799,10 @@ class TubeCross(OffboardSequence):
                                  callback_group=self.sensor_cbg)
         self.create_subscription(Bool, detect_topic, self.detected_callback, 10,
                                  callback_group=self.sensor_cbg)
+        self.hole_topic = str(self.declare_parameter('hole_topic', self.HOLE_TOPIC).value)
+        self.create_subscription(Float32MultiArray, self.hole_topic,
+                                 self.hole_callback, 10,
+                                 callback_group=self.sensor_cbg)
         self.gap_pub = self.create_publisher(String, 'tube_gap', 10)
 
         self.tubes_flag = False
@@ -496,6 +812,10 @@ class TubeCross(OffboardSequence):
         self.solution_ok_since = None
         self.solution_lost_since = None
 
+        self.hole_hint = None
+        self.back_along = self.BACK_TUBE_DISTANCE
+        self.back_lateral = 0.0
+        self.shift = self.SHIFT_LEFT
         self.gap_point = None
         self.gap_normal = None
         self.gap_left = None
@@ -514,13 +834,29 @@ class TubeCross(OffboardSequence):
         self.get_logger().warning(
             f"Tube crossing on ARK FLOW{', FLYING BLIND' if self.flying_blind else ''}: "
             f"through the {self.gap_side.upper()} gap at {self.cross_altitude:.2f} m "
+        f"(aiming {self.CROSS_DROP:.2f} m under and {self.CROSS_LEFT:.2f} m "
+        f"left of the middle of the opening) "
             f"(fits {self.gap_floor:.2f}-{self.gap_roof:.2f} m), then "
-            f"{abs(self.SHIFT_LEFT):.2f} m {'left' if self.SHIFT_LEFT >= 0 else 'right'} "
-            f"and {self.EXIT_DISTANCE:.2f} m on. Point the aircraft at the "
+            f"at least {abs(self.SHIFT_LEFT):.2f} m left of it and on past "
+            f"the back upright. Point the aircraft at the "
             "obstacle before you arm. Press q to abort, k to force-disarm. "
             + ("READY." if not self.problems else "WILL NOT ATTEMPT -- see errors."))
 
     # ------------------------------------------------------------ geometry
+
+    def _default_hole_floor(self):
+        """The highest a flyable cell's FLOOR can be: halfway between the
+        cross tube and the LOW end of the diagonal.
+
+        Every cell the aircraft may cross rests on the cross tube. The cells
+        ABOVE the diagonal -- which exist as soon as the top of the frame is
+        sealed so the tall cell can be seen at all -- rest on the diagonal,
+        and the lowest the diagonal ever gets is its low end. Halfway between
+        the two separates them on this obstacle and on a scaled copy of it
+        alike, with no number to keep in step by hand.
+        """
+        low = min(self.DIAGONAL_LEFT_HEIGHT, self.DIAGONAL_RIGHT_HEIGHT)
+        return 0.5 * (self.CROSS_BAR_HEIGHT + max(low, self.CROSS_BAR_HEIGHT))
 
     def _diagonal_height(self, lateral):
         """Diagonal height at `lateral` m LEFT of the middle upright."""
@@ -529,14 +865,52 @@ class TubeCross(OffboardSequence):
                  / (2.0 * self.TUBE_SPACING))
         return mid + slope * lateral
 
+    def _cell(self, side):
+        """(area, lateral, height) of the open cell on one side of the middle.
+
+        Columns across the cell: the floor is the cross tube, the roof is the
+        sloping diagonal, and a tube radius comes off every edge. The lateral
+        and height returned are its centre of AREA -- the middle of the
+        trapezium, not the middle of the two uprights, which sits well off to
+        the low side of it.
+        """
+        sign = 1.0 if side == 'left' else -1.0
+        lo, hi = sorted((self.TUBE_RADIUS * sign, sign * (self.TUBE_SPACING - self.TUBE_RADIUS)))
+        bottom = self.CROSS_BAR_HEIGHT + self.TUBE_RADIUS
+        steps = 60
+        dx = (hi - lo) / steps
+        area = lat = hgt = 0.0
+        for i in range(steps):
+            x = lo + (i + 0.5) * dx
+            top = self._diagonal_height(x) - self.TUBE_RADIUS
+            column = max(0.0, top - bottom) * dx
+            area += column
+            lat += x * column
+            hgt += 0.5 * (top + bottom) * column
+        if area <= 0.0:
+            return 0.0, sign * 0.5 * self.TUBE_SPACING, bottom
+        return area, lat / area, hgt / area
+
     def _solve_altitude(self):
-        centre = (0.5 if self.gap_side == 'left' else -0.5) * self.TUBE_SPACING
-        inner_edges = (centre - 0.5 * self.DRONE_WIDTH, centre + 0.5 * self.DRONE_WIDTH)
-        roof_tube = min(self._diagonal_height(e) for e in inner_edges)
+        """The default crossing height: the centre of area of the big cell.
+
+        Held inside the band the airframe actually fits in. The band is worked
+        out across the whole width of the aircraft, and the diagonal slopes,
+        so the binding point is the airframe edge nearest the middle upright.
+        """
+        if self.gap_side == 'auto':
+            self.gap_side = max(('left', 'right'), key=lambda c: self._cell(c)[0])
+            self.get_logger().info(
+                f"gap_side=auto -> the {self.gap_side.upper()} cell is the "
+                f"bigger opening ({self._cell(self.gap_side)[0]:.2f} m2).")
+        _, self.cell_lateral, self.cell_height = self._cell(self.gap_side)
+        edges = (self.cell_lateral - 0.5 * self.DRONE_WIDTH,
+                 self.cell_lateral + 0.5 * self.DRONE_WIDTH)
+        roof_tube = min(self._diagonal_height(e) for e in edges)
         floor = (self.CROSS_BAR_HEIGHT + self.TUBE_RADIUS + self.CLEARANCE
                  + self.body_below)
         roof = roof_tube - self.TUBE_RADIUS - self.CLEARANCE - self.body_above
-        altitude = 0.5 * (floor + roof)
+        altitude = min(max(self.cell_height - self.CROSS_DROP, floor), roof)
         if self.cross_altitude_override > 0.0:
             altitude = self.cross_altitude_override
         return altitude, floor, roof
@@ -590,6 +964,68 @@ class TubeCross(OffboardSequence):
         for row in data.reshape(-1, STRIDE):
             self.estimator.add(row, q, p, self.r_cam, self.t_cam, self.home_z, now)
 
+    def hole_callback(self, msg):
+        """The camera's hole candidates -> the first plausible one, buffered."""
+        data = np.asarray(msg.data, dtype=float)
+        if data.size == 0 or data.size % HOLE_STRIDE != 0:
+            return
+        lp = self.local_position
+        if (lp is None or not lp.xy_valid or not lp.z_valid
+                or self.home_z is None or self.attitude is None):
+            return
+        q = np.asarray(self.attitude.q, dtype=float)
+        p = np.array([lp.x, lp.y, lp.z])
+        now = time.monotonic()
+        rows = list(data.reshape(-1, HOLE_STRIDE))
+        # A cell the detector could fit a clean quadrilateral to first: that
+        # is the trapezium of the obstacle, and its edges are the ones worth
+        # measuring a ceiling from.
+        for row in sorted(rows, key=lambda r: -r[8]):
+            ok, _ = self.estimator.add_hole(row, q, p, self.r_cam, self.t_cam,
+                                            self.home_z, now)
+            if ok:
+                return
+
+    def _hole_hint(self, u, vehicle_xy):
+        """The measured cell: dict of lateral, height, ceiling, floor, or None."""
+        found = self.estimator.hole(time.monotonic())
+        if found is None:
+            return None
+        xy, height, ceiling, floor, width, rise, count = found
+        return {'lateral': float(np.dot(xy - np.asarray(vehicle_xy), u)),
+                'height': height, 'ceiling': ceiling, 'floor': floor,
+                'width': width, 'rise': rise, 'count': count}
+
+    def template_offset(self):
+        """Centre of area of the template cell, off the midpoint, + LEFT."""
+        sign = 1.0 if self.gap_side == 'left' else -1.0
+        return self.cell_lateral - sign * 0.5 * self.TUBE_SPACING
+
+    def _lean(self, hint):
+        """How far to aim off the middle of the opening, + LEFT.
+
+        cross_left metres TOWARDS THE HIGH END of the diagonal, not towards
+        the aircraft's left. On this obstacle those are the same thing, but
+        only because of how it happens to be built and which way it is
+        approached, and leaning the wrong way is worse than not leaning at
+        all: on the real course a centimetre of lean costs a centimetre of the
+        eight there are to an upright and buys a centimetre of headroom under
+        a diagonal that is half a metre clear. Worth it towards the high side;
+        a way to hit two things at once towards the low side.
+
+        Measured from the roof at the two shoulders of the cell when the
+        camera has it. From the template -- which is to say, from whichever
+        cell gap_side picked -- when it does not.
+        """
+        if hint is not None and abs(hint['rise']) > 1e-3:
+            return math.copysign(self.CROSS_LEFT, hint['rise'])
+        return math.copysign(self.CROSS_LEFT,
+                             1.0 if self.gap_side == 'left' else -1.0)
+
+    @property
+    def half_airframe(self):
+        return 0.5 * self.DRONE_WIDTH + self.TUBE_RADIUS + self.LATERAL_MARGIN
+
     # --------------------------------------------------------------- the gap
 
     def _update_solution(self):
@@ -599,12 +1035,28 @@ class TubeCross(OffboardSequence):
             self.solution = None
             return
         heading = self.gap_heading if self.gap_heading is not None else self.home_yaw
+        u = np.array([math.sin(heading), -math.cos(heading)])
+        hint = self._hole_hint(u, (lp.x, lp.y))
+        self.hole_hint = hint
+        clusters = self.estimator.clusters(now)
         sol, reason = solve_gap(
-            self.estimator.clusters(now), (lp.x, lp.y), heading,
+            clusters, (lp.x, lp.y), heading,
             self.TUBE_SPACING, self.PLANE_BAND, self.MATCH_TOLERANCE,
-            self.MIN_MATCHED_TUBES, self.MAX_PLANE_YAW, self.gap_side)
+            self.MIN_MATCHED_TUBES, self.MAX_PLANE_YAW, self.gap_side,
+            prefer_lateral=(None if hint is None
+                            else hint['lateral'] + self._lean(hint)),
+            lateral_offset=self.template_offset() + self._lean(None),
+            half_airframe=self.half_airframe)
+        if sol is not None:
+            sol['hole'] = hint
         if sol is not None and not (self.MIN_GAP_WIDTH <= sol['width'] <= self.MAX_GAP_WIDTH):
             sol, reason = None, f"measured gap {sol['width']:.2f} m is implausible"
+        if sol is None and hint is not None:
+            # No layout fit, but the opening itself is measured. Fly that --
+            # see solve_from_hole. Refusing it means hovering in front of a
+            # hole the camera can see perfectly well.
+            sol, reason = self._solve_from_cell(hint, clusters, heading,
+                                                (lp.x, lp.y), reason)
         self.solution = sol
         self.solution_reason = reason
         if sol is not None:
@@ -616,6 +1068,30 @@ class TubeCross(OffboardSequence):
             if self.solution_lost_since is None:
                 self.solution_lost_since = now
 
+    def _solve_from_cell(self, hint, clusters, heading, vehicle_xy, why):
+        """A crossing from the measured opening, when the layout will not fit."""
+        tall = hint['ceiling'] - hint['floor']
+        if (hint['width'] < self.DRONE_WIDTH + 2.0 * self.LATERAL_MARGIN
+                or tall < self.DRONE_HEIGHT + 2.0 * self.CLEARANCE):
+            return None, (f"{why}; and the measured opening "
+                          f"({hint['width']:.2f} x {tall:.2f} m) is too small "
+                          "for the airframe")
+        plane, plane_why = front_plane(clusters, vehicle_xy, heading,
+                                       self.PLANE_BAND, self.MAX_PLANE_YAW)
+        if plane is None:
+            return None, f"{why}; and no tube plane either ({plane_why})"
+        found = self.estimator.hole(time.monotonic())
+        if found is None:
+            return None, f"{why}; and the opening went stale"
+        sol = solve_from_hole(plane, vehicle_xy, found[0], hint['width'],
+                              self.half_airframe, lean=self._lean(hint))
+        self.get_logger().warning(
+            "Flying the MEASURED opening, not the template: %s. %.2f x %.2f m, "
+            "%d uprights in the plane." % (why, hint['width'], tall,
+                                           len(plane['front'])),
+            throttle_duration_sec=5.0)
+        return sol, ''
+
     def gap_summary(self):
         if self.solution is None:
             if self.geometry_seen == 0:
@@ -625,9 +1101,16 @@ class TubeCross(OffboardSequence):
                     f"clusters, {self.estimator.accepted_total} samples accepted; "
                     f"rejections: {self.estimator.rejection_summary()})")
         s = self.solution
-        return (f"gap at ({s['point'][0]:+.2f}, {s['point'][1]:+.2f}), "
+        h = s.get('hole')
+        hole = (f"hole centre {s['offset']:+.2f} m off centre at "
+                f"{h['height']:.2f} m, ceiling {h['ceiling']:.2f}, floor "
+                f"{h['floor']:.2f}, {h['width']:.2f} m wide, roof rising "
+                f"{h['rise']:+.2f} m/m to the left" if h is not None
+                else "no hole in view; aiming at the template centre")
+        return (f"{s['side'].upper()} gap at ({s['point'][0]:+.2f}, {s['point'][1]:+.2f}), "
                 f"{s['width']:.2f} m wide, heading {math.degrees(s['heading']):+.0f} deg, "
-                f"{s['matched']} uprights matched, residual {s['residual']:.3f} m")
+                f"{s['matched']} uprights matched, residual {s['residual']:.3f} m, "
+                f"{hole}")
 
     def publish_gap(self):
         msg = String()
@@ -648,7 +1131,8 @@ class TubeCross(OffboardSequence):
         point = (np.array([lp.x, lp.y]) + fwd * self.ASSUME_GAP_DISTANCE
                  + left * self.ASSUME_GAP_LEFT)
         return {'point': point, 'normal': fwd, 'left': left, 'heading': h,
-                'width': self.TUBE_SPACING, 'matched': 0, 'residual': 0.0}
+                'width': self.TUBE_SPACING, 'matched': 0, 'residual': 0.0,
+                'side': self.gap_side, 'offset': 0.0, 'hole': None, 'back': None}
 
     def _freeze_path(self, sol):
         """Every waypoint of the crossing, from one gap solution."""
@@ -658,8 +1142,152 @@ class TubeCross(OffboardSequence):
         self.gap_heading = sol['heading']
         self.entry = self.gap_point - self.gap_normal * self.STANDOFF_DISTANCE
         self.pass_exit = self.gap_point + self.gap_normal * self.PASS_EXIT_DISTANCE
-        self.shift_point = self.pass_exit + self.gap_left * self.SHIFT_LEFT
-        self.final_point = self.shift_point + self.gap_normal * self.EXIT_DISTANCE
+        self.back_along, self.back_lateral, back_measured = self._back_tube(
+            sol.get('back'), sol.get('centre_offset'))
+        self.shift = self._shift_offset(self.back_lateral, back_measured)
+        self.shift_point = self.pass_exit + self.gap_left * self.shift
+        self.final_point = (self.gap_point
+                            + self.gap_normal * (self.back_along + self.BACK_TUBE_CLEAR)
+                            + self.gap_left * self.shift)
+        self.cross_altitude = self._crossing_altitude(sol.get('hole'))
+        self._log_plan(sol)
+
+    def _log_plan(self, sol):
+        """Every direction of the crossing, in words, before it is flown."""
+        hole = sol.get('hole')
+        side = lambda v: 'LEFT' if v >= 0 else 'RIGHT'
+        if sol.get('source') == 'hole':
+            where = ("the MEASURED opening, %.2f m wide, aiming %.2f m to its %s"
+                     % (sol['width'], abs(sol['offset']), side(sol['offset'])))
+        else:
+            where = ("the %s cell, %.2f m to the %s of the middle upright"
+                     % (self.gap_side.upper(),
+                        abs(sol['offset'] + 0.5 * self.TUBE_SPACING),
+                        side(1.0 if self.gap_side == 'left' else -1.0)))
+        self.get_logger().warning(
+            "TUBE PLAN: cross %s, at %.2f m. %s the roof: %s. Then %.2f m to "
+            "the %s and %.2f m on, passing the back upright %.2f m to our %s."
+            % (where, self.cross_altitude,
+               'MEASURED' if hole is not None else 'TEMPLATE',
+               (f"rises {abs(hole['rise']):.2f} m/m to the {side(hole['rise'])}"
+                if hole is not None else
+                f"assumed high on the {self.gap_side.upper()}"),
+               abs(self.shift), side(self.shift),
+               self.back_along + self.BACK_TUBE_CLEAR,
+               abs(self.back_lateral), side(self.back_lateral)))
+
+    def _back_tube(self, back, centre_offset=None):
+        """(along, lateral) of the upright behind the plane, relative to the
+        crossing point. Measured where it was seen, from the parameters if not.
+
+        When it was not seen, it is assumed to stand on the CENTRELINE of the
+        structure, and where that centreline is comes from the uprights the
+        camera actually measured -- not from gap_side. The two disagree
+        whenever the cell flown is not the cell the template picked, and this
+        is the number the sideways step afterwards is built on, so taking it
+        off gap_side is how the aircraft steps back across the centreline
+        into the upright it is meant to be dodging.
+        """
+        if back is None:
+            if centre_offset is not None:
+                self.get_logger().warning(
+                    f"The back upright was not in view; assuming it stands "
+                    f"{self.BACK_TUBE_DISTANCE:.2f} m behind the plane, on the "
+                    f"centreline of the structure -- {abs(centre_offset):.2f} m "
+                    f"to our {'LEFT' if centre_offset >= 0 else 'RIGHT'}, "
+                    "measured off the uprights.")
+                return self.BACK_TUBE_DISTANCE, centre_offset, True
+            self.get_logger().warning(
+                f"The back upright was not in view and neither were two "
+                f"uprights to take a centreline from; assuming it stands "
+                f"{self.BACK_TUBE_DISTANCE:.2f} m behind the plane, on the "
+                f"{self.gap_side.upper()} cell's inner edge.")
+            sign = 1.0 if self.gap_side == 'left' else -1.0
+            return self.BACK_TUBE_DISTANCE, -sign * 0.5 * self.TUBE_SPACING, False
+        self.get_logger().warning(
+            f"Back upright measured {back['along']:.2f} m behind the plane, "
+            f"{back['lateral']:+.2f} m off the track (+ = left).")
+        return back['along'], back['lateral'], True
+
+    def _shift_offset(self, back_lateral, measured=False):
+        """How far sideways to step after the gap, + LEFT.
+
+        Left by preference, as far as it takes to have half an airframe plus
+        the clearance between a prop tip and the back upright, and never less
+        than shift_left. Right instead, but only if going left would mean an
+        absurd step -- which happens when the back upright is off to the left
+        already.
+        """
+        need = self.half_airframe + self.CLEARANCE
+        least = abs(self.SHIFT_LEFT)
+        go_left = back_lateral + need
+        go_right = back_lateral - need
+        if go_left <= self.MAX_SHIFT:
+            return max(least, go_left)
+        if not measured and not self.ALLOW_SHIFT_RIGHT:
+            self.get_logger().error(
+                f"The back upright measures {back_lateral:+.2f} m to the LEFT "
+                f"of the track, which would take a {go_left:.2f} m step to go "
+                f"round on the left (max {self.MAX_SHIFT:.2f}). That is "
+                "probably a bad measurement. Stepping "
+                f"{self.MAX_SHIFT:.2f} m LEFT anyway; allow_shift_right:=true "
+                "to let it go round the other side.")
+            return self.MAX_SHIFT
+        self.get_logger().warning(
+            f"Stepping {abs(go_right):.2f} m RIGHT after the gap: the back "
+            f"upright is {back_lateral:+.2f} m to the LEFT of the track and "
+            f"going round it on the left would take {go_left:.2f} m. This is "
+            "the correct side when the cell crossed was the right-hand one -- "
+            "stepping left there walks back across the centreline into it.")
+        return min(-least, go_right)
+
+    def exit_distance(self):
+        """How far on from the shift point the run ends."""
+        if self.EXIT_DISTANCE > 0.0:
+            return self.EXIT_DISTANCE
+        return max(0.0, self.back_along + self.BACK_TUBE_CLEAR
+                   - self.PASS_EXIT_DISTANCE)
+
+    def _crossing_altitude(self, hole):
+        """The crossing height, from the MEASURED ceiling and floor of the cell.
+
+        The template band is not used here, and deliberately so: it is built
+        from diagonal_left_height and diagonal_right_height, and if those are
+        the wrong way round -- the obstacle built mirrored, or the aircraft
+        coming at it from the other side -- the band says there is room where
+        the diagonal actually is. The camera measures the ceiling over the
+        aircraft's own track. Where the two disagree, the camera wins, and the
+        disagreement is logged because it means the parameters are wrong.
+        """
+        if hole is None or self.cross_altitude_override > 0.0:
+            return self.cross_altitude
+        lo = hole['floor'] + self.CLEARANCE + self.body_below
+        hi = hole['ceiling'] - self.CLEARANCE - self.body_above
+        wanted = hole['height'] - self.CROSS_DROP
+        if hi < lo:
+            middle = 0.5 * (hole['floor'] + hole['ceiling'])
+            self.get_logger().error(
+                f"The measured cell ({hole['floor']:.2f}-{hole['ceiling']:.2f} m) "
+                f"is under {self.DRONE_HEIGHT + 2 * self.CLEARANCE:.2f} m tall. "
+                f"Threading the middle of it at {middle:.2f} m.")
+            altitude = middle
+        else:
+            altitude = min(max(wanted, lo), hi)
+        altitude = min(max(altitude, self.MIN_ALTITUDE), self.MAX_ALTITUDE)
+        if not (self.gap_floor - 0.05 <= altitude <= self.gap_roof + 0.05):
+            self.get_logger().error(
+                f"MEASURED crossing height {altitude:.2f} m is outside the "
+                f"TEMPLATE band {self.gap_floor:.2f}-{self.gap_roof:.2f} m. "
+                "Trusting the camera, but check cross_bar_height and "
+                "diagonal_left_height/diagonal_right_height -- left and right "
+                "are as the APPROACHING AIRCRAFT sees them, and having them "
+                "the wrong way round is what flies it into the diagonal.")
+        self.get_logger().warning(
+            f"Crossing at {altitude:.2f} m: the camera puts the cell at "
+            f"{hole['floor']:.2f}-{hole['ceiling']:.2f} m over the track, "
+            f"centre of area {hole['height']:.2f} m (template said "
+            f"{self.cross_altitude:.2f} m).")
+        return altitude
 
     def _path_frame(self, target):
         """(along, cross) from the aircraft to target, in the gap frame."""
@@ -749,6 +1377,10 @@ class TubeCross(OffboardSequence):
         if self.move_target_x is not None:
             self.move_target_x, self.move_target_y = turn(
                 (self.move_target_x, self.move_target_y))
+        # Guarded separately: a target can exist with no ramp start behind it,
+        # and turning None raises inside a subscription callback, which kills
+        # the node in flight. See window_traverse._on_heading_reset.
+        if self.move_start_x is not None and self.move_start_y is not None:
             self.move_start_x, self.move_start_y = turn(
                 (self.move_start_x, self.move_start_y))
 
@@ -903,8 +1535,7 @@ class TubeCross(OffboardSequence):
                 sol['normal'], sol['left'], sol['heading'] = (
                     self.gap_normal, self.gap_left, self.gap_heading)
                 self._freeze_path(sol)
-                self.move_target_x, self.move_target_y = map(float, self.entry)
-                self.stage_target = self.entry.copy()
+                self._set_target(self.entry, self.cross_altitude)
             else:
                 self.get_logger().warning(
                     f"ALIGN: ignoring a {jump:.2f} m jump in the gap estimate.",
@@ -947,6 +1578,14 @@ class TubeCross(OffboardSequence):
             f"{self.gap_summary()}", throttle_duration_sec=1.0)
 
     def _begin_pass(self):
+        if self.hole_hint is None and not self.flying_blind:
+            self.get_logger().error(
+                "COMMITTING WITHOUT HAVING SEEN THE OPENING. Nothing has come "
+                f"off {self.hole_topic} that survived the gating, so the "
+                "crossing height is the TEMPLATE's, and the template cannot "
+                "tell which way the diagonal slopes. If it is the wrong way "
+                "round this is the run that hits it. Check the overlay: the "
+                "cell should be outlined and crossed.")
         self.MOVE_SPEED = self.PASS_SPEED
         self._enter_tube_stage(self.PASS)
         self._set_target(self.pass_exit, self.cross_altitude)
@@ -979,12 +1618,28 @@ class TubeCross(OffboardSequence):
             self.push_since = None
 
         if self._arrived(self.pass_exit):
+            if self.MERGE_SHIFT:
+                # One diagonal leg from just past the plane to clear of the
+                # back upright, instead of a sideways step and then a straight
+                # run. The aircraft is square to the gap while it is BETWEEN
+                # the uprights -- there is under 10 cm a side there and no
+                # room to be going sideways -- and starts easing left the
+                # moment it is out the other side.
+                self.MOVE_SPEED = self.SHIFT_SPEED
+                self._enter_tube_stage(self.EXIT)
+                self._set_target(self.final_point, self.cross_altitude)
+                self.get_logger().warning(
+                    f"EXIT: through. One diagonal leg {self.shift:+.2f} m "
+                    f"({'left' if self.shift >= 0 else 'right'}) and "
+                    f"{self.exit_distance():.2f} m on, round the back upright.")
+                return
             self.MOVE_SPEED = self.SHIFT_SPEED
             self._enter_tube_stage(self.SHIFT)
             self._set_target(self.shift_point, self.cross_altitude)
             self.get_logger().warning(
-                f"SHIFT: through. Stepping {self.SHIFT_LEFT:+.2f} m left of the "
-                "gap line to clear the back upright.")
+                f"SHIFT: through. Stepping {self.shift:+.2f} m "
+                f"({'left' if self.shift >= 0 else 'right'}) of the gap line "
+                "to clear the back upright.")
             return
         if self._in_stage_for() > self.PASS_TIMEOUT:
             self._abandon("the pass timed out")
@@ -1003,7 +1658,7 @@ class TubeCross(OffboardSequence):
             self._enter_tube_stage(self.EXIT)
             self._set_target(self.final_point, self.cross_altitude)
             self.get_logger().warning(
-                f"EXIT: {self.EXIT_DISTANCE:.2f} m on, past the back upright.")
+                f"EXIT: {self.exit_distance():.2f} m on, clear past the back upright.")
             return
         if self._in_stage_for() > self.MOVE_STAGE_TIMEOUT:
             self._abandon("the shift timed out")
@@ -1013,12 +1668,29 @@ class TubeCross(OffboardSequence):
         if not self.hold_xy:
             self._abandon("flow lost during the exit; landing straight down")
             return
-        if self._arrived(self.final_point):
+        past = self._distance_past_plane()
+        _, cross = self._path_frame(self.final_point)
+        if ((past >= self.back_along + self.BACK_TUBE_CLEAR - self.ARRIVE_TOLERANCE
+             and cross is not None and abs(cross) <= self.CROSS_CLEAR)
+                or self._arrived(self.final_point)):
             self.outcome = f"TUBES CROSSED ({self.gap_side} gap at {self.cross_altitude:.2f} m)"
             self._enter_tube_stage(self.CLEAR)
             return
         if self._in_stage_for() > self.MOVE_STAGE_TIMEOUT:
-            self._abandon("the exit timed out")
+            # Being past the back upright is what the exit is FOR. Give up on
+            # the last few centimetres rather than land alongside it, which is
+            # where a plain timeout used to leave the aircraft.
+            past = self._distance_past_plane()
+            if past > self.back_along + self.CLEARANCE:
+                self.get_logger().warning(
+                    f"EXIT: did not settle, but {past:.2f} m past the plane is "
+                    f"clear of the back upright at {self.back_along:.2f} m. "
+                    "Calling it done.")
+                self.outcome = (f"TUBES CROSSED ({self.gap_side} gap at "
+                                f"{self.cross_altitude:.2f} m, exit not settled)")
+                self._enter_tube_stage(self.CLEAR)
+                return
+            self._abandon("the exit timed out short of the back upright")
 
     def _handle_clear(self):
         if self._in_stage_for() >= self.CLEAR_SECONDS:

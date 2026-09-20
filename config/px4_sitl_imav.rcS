@@ -1,0 +1,165 @@
+#!/bin/sh
+#
+# PX4 SITL startup for the IMAV indoor course, used as
+#
+#     px4 -w <rootfs> -s <this file>
+#
+# by course_mission_sitl.launch.py. It runs the stock SITL rcS unchanged and
+# then applies only the parameters the course actually needs. Anything not
+# listed here is deliberately left at the PX4 default.
+#
+# NOTE ON -s: passing a startup file suppresses PX4's automatic choice of
+# working directory (main.cpp only defaults it when NO -s, -t or -w is given),
+# so the launch file passes -w explicitly. ${R} is unset in SITL, so
+# "${R}etc/..." is relative to that working directory, exactly as it is for
+# the stock invocation.
+
+. ${R}etc/init.d-posix/rcS
+
+# --- rangefinder -------------------------------------------------------
+# 2 = always fuse, rather than the default 1 = conditional. Conditional mode
+# only aids below EKF2_RNG_A_HMAX (5 m) and EKF2_RNG_A_VMAX (1 m/s), and this
+# course crosses the red bar at 4.33 m while translating at 0.99 m/s -- both
+# right on the limit, in a world scaled up by 2.2. Dropping out of range
+# aiding mid-course clears cs_rng_hgt, which is one of the things course_fsm
+# treats as "the rangefinder is gone" and holds or lands for.
+# Taken BEFORE anything below changes them: once they are set, comparing
+# them tells you nothing. See the restart block at the end of this file.
+NEEDS_EKF2_RESTART=0
+param compare EKF2_HGT_REF 2 || NEEDS_EKF2_RESTART=1
+param compare EKF2_BARO_CTRL 0 || NEEDS_EKF2_RESTART=1
+param compare EKF2_GPS_CTRL 5 || NEEDS_EKF2_RESTART=1
+
+param set EKF2_RNG_CTRL 2
+
+# Raised to their maxima as well, so conditional mode still covers the whole
+# course if anyone sets EKF2_RNG_CTRL back to 1.
+param set EKF2_RNG_A_HMAX 10.0
+param set EKF2_RNG_A_VMAX 2.0
+
+# --- the rangefinder must be the ONLY height source ---------------------
+# This is the difference between flying the course and stopping dead at the
+# red bar. VehicleLocalPosition.dist_bottom is EKF2's HAGL, not the lidar
+# reading, and the kinematic consistency check in
+# range_finder_consistency_check.cpp compares d(dist_bottom)/dt against the
+# EKF's own vz, normalised by dist_bottom_var:
+#
+#     _innov = -(dist_bottom - prev)/dt - vz
+#     _test_ratio = _innov^2 / (2*dist_bottom_var/dt^2 + vz_var) / gate^2
+#
+# With baro and GPS altitude ALSO fused, HAGL carries their jitter while its
+# variance stays small, so at a hover the test ratio crosses 1 and
+# cs_rng_kin_consistent latches false. It can only be re-earned at
+# |vz| > 0.5 m/s -- and course_fsm, quite correctly, responds to the flag
+# going false by holding position, which pins vz at 0. That is a deadlock:
+# the first SITL flight through the window sat in COURSE_HOLD for the full
+# 45 s at the foot of the red bar and then landed.
+#
+# With range as the sole height reference, HAGL IS the range, the innovation
+# is genuinely zero, and the flag stays true through the whole course.
+param set EKF2_HGT_REF 2
+param set EKF2_BARO_CTRL 0
+
+# GPS keeps horizontal position and velocity (bits 0 and 2) but loses
+# altitude (bit 1). The real aircraft has no GPS at all and holds x/y on ARK
+# Flow; optical flow is fused here too, but flow-only x/y drifts over the
+# ~40 m of scaled course and would be testing the estimator rather than the
+# state machine. Set this to 0 for a faithful flow-only run.
+param set EKF2_GPS_CTRL 5
+param set EKF2_OF_CTRL 1
+
+# --- and the consistency gate has to tolerate a scaled course -----------
+# Even with the range as the only height source, the kinematic consistency
+# check still trips, and the reason is the 2.2 scaling. The aircraft is not
+# scaled, so flying a leg that is 2.2x longer in the same time means flying
+# it at 2.2x the speed -- 0.99 m/s where the real machine does 0.45 -- and
+# the extra pitch that takes tilts the downward lidar. A pitched beam reads
+# h/cos(pitch), so every acceleration and deceleration injects a range
+# change that the vertical velocity does not explain.
+#
+# updateConsistency() cannot latch the flag false while the vehicle is
+# translating (horizontal motion keeps resetting its timer), so the damage
+# accumulates unseen through the whole window traverse and latches the
+# instant the aircraft stops to climb the red bar. After that, fusion stops,
+# HAGL dead-reckons, and the flag can only be re-earned at |vz| > 0.5 m/s --
+# which course_fsm, quite reasonably, prevents by holding position. Both
+# SITL flights died there: hovering at the foot of the red bar, climbing
+# slowly on a dead-reckoned height, until the 45 s hold expired.
+#
+# EKF2_RNG_K_GATE is the documented knob for exactly this, and 5.0 is its
+# maximum, which makes the test 25x more tolerant. EKF2_RNG_NOISE is raised
+# with it, as the parameter documentation asks (tune the noise before the
+# gate); it widens the innovation variance the ratio is normalised by.
+# Neither affects the height solution itself -- the range aid source was
+# healthy throughout, with test_ratio 0.00 and innovation -0.002 m; it was
+# simply never fused.
+param set EKF2_RNG_K_GATE 5.0
+param set EKF2_RNG_NOISE 0.2
+
+# --- keep this simulation off everyone else's DDS domain ----------------
+# ROS 2 and uXRCE-DDS both default to domain 0, and DDS discovery is
+# multicast across every interface. On a lab network that means ANY other
+# PX4 -- a teammate's SITL, or this team's own aircraft sitting powered up on
+# the bench -- publishes /fmu/out/... into the same domain, and every ROS node
+# here subscribes to BOTH of them.
+#
+# It does not look like a network problem. It looks like the estimator has
+# gone mad: "ros2 topic info -v /fmu/out/vehicle_local_position_v1" reports
+# "Publisher count: 2", the flight node sees two interleaved streams with
+# different heading_reset_counters and logs thousands of alternating
+# "EKF2 HEADING reset" lines, local_position_invalid and local_velocity_invalid
+# flap at 2 Hz because half the messages describe a vehicle that is not this
+# one, and commander says "Arming denied: Resolve system health failures
+# first" -- while PX4's own uORB, read with px4-listener, is perfectly
+# healthy and steady the entire time.
+#
+# The domain id is set by course_mission_sitl.launch.py, which puts the same
+# number in ROS_DOMAIN_ID for every process it starts. It is reboot_required,
+# so the client has to be restarted to pick it up; that is cheap and safe,
+# unlike restarting the estimator.
+UXRCE_DOMAIN=${PX4_UXRCE_DDS_DOM_ID:=77}
+param set UXRCE_DDS_DOM_ID $UXRCE_DOMAIN
+echo "px4_sitl_imav: uXRCE-DDS domain $UXRCE_DOMAIN (set ROS_DOMAIN_ID=$UXRCE_DOMAIN in any terminal that talks to this sim)"
+uxrce_dds_client stop
+uxrce_dds_client start
+
+# --- no RC, no ground station ------------------------------------------
+# The mission is flown entirely from ROS. Without this PX4 raises
+# manual_control_signal_lost and drops out of Offboard into AUTO_LOITER, which
+# is what the "PX4 failsafe SET: manual_control_signal_lost" line in the first
+# SITL log was. On the real aircraft the RC kill switch is the abort, so this
+# relaxation is SITL-only and lives in this file rather than in any airframe.
+param set NAV_RCL_ACT 0
+param set NAV_DLL_ACT 0
+param set COM_RCL_EXCEPT 4
+param set COM_RC_IN_MODE 4
+
+# Offboard is allowed to hold the vehicle on the ground for the armed ground
+# wait before the climb, which takes longer than the default.
+param set COM_OF_LOSS_T 5.0
+
+# EKF2_HGT_REF is flagged reboot_required, and everything above is applied
+# after the stock rcS has already started the estimator, so on the run that
+# first changes it the estimator has to be restarted to pick it up.
+#
+# But ONLY on that run. PX4 persists parameters in parameters.bson, so on
+# every later boot EKF2 already starts with the right values and the restart
+# is pure downside: tearing the estimator down and building it back up while
+# Gazebo holds the lockstep clock leaves it re-running tilt and yaw
+# alignment, and it comes back oscillating between two yaw solutions --
+# thousands of "EKF2 HEADING reset" lines flipping between the same two
+# deltas, local_position_invalid and local_velocity_invalid flapping with
+# them, and either "Arming denied: Resolve system health failures first" or
+# an arm that is thrown away a moment later.
+#
+# So: remember whether the reboot-required values were ALREADY correct
+# before we touched them, and restart only when they were not. On a clean
+# parameters.bson that is the first boot and nothing else.
+if [ $NEEDS_EKF2_RESTART -eq 1 ]
+then
+	echo "px4_sitl_imav: reboot-required EKF2 parameters changed, restarting ekf2"
+	ekf2 stop
+	ekf2 start
+else
+	echo "px4_sitl_imav: EKF2 parameters already correct at boot, not restarting ekf2"
+fi

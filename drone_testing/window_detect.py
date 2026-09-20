@@ -577,6 +577,16 @@ class WindowDetect(Node):
         self.intrinsics = None
         self._intrinsics_logged = False
 
+        # The enable gate. A detector that is not being flown on is pure
+        # heat -- an HSV convert and a contour pass per frame for a stage that
+        # ended minutes ago. course_fsm publishes to enable_topic as it enters
+        # and leaves each phase; start_enabled is what holds until something
+        # does, so the standalone missions are unaffected.
+        self.enabled = bool(self.declare_parameter('start_enabled', True).value)
+        self.enable_topic = str(self.declare_parameter(
+            'enable_topic', '~/enable').value)
+        self.create_subscription(Bool, self.enable_topic, self.enable_callback, 10)
+
         self.hit_streak = 0
         self.miss_streak = 0
         self.detected = False       # the debounced answer
@@ -666,10 +676,29 @@ class WindowDetect(Node):
             return None
         return self.depth_image
 
+    def enable_callback(self, msg):
+        want = bool(msg.data)
+        if want != self.enabled:
+            self.get_logger().warning(
+                f"Detection {'ENABLED' if want else 'DISABLED'} by "
+                f"{self.enable_topic}.")
+            if not want:
+                # Drop the debounce so nothing stale is believed later.
+                self.hit_streak = 0
+                self.miss_streak = 0
+                self.detected = False
+                out = Bool()
+                out.data = False
+                self.detected_pub.publish(out)
+        self.enabled = want
+
     def image_callback(self, msg):
         # Decimate before the conversion, not after: imgmsg_to_bgr copies the
         # whole frame, so a skipped frame has to be skipped here to be free.
         now = time.monotonic()
+        if not self.enabled:
+            self.frames_skipped += 1
+            return
         if self.min_frame_interval and now - self.last_processed < self.min_frame_interval:
             self.frames_skipped += 1
             return
@@ -1016,6 +1045,10 @@ class WindowDetect(Node):
         sight" to anything downstream, which is the one confusion that could
         leave the vehicle yawing forever with a blind camera.
         """
+        if not self.enabled:
+            # Gated off on purpose. Frames ARE arriving; they are being
+            # dropped before the conversion, so "stale" would be a lie.
+            return
         if self.last_image_time is None:
             self.get_logger().warning(
                 f"No frames on {self.image_topic} yet. Is zed_wrapper running? "

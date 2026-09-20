@@ -67,7 +67,8 @@ CROSS_PARAMS = (
     'diagonal_right_height', 'gap_side',
     # the path
     'standoff_distance', 'pass_exit_distance', 'shift_left', 'exit_distance',
-    'clearance', 'cross_altitude', 'approach_speed', 'pass_speed', 'shift_speed',
+    'back_tube_distance', 'back_tube_clear', 'lateral_margin', 'max_shift',
+    'clearance', 'cross_altitude', 'cross_drop', 'cross_left', 'merge_shift', 'approach_speed', 'pass_speed', 'shift_speed',
     'align_cross_tolerance', 'align_along_tolerance', 'align_yaw_tolerance_deg',
     'alt_tolerance', 'settle_seconds', 'refine_min_distance', 'refine_max_jump',
     'search_timeout', 'lock_seconds', 'assume_gap_distance', 'assume_gap_left',
@@ -76,12 +77,15 @@ CROSS_PARAMS = (
     # the estimate
     'depth_min', 'depth_max', 'min_tube_top_height', 'max_tube_bottom_height',
     'buffer_seconds', 'cluster_radius', 'pose_min_samples', 'plane_band',
+    'min_hole_width', 'min_hole_height',
     'match_tolerance', 'min_matched_tubes', 'max_plane_yaw_deg',
 )
 
 DETECT_PARAMS = (
     'image_topic', 'depth_topic', 'camera_info_topic', 'color', 'min_area',
-    'min_aspect', 'max_tilt_deg', 'vertical_kernel_frac', 'samples_along',
+    'min_aspect', 'max_tilt_deg', 'vertical_kernel_frac', 'hole_close_frac',
+    'hole_min_area_frac', 'hole_min_solidity', 'hole_max_area_error',
+    'far_tube_band', 'far_tube_grow', 'samples_along',
     'border_margin', 'min_tubes', 'detect_frames', 'lost_frames', 'max_fps',
     'fallback_hfov_deg', 'publish_image', 'publish_mask', 'publish_compressed',
     'stream_port', 'stream_scale', 'jpeg_quality',
@@ -199,6 +203,28 @@ def generate_launch_description():
             description='Height of the vertical opening kernel as a fraction '
                         'of the image. Removes the cross tube and the diagonal '
                         'so the uprights come apart into separate contours.'),
+        arg('hole_close_frac', default_value='0.02',
+            description='Closing kernel as a fraction of image height. Joins '
+                        'the tubes at the welds so a cell counts as enclosed; '
+                        'too big and the small cell closes over.'),
+        arg('hole_min_area_frac', default_value='0.01',
+            description='Smallest enclosed cell taken seriously, as a '
+                        'fraction of the image area.'),
+        arg('hole_min_solidity', default_value='0.80',
+            description='Contour area over hull area before a quadrilateral '
+                        'is fitted to a cell at all. A cell with something '
+                        'poking into it does not reach this.'),
+        arg('hole_max_area_error', default_value='0.20',
+            description='How far the fitted quadrilateral may be off the '
+                        "cell's own area before it is not believed."),
+        arg('far_tube_band', default_value='0.40',
+            description='m behind the nearest upright past which a tube is '
+                        'taken to be the one BEHIND the obstacle and is '
+                        'rubbed out before the cells are found. Seen through '
+                        'the big cell it otherwise splits it in two.'),
+        arg('far_tube_grow', default_value='3.0',
+            description='px the rub-out is widened by. Keep it small: the '
+                        'cut has to be closed back over.'),
         arg('samples_along', default_value='9'),
         arg('border_margin', default_value='8.0'),
         arg('min_tubes', default_value='2'),
@@ -237,9 +263,11 @@ def generate_launch_description():
         arg('cross_bar_height', default_value='0.461'),
         arg('diagonal_left_height', default_value='2.0'),
         arg('diagonal_right_height', default_value='0.922'),
-        arg('gap_side', default_value='left',
-            description='left = between the left and middle uprights (the big '
-                        'gap). "Left" is as seen by the aircraft approaching.'),
+        arg('gap_side', default_value='auto',
+            description='auto = whichever cell the diagonal leaves the bigger '
+                        'opening in, and the camera overrules it anyway when '
+                        'it can see the hole. left/right force it, as seen by '
+                        'the aircraft approaching.'),
 
         # ---- the path ----
         arg('standoff_distance', default_value='1.20'),
@@ -248,14 +276,42 @@ def generate_launch_description():
         arg('shift_left', default_value='0.40',
             description='m sideways after the gap, + = LEFT. Clears the back '
                         'upright.'),
-        arg('exit_distance', default_value='1.20',
-            description='m on from the shift point. The back upright is 1 m '
-                        'behind the plane.'),
+        arg('exit_distance', default_value='0.0',
+            description='m on from the shift point. 0 = back_tube_distance + '
+                        'back_tube_clear - pass_exit_distance, i.e. far enough '
+                        'to be past the back upright, not hovering at it.'),
+        arg('back_tube_distance', default_value='1.00',
+            description='m the lone back upright stands behind the plane. '
+                        'Only a fallback: it is measured when it is in view.'),
+        arg('max_shift', default_value='1.20',
+            description='m sideways after the gap before going round the back '
+                        'upright on the other side instead.'),
+        arg('back_tube_clear', default_value='1.00',
+            description='m to be past the back upright before the run ends.'),
+        arg('lateral_margin', default_value='0.02',
+            description='m kept between a prop tip and an upright when the '
+                        'camera\'s hole centre is followed sideways.'),
+        arg('cross_drop', default_value='0.15',
+            description='m BELOW the middle of the opening to cross. The roof '
+                        'is the sloping diagonal and the floor is one '
+                        'horizontal tube, so dropping buys headroom against '
+                        'the thing in the way. Clamped off the floor.'),
+        arg('cross_left', default_value='0.05',
+            description='m to lean TOWARDS THE HIGH END of the diagonal '
+                        '(measured, not assumed). Costs the same in margin to '
+                        'the upright on that side as it buys in headroom, and '
+                        'there is far less of the former: 0.0 to aim straight '
+                        'at the middle of the opening.'),
+        arg('merge_shift', default_value='true',
+            description='Fly the gap and the step round the back upright as '
+                        'ONE diagonal leg instead of straight-then-sideways.'),
         arg('clearance', default_value='0.12',
             description='m vertical clearance to the cross tube below and the '
                         'diagonal above.'),
         arg('cross_altitude', default_value='0.0',
-            description='0 = solve it from the geometry (about 1.06 m). '
+            description='0 = the centre of area of the opening, measured when '
+                        'the camera has it and about 1.10 m from the template '
+                        'when it does not. '
                         'Refused if outside the band that fits.'),
         arg('approach_speed', default_value='0.30'),
         arg('pass_speed', default_value='0.30'),
@@ -293,6 +349,12 @@ def generate_launch_description():
         arg('plane_band', default_value='0.40',
             description='m behind the nearest upright still counted as the '
                         'front plane. Keeps the back upright (1 m) out.'),
+        arg('min_hole_width', default_value='0.30',
+            description='m. A measured cell narrower than this is half a cell '
+                        '-- something was standing in front of it -- and is '
+                        'thrown away.'),
+        arg('min_hole_height', default_value='0.50',
+            description='m, measured over the aircraft own track.'),
         arg('match_tolerance', default_value='0.12'),
         arg('min_matched_tubes', default_value='3',
             description='3 = all front uprights must be seen. With 2 the '

@@ -1407,6 +1407,13 @@ class WindowTraverse(WindowScan):
         if self.move_target_x is not None:
             self.move_target_x, self.move_target_y = turn(
                 self.move_target_x, self.move_target_y)
+        # Separately, and only if it is set: a move target can exist with no
+        # start point behind it -- a stage that sets a target without starting
+        # a ramp leaves move_start_* None -- and turning None raised a
+        # TypeError right here, inside a subscription callback, which kills
+        # the node and drops the aircraft. An EKF2 heading reset is common
+        # after a knock, so this fired at the worst possible moment.
+        if self.move_start_x is not None and self.move_start_y is not None:
             self.move_start_x, self.move_start_y = turn(
                 self.move_start_x, self.move_start_y)
 
