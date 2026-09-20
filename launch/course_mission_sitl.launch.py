@@ -242,6 +242,9 @@ def generate_launch_description():
         # so PX4's DDS participants land on the same private domain as the
         # ROS side.
         'PX4_UXRCE_DDS_DOM_ID': LaunchConfiguration('ros_domain_id'),
+        # Read by config/px4_sitl_imav.rcS: 1 keeps the barometer fused as an
+        # aid, so losing the rangefinder costs the HAGL and not the height.
+        'PX4_BARO_CTRL': LaunchConfiguration('baro_fallback'),
     }
     # A PX4 killed rather than exited leaves /tmp/px4_lock-0 and
     # /tmp/px4-sock-0 behind, and the next run then prints only
@@ -277,6 +280,22 @@ def generate_launch_description():
 
     dds_agent = ExecuteProcess(cmd=['MicroXRCEAgent', 'udp4', '-p', '8888'],
                                output='screen')
+
+    # Deliberate fault injection: takes EKF2's rangefinder away for a few
+    # seconds over the red bar, which is where the hardware loses it. Off
+    # unless asked for. See drone_testing/rng_dropout.py.
+    rng_dropout = Node(
+        package='drone_testing', executable='rng_dropout', name='rng_dropout',
+        output='screen', emulate_tty=True,
+        parameters=[{
+            'trigger_stage': LaunchConfiguration('rng_dropout_stage'),
+            'trigger_delay': LaunchConfiguration('rng_dropout_delay'),
+            'dropout_seconds': LaunchConfiguration('rng_dropout_seconds'),
+            'px4_param_bin': os.path.join(px4_dir, 'build', 'px4_sitl_default',
+                                          'bin', 'px4-param'),
+        }],
+        condition=IfCondition(LaunchConfiguration('rng_dropout')),
+    )
 
     # --------------------------------------------------------- the mission
     # Held off until PX4 has booted and the bridge is publishing; the flight
@@ -459,6 +478,17 @@ def generate_launch_description():
                 # aruco_pose opening a camera that does not exist is noise at
                 # best. The pad stages fly, find nothing, and land.
                 'pad_detector': 'false',
+                # ---- the failsafes ----
+                # Lengths scale with the world; times and counts do not.
+                'takeoff_accept_tolerance': s(0.30),
+                'tube_back_off_max': LaunchConfiguration('tube_back_off_max'),
+                'tube_scan_alt_step': s(0.25),
+                'tube_scan_alt_steps': '2',
+                'tube_blind': LaunchConfiguration('tube_blind'),
+                'course_hold_confirm_seconds': '2.0',
+                'course_hold_press_on': LaunchConfiguration('course_hold_press_on'),
+                'window2_search_timeout': LaunchConfiguration('window2_search_timeout'),
+                'window2_skip': LaunchConfiguration('window2_skip'),
                 'window_after_tubes': LaunchConfiguration('window_after_tubes'),
                 'window2_exit_distance': LaunchConfiguration('window2_exit_distance'),
                 'window2_altitude': LaunchConfiguration('window2_altitude'),
@@ -530,6 +560,57 @@ def generate_launch_description():
                         'will not solve in THIS world -- see THE TUBE GATE in '
                         'the header -- so the default lands after the bars, '
                         'which is the whole course this arena contains.'),
+        DeclareLaunchArgument(
+            'baro_fallback', default_value='1',
+            description='1 keeps EKF2_BARO_CTRL on, so the barometer carries '
+                        'the height while the rangefinder is not being fused '
+                        '(the range stays the height REFERENCE). 0 restores '
+                        'the range-only configuration, where a dropout leaves '
+                        'no height source at all.'),
+        DeclareLaunchArgument(
+            'rng_dropout', default_value='false',
+            description='true starts rng_dropout, which deliberately takes '
+                        'EKF2\'s rangefinder away for a few seconds over the '
+                        'red bar -- the hardware failure this course has to '
+                        'survive. SITL only: it sets EKF2_RNG_CTRL through '
+                        'px4-param on this machine.'),
+        DeclareLaunchArgument(
+            'rng_dropout_stage', default_value='RED_CROSS',
+            description='the course_fsm stage the dropout is timed off.'),
+        DeclareLaunchArgument(
+            'rng_dropout_delay', default_value='2.0',
+            description='s after that stage begins before the rangefinder '
+                        'goes away, so it lands with the aircraft over or '
+                        'just past the bar.'),
+        DeclareLaunchArgument(
+            'rng_dropout_seconds', default_value='10.0',
+            description='s it stays away. The hardware logs took about ten.'),
+        DeclareLaunchArgument(
+            'tube_back_off_max', default_value=s(0.40),
+            description='m the tube scan may back UP by, so it does not '
+                        'reverse over the blue bar it has just flown under. '
+                        'A WORLD distance. 0 = uncapped, the old behaviour.'),
+        DeclareLaunchArgument(
+            'tube_blind', default_value='true',
+            description='true = cross the gate on its known geometry when '
+                        'nothing the camera produces ever solves, instead of '
+                        'landing in front of it. In THIS world the gate never '
+                        'solves (see THE TUBE GATE), so this is what actually '
+                        'flies it.'),
+        DeclareLaunchArgument(
+            'course_hold_press_on', default_value='true',
+            description='true = a hold that times out with the rangefinder '
+                        'still gone carries on, provided the EKF still has a '
+                        'height and the flow still holds position.'),
+        DeclareLaunchArgument(
+            'window2_search_timeout', default_value='45.0',
+            description='s spent looking for the second window before it is '
+                        'skipped over rather than flown through.'),
+        DeclareLaunchArgument(
+            'window2_skip', default_value='true',
+            description='true = skip a second window that is never found, by '
+                        'climbing to the red bar altitude, crossing, and '
+                        'coming back down. false = land.'),
         DeclareLaunchArgument(
             'pad', default_value='true',
             description='false = land where the last obstacle finishes, with '
@@ -626,4 +707,6 @@ def generate_launch_description():
         TimerAction(period=LaunchConfiguration('px4_delay'),
                     actions=[px4, px4_in_terminal, dds_agent]),
         mission,
+        TimerAction(period=LaunchConfiguration('mission_delay'),
+                    actions=[rng_dropout]),
     ])

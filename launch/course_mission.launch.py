@@ -346,6 +346,17 @@ def generate_launch_description():
                     'tube_cross_left': LaunchConfiguration('tube_cross_left'),
                     'tube_merge_shift': LaunchConfiguration('tube_merge_shift'),
                     'tube_allow_shift_right': LaunchConfiguration('tube_allow_shift_right'),
+                    'takeoff_timeout': LaunchConfiguration('takeoff_timeout'),
+                    'takeoff_accept_tolerance': LaunchConfiguration('takeoff_accept_tolerance'),
+                    'takeoff_extensions': LaunchConfiguration('takeoff_extensions'),
+                    'course_hold_confirm_seconds': LaunchConfiguration('course_hold_confirm_seconds'),
+                    'course_hold_press_on': LaunchConfiguration('course_hold_press_on'),
+                    'tube_back_off_max': LaunchConfiguration('tube_back_off_max'),
+                    'tube_scan_alt_step': LaunchConfiguration('tube_scan_alt_step'),
+                    'tube_scan_alt_steps': LaunchConfiguration('tube_scan_alt_steps'),
+                    'tube_blind': LaunchConfiguration('tube_blind'),
+                    'window2_search_timeout': LaunchConfiguration('window2_search_timeout'),
+                    'window2_skip': LaunchConfiguration('window2_skip'),
                     'window_after_tubes': LaunchConfiguration('window_after_tubes'),
                     'window2_exit_distance': LaunchConfiguration('window2_exit_distance'),
                     'window2_altitude': LaunchConfiguration('window2_altitude'),
@@ -997,6 +1008,69 @@ def generate_launch_description():
                         'switched back on and its estimator emptied first, so '
                         'the second pass measures the second window and '
                         'nothing of the first.'),
+        DeclareLaunchArgument(
+            'takeoff_timeout', default_value='20.0',
+            description='s the climb has to settle in before the failsafe '
+                        'looks at why it has not. See takeoff_extensions.'),
+        DeclareLaunchArgument(
+            'takeoff_accept_tolerance', default_value='0.30',
+            description='m. Airborne and this close to takeoff_altitude when '
+                        'the clock runs out is ACCEPTED (loudly) instead of '
+                        'landed. The 8 cm arrival band stays as it was; this '
+                        'only decides what a miss costs.'),
+        DeclareLaunchArgument(
+            'takeoff_extensions', default_value='2',
+            description='times the takeoff clock may be restarted while the '
+                        'climb is still gaining height, or right after the '
+                        'height datum has been redone from the lidar. 0 = the '
+                        'old behaviour, land on the first timeout.'),
+        DeclareLaunchArgument(
+            'course_hold_confirm_seconds', default_value='2.0',
+            description='s the rangefinder must stay healthy, continuously, '
+                        'before a hold ends and the next obstacle is flown. '
+                        'EKF2 flickers as the fusion re-establishes; one good '
+                        'frame is not a recovery.'),
+        DeclareLaunchArgument(
+            'course_hold_press_on', default_value='true',
+            description='true = when a hold times out with the rangefinder '
+                        'still gone, carry on anyway provided the EKF still '
+                        'has a height (baro) and the flow still holds '
+                        'position. false = land where it is hovering.'),
+        DeclareLaunchArgument(
+            'tube_back_off_max', default_value='0.40',
+            description='m the tube scan may back UP by. The look-from point '
+                        'is usually behind where the blue crossing ends, and '
+                        'backing all the way to it puts the aircraft over the '
+                        'blue bar -- a step in the lidar, which is what drops '
+                        'the rangefinder fusion. 0 = uncapped.'),
+        DeclareLaunchArgument(
+            'tube_scan_alt_step', default_value='0.25',
+            description='m the scan altitude moves by when a whole sweep sees '
+                        'no opening: from close in, the gate does not fit the '
+                        'frame at every height.'),
+        DeclareLaunchArgument(
+            'tube_scan_alt_steps', default_value='2',
+            description='how many such retries (up first, then down).'),
+        DeclareLaunchArgument(
+            'tube_blind', default_value='true',
+            description='true = when nothing the camera produces ever solves, '
+                        'cross the gate on its KNOWN geometry (half a spacing '
+                        'to the tube_gap_prefer side of the track, at the '
+                        'template altitude) instead of landing in front of '
+                        'it. Flown once, and only after the sweep, the '
+                        'altitude retries and the search have all failed.'),
+        DeclareLaunchArgument(
+            'window2_search_timeout', default_value='45.0',
+            description='s spent looking for the SECOND window before it is '
+                        'skipped. The window is always tried first.'),
+        DeclareLaunchArgument(
+            'window2_skip', default_value='true',
+            description='true = a second window that is never found is '
+                        'skipped by climbing to the red bar altitude, '
+                        'crossing the distance the traverse would have '
+                        'covered and coming back down. false = land. It '
+                        'assumes nothing on the course line stands above the '
+                        'red bar crossing altitude.'),
         DeclareLaunchArgument(
             'window2_altitude', default_value='0.0',
             description='m the aircraft climbs back to after the tubes, '

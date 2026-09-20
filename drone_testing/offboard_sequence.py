@@ -360,6 +360,18 @@ class OffboardSequence(Node):
     OFFBOARD_TIMEOUT = 10.0
     ARMING_TIMEOUT = 10.0
     TAKEOFF_TIMEOUT = 20.0
+    # What happens when TAKEOFF_TIMEOUT runs out. Landing on the spot -- which
+    # is all this used to do -- is right only when the aircraft never left the
+    # ground; every other cause of a missed settle is better served by looking
+    # at WHY before throwing the flight away. See _takeoff_timed_out().
+    TAKEOFF_ACCEPT_TOLERANCE = 0.30  # m. Airborne and this close to the target
+                                     # when the clock runs out is accepted as
+                                     # arrived, loudly, instead of landed.
+    TAKEOFF_EXTENSIONS = 2           # times the clock may be restarted while
+                                     # the climb is still making progress or
+                                     # the height datum has just been redone.
+    TAKEOFF_PROGRESS = 0.05          # m of climb per extension that counts as
+                                     # "still going up".
     LANDING_TIMEOUT = 30.0
     DISARM_TIMEOUT = 5.0
     LANDED_CONFIRM_SECONDS = 1.0    # land-detector must agree this long
@@ -392,6 +404,14 @@ class OffboardSequence(Node):
         # `takeoff_altitude:=1` arrives as an int.
         self.TAKEOFF_ALTITUDE = float(self._declare_number(
             'takeoff_altitude', self.TAKEOFF_ALTITUDE))
+        self.TAKEOFF_TIMEOUT = float(self._declare_number(
+            'takeoff_timeout', self.TAKEOFF_TIMEOUT))
+        self.TAKEOFF_ACCEPT_TOLERANCE = float(self._declare_number(
+            'takeoff_accept_tolerance', self.TAKEOFF_ACCEPT_TOLERANCE))
+        self.TAKEOFF_EXTENSIONS = int(self._declare_number(
+            'takeoff_extensions', self.TAKEOFF_EXTENSIONS))
+        self.takeoff_extensions = 0
+        self.takeoff_last_alt = None
         self.HOLD_SECONDS = float(self._declare_number(
             'hold_seconds', self.HOLD_SECONDS))
         self.POST_HOLD_SECONDS = float(self._declare_number(
@@ -1240,7 +1260,114 @@ class OffboardSequence(Node):
         self.in_band_since = None
 
         if self._in_stage_for() > self.TAKEOFF_TIMEOUT:
-            self._begin_landing("takeoff did not settle in time")
+            self._takeoff_timed_out()
+
+    def _takeoff_timed_out(self):
+        """The climb did not settle in TAKEOFF_TIMEOUT. Work out why first.
+
+        "takeoff did not settle in time, landing" was one branch for four very
+        different situations, and three of them are recoverable:
+
+          1. NEVER LEFT THE GROUND. Nothing to salvage -- land (in practice,
+             stop) and look at the thrust, the mass and the arming.
+
+          2. AIRBORNE AND ESSENTIALLY THERE, a few centimetres outside the
+             8 cm band that _at_commanded_altitude() demands. The band is
+             tight on purpose, for a course whose vertical budget is tight,
+             but it is not worth a landing: accept it, say so loudly, and fly
+             on from the height we actually have.
+
+          3. THE LIDAR AND THE EKF DISAGREE. _at_commanded_altitude()'s third
+             test refuses the arrival when they differ by more than 32 cm, and
+             on hardware that is usually the DATUM, not the aircraft: home_z
+             was captured on the ground through a height reset, or the ground
+             under the pad is not the ground under the aircraft. The lidar
+             does not depend on the datum, so if it says we are at the target,
+             re-datum from it and give the climb another go.
+
+          4. STILL CLIMBING, just slowly -- a heavy battery, a low
+             climb_speed, a tall takeoff_altitude. Give it more clock while it
+             is still making progress; it is going the right way.
+
+        Extensions are counted, so none of this can loop: after
+        TAKEOFF_EXTENSIONS the aircraft lands as it always did.
+        """
+        alt = self.relative_altitude()
+        agl = self.agl()
+        gap = None if alt is None else abs(alt - self.commanded_altitude)
+
+        if not self.is_airborne():
+            self._begin_landing(
+                "takeoff did not settle in time -- and nothing says the "
+                "aircraft ever left the ground "
+                f"(agl={'n/a' if agl is None else f'{agl:.2f} m'}, "
+                f"landed={self.landed}). Check thrust and mass.")
+            return
+
+        if gap is not None and gap <= self.TAKEOFF_ACCEPT_TOLERANCE:
+            self.get_logger().error(
+                f"TAKEOFF: {gap:.2f} m off {self.commanded_altitude:.2f} m "
+                f"after {self.TAKEOFF_TIMEOUT:.0f} s -- outside the "
+                f"{self.ALTITUDE_TOLERANCE:.2f} m band but well inside the "
+                f"{self.TAKEOFF_ACCEPT_TOLERANCE:.2f} m this is prepared to "
+                "accept. Going on from here rather than landing a perfectly "
+                "good aircraft.")
+            self._enter_stage(self.HOLD)
+            return
+
+        if self.takeoff_extensions >= self.TAKEOFF_EXTENSIONS:
+            self._begin_landing(
+                f"takeoff did not settle in {self.TAKEOFF_TIMEOUT:.0f} s x "
+                f"{1 + self.TAKEOFF_EXTENSIONS} (alt="
+                f"{'n/a' if alt is None else f'{alt:.2f}'} m, "
+                f"agl={'n/a' if agl is None else f'{agl:.2f}'} m, target "
+                f"{self.commanded_altitude:.2f} m)")
+            return
+
+        # 3. The lidar says we are there and the EKF does not: the datum is
+        # wrong, not the aircraft. relative_altitude() is home_z - z, so
+        # moving the datum to z + agl makes the EKF height read the lidar's.
+        if (agl is not None and self.local_position is not None
+                and abs(agl - self.commanded_altitude) <= self.ALTITUDE_TOLERANCE
+                and (gap is None or gap > self.ALTITUDE_TOLERANCE)):
+            before = self.home_z
+            self.home_z = self.local_position.z + agl
+            self.target_z = self.home_z - self.commanded_altitude
+            self.in_band_since = None
+            self.takeoff_extensions += 1
+            self.get_logger().error(
+                f"TAKEOFF: the lidar reads {agl:.2f} m -- the target -- while "
+                f"the EKF reads {'n/a' if alt is None else f'{alt:.2f}'} m. "
+                f"That is the height DATUM, not the aircraft: re-datuming "
+                f"from the lidar (home_z {before:.2f} -> {self.home_z:.2f}) "
+                f"and giving the climb another {self.TAKEOFF_TIMEOUT:.0f} s. "
+                "If this happens every flight, the arming point is being "
+                "captured through a height reset.")
+            self._restart_stage_clock()
+            return
+
+        # 4. Still going up.
+        climbed = (None if alt is None or self.takeoff_last_alt is None
+                   else alt - self.takeoff_last_alt)
+        if climbed is None or climbed > self.TAKEOFF_PROGRESS:
+            self.takeoff_last_alt = alt
+            self.takeoff_extensions += 1
+            self.get_logger().error(
+                f"TAKEOFF: {'n/a' if alt is None else f'{alt:.2f}'} m of "
+                f"{self.commanded_altitude:.2f} m after "
+                f"{self.TAKEOFF_TIMEOUT:.0f} s"
+                + ("" if climbed is None else f", still climbing ({climbed:+.2f} m)")
+                + f". Extension {self.takeoff_extensions} of "
+                f"{self.TAKEOFF_EXTENSIONS}. Raise takeoff_timeout or "
+                "climb_speed if this is normal for this airframe.")
+            self._restart_stage_clock()
+            return
+
+        self._begin_landing(
+            f"takeoff did not settle in {self.TAKEOFF_TIMEOUT:.0f} s and the "
+            f"climb has stopped making progress ({climbed:+.2f} m in the last "
+            f"window, alt {'n/a' if alt is None else f'{alt:.2f}'} m of "
+            f"{self.commanded_altitude:.2f} m)")
 
     def _at_commanded_altitude(self):
         """Three independent things must agree before we believe we arrived.

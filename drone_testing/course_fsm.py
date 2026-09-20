@@ -116,6 +116,42 @@ WHEN OPTICAL FLOW DROPS OUT
                   was left to P1, then land there, past the bar.
       BLUE_CROSS  land immediately: under or past the bar, straight down is
                   away from it.
+THE FAILSAFES, AND WHAT EACH ONE IS FOR
+    Every place this mission depends on a CAMERA finding something now has an
+    answer for "it did not", and none of those answers is an immediate
+    landing:
+
+      the tube gate    the look-from back-off is capped (tube_back_off_max) so
+                       the aircraft does not reverse over the blue bar it has
+                       just flown under; a sweep that sees nothing retries at
+                       tube_scan_alt_steps different heights; and if nothing
+                       ever solves, the gate is crossed BLIND on its known
+                       geometry -- half a spacing to the tube_gap_prefer side
+                       of the track, at the template altitude (tube_blind).
+
+      the 2nd window   looked for window2_search_timeout seconds, and if it
+                       never appears the aircraft goes OVER it instead: up to
+                       the red bar's altitude, across the distance the
+                       traverse would have covered, and back down
+                       (window2_skip). Every other way the window mission can
+                       fail routes here too, through _abandon().
+
+      the rangefinder  an outage holds position -- dead still, height on the
+                       barometer -- and resumes only once the fusion has been
+                       healthy CONTINUOUSLY for course_hold_confirm_seconds.
+                       If it never comes back, course_hold_press_on carries
+                       the course on rather than landing, provided the EKF
+                       still has a height and the flow still holds position.
+                       Reproduce the whole thing in SITL with
+                       rng_dropout:=true.
+
+      the climb        is in offboard_sequence, not here: a takeoff that does
+                       not settle is now diagnosed before it is abandoned.
+                       See _takeoff_timed_out().
+
+    The first window has no failsafe and is not given one: the entire course
+    is laid out from where that window is measured, so there is nothing to
+    fall back ON.
 """
 
 import math
@@ -155,6 +191,10 @@ class CourseFSM(WindowTraverse):
 
     WINDOW2_RISE = "WINDOW2_RISE"   # back up to the search altitude
     WINDOW2_HOLD = "WINDOW2_HOLD"   # stand still there before looking
+    # The skip: over the window's wall rather than through the window.
+    WINDOW2_SKIP_RISE = "WINDOW2_SKIP_RISE"
+    WINDOW2_SKIP_CROSS = "WINDOW2_SKIP_CROSS"
+    WINDOW2_SKIP_DROP = "WINDOW2_SKIP_DROP"
 
     PAD_OFFSET = "PAD_OFFSET"       # step right, clear of the tube line
     PAD_SEARCH = "PAD_SEARCH"       # creep forward until the marker is seen
@@ -170,7 +210,7 @@ class CourseFSM(WindowTraverse):
     # NOT get this: climbing or descending on an unanchored height estimate is
     # the thing to stop doing immediately.
     FINISH_FIRST_STAGES = ("RED_CROSS", "BLUE_CROSS", "TUBE_PASS", "TUBE_SHIFT",
-                           "TUBE_EXIT")
+                           "TUBE_EXIT", "WINDOW2_SKIP_CROSS")
 
     TUBE_STAGES = (TUBE_CLIMB, TUBE_APPROACH, TUBE_SCAN, TUBE_SEARCH,
                    TUBE_LOCK, TUBE_ALIGN, TUBE_PASS, TUBE_SHIFT, TUBE_EXIT)
@@ -178,7 +218,8 @@ class CourseFSM(WindowTraverse):
     # The run-up to the second window. Not TUBE_STAGES (the tube detector is
     # off and there is no tube solution to update) and not the window
     # mission's own stages either -- they begin at SCAN, after this.
-    WINDOW2_STAGES = (WINDOW2_RISE, WINDOW2_HOLD)
+    WINDOW2_STAGES = (WINDOW2_RISE, WINDOW2_HOLD, WINDOW2_SKIP_RISE,
+                      WINDOW2_SKIP_CROSS, WINDOW2_SKIP_DROP)
     COURSE_STAGES = ((RED_RISE, RED_CROSS, BLUE_DROP, BLUE_CROSS, COURSE_HOLD)
                      + TUBE_STAGES + WINDOW2_STAGES + PAD_STAGES)
     # Where horizontal hold is judged on FLOW FUSION ALONE. Crossing a bar or
@@ -252,6 +293,20 @@ class CourseFSM(WindowTraverse):
     # ground just past the red bar. Waiting is better: the aircraft is in open
     # air between obstacles, and the estimate usually comes back.
     COURSE_HOLD_TIMEOUT = 45.0
+    # The rangefinder has to be healthy CONTINUOUSLY for this long before the
+    # hold is over. EKF2 does not come back cleanly: cs_rng_hgt flickers true
+    # for a frame or two while the fusion re-establishes itself, and resuming
+    # a climb or a descent on the first true is resuming on a height estimate
+    # that is about to drop out again.
+    COURSE_HOLD_CONFIRM_SECONDS = 2.0
+    # What happens when COURSE_HOLD_TIMEOUT runs out with the rangefinder
+    # still gone. true = carry on anyway PROVIDED the EKF still has a height
+    # and the flow still holds position -- which, with baro fusion enabled, is
+    # the normal state of affairs during a rangefinder outage: the height is
+    # the barometer's, it is good to a few centimetres over the seconds this
+    # takes, and the obstacle ahead is flown on known geometry anyway.
+    # false = the old behaviour, land where we are.
+    COURSE_HOLD_PRESS_ON = True
 
     FLOW_FLOOR_MARGIN = 0.10    # m the blue altitude must clear FLOW_MIN_AGL by
 
@@ -339,6 +394,29 @@ class CourseFSM(WindowTraverse):
                                 # geometry applies to it: it is flown entirely
                                 # on what the camera measures, exactly as the
                                 # first one is.
+    # ---- what happens when a detector never finds its obstacle ------------
+    TUBE_BACK_OFF_MAX = 0.40    # m. The look-from point is often BEHIND where
+                                # the blue crossing ends, and backing all the
+                                # way to it puts the aircraft over the blue
+                                # bar it has just flown under -- a two-metre
+                                # step in the lidar, which is the very thing
+                                # that drops EKF2's rangefinder fusion. Cap
+                                # the backwards move at this and make up the
+                                # difference with the yaw sweep and the scan
+                                # altitude retries below. 0 = uncapped.
+    TUBE_SCAN_ALT_STEP = 0.25   # m the scan altitude is moved by when a whole
+                                # sweep sees no opening at all. From closer in
+                                # the obstacle does not fit the frame at one
+                                # height; a different height often frames it.
+    TUBE_SCAN_ALT_STEPS = 2     # how many such retries (up first, then down)
+    TUBE_BLIND = True           # true = when nothing ever solves, cross on the
+                                # KNOWN geometry instead of landing in front
+                                # of the gate. See _begin_tube_blind().
+    WINDOW2_SEARCH_TIMEOUT = 45.0   # s of searching for the second window
+                                    # before it is skipped rather than flown
+    WINDOW2_SKIP = True         # true = skip the second window (over, across,
+                                # back down) if it is never found; false =
+                                # land, as everything else used to do.
     WINDOW2_ALTITUDE = 0.0      # m the aircraft climbs back to before it
                                 # starts looking for the second window;
                                 # 0 = takeoff_altitude, the height the first
@@ -431,6 +509,10 @@ class CourseFSM(WindowTraverse):
             'course_cross_timeout', self.COURSE_CROSS_TIMEOUT))
         self.COURSE_FLOW_TIMEOUT = float(n('course_flow_timeout', self.COURSE_FLOW_TIMEOUT))
         self.COURSE_HOLD_TIMEOUT = float(n('course_hold_timeout', self.COURSE_HOLD_TIMEOUT))
+        self.COURSE_HOLD_CONFIRM_SECONDS = float(n(
+            'course_hold_confirm_seconds', self.COURSE_HOLD_CONFIRM_SECONDS))
+        self.COURSE_HOLD_PRESS_ON = bool(self.declare_parameter(
+            'course_hold_press_on', self.COURSE_HOLD_PRESS_ON).value)
         self.course_resume_stage = None
         self.course_hold_since = None
         self.course_hold_reason = ''
@@ -500,6 +582,15 @@ class CourseFSM(WindowTraverse):
             'window_after_tubes', self.WINDOW_AFTER_TUBES).value)
         self.WINDOW2_EXIT_DISTANCE = float(n('window2_exit_distance',
                                              self.WINDOW2_EXIT_DISTANCE))
+        self.TUBE_BACK_OFF_MAX = float(n('tube_back_off_max', self.TUBE_BACK_OFF_MAX))
+        self.TUBE_SCAN_ALT_STEP = float(n('tube_scan_alt_step', self.TUBE_SCAN_ALT_STEP))
+        self.TUBE_SCAN_ALT_STEPS = int(n('tube_scan_alt_steps', self.TUBE_SCAN_ALT_STEPS))
+        self.TUBE_BLIND = bool(self.declare_parameter(
+            'tube_blind', self.TUBE_BLIND).value)
+        self.WINDOW2_SEARCH_TIMEOUT = float(n('window2_search_timeout',
+                                              self.WINDOW2_SEARCH_TIMEOUT))
+        self.WINDOW2_SKIP = bool(self.declare_parameter(
+            'window2_skip', self.WINDOW2_SKIP).value)
         self.WINDOW2_ALTITUDE = float(n('window2_altitude',
                                         self.WINDOW2_ALTITUDE))
         if self.WINDOW2_ALTITUDE <= 0.0:
@@ -623,8 +714,16 @@ class CourseFSM(WindowTraverse):
         # 1 while the window before the bars is being flown, 2 once the
         # tubes are done and the second pass has been started.
         self.window_pass = 1
+        self.window2_skipped = False
+        self.tube_scan_alt_tries = 0
+        self.tube_blind_flown = False
+        self.tube_plane_ahead = None    # m from the look-from point to the
+                                        # gate plane, on the course reckoning
 
         self.course_saved_land_speed = None
+        self.course_rng_ok_since = None
+        self.course_pressed_on = False  # a hold has already been resolved by
+                                        # pressing on without the rangefinder
         self.course_settle_since = None
         self.course_flow_lost_since = None
         self.bar_push_since = None
@@ -1502,6 +1601,24 @@ class CourseFSM(WindowTraverse):
         return over_blue
 
     def _tube_look_move(self):
+        """The look-from move, capped so the aircraft does not back over the bar."""
+        move = self._tube_look_move_uncapped()
+        if move >= 0.0 or self.TUBE_BACK_OFF_MAX <= 0.0:
+            return move
+        if -move <= self.TUBE_BACK_OFF_MAX:
+            return move
+        self.get_logger().warning(
+            f"TUBE: backing up {abs(move):.2f} m would put the aircraft over "
+            f"the blue bar it has just flown under -- a {self.BLUE_BAR_HEIGHT:.2f} m "
+            "step in the lidar, which is what drops EKF2's rangefinder "
+            f"fusion. Capped at {self.TUBE_BACK_OFF_MAX:.2f} m "
+            "(tube_back_off_max); the scan makes up the difference by "
+            "sweeping the yaw and, if that sees nothing, by trying "
+            f"{self.TUBE_SCAN_ALT_STEPS} scan altitudes "
+            f"{self.TUBE_SCAN_ALT_STEP:.2f} m apart.")
+        return -self.TUBE_BACK_OFF_MAX
+
+    def _tube_look_move_uncapped(self):
         """How far to move to reach the look-from point, + being forward.
 
         Reckoned from the OBSTACLE, not from wherever the blue crossing
@@ -1554,6 +1671,7 @@ class CourseFSM(WindowTraverse):
         self.MOVE_SPEED = self.APPROACH_SPEED
         self._set_target(lp.x, lp.y, self.TUBE_LOOK_ALTITUDE)
         self._enter_tube_stage(self.TUBE_CLIMB)
+        self.tube_scan_alt_tries = 0
         self.set_detection('tube', True)
         self.get_logger().warning(
             f"TUBE_CLIMB: past the blue bars. Straight up to "
@@ -1582,6 +1700,12 @@ class CourseFSM(WindowTraverse):
     def _begin_tube_approach(self, settled):
         """Reposition to the look-from point. Forwards or backwards."""
         move = self._tube_look_move()
+        # Where the gate plane is, reckoned from the course, relative to the
+        # point we are about to fly to. Only the blind crossing uses it, and
+        # only when the camera has given it nothing better.
+        self.tube_plane_ahead = (self.TUBE_PLANE_FROM_BLUE - self.BLUE_EXIT
+                                 - move) if self.BLUE_TO_TUBE <= 0.0 else (
+            self.TUBE_LOOK_STANDOFF)
         x, y = self._ahead(move)
         self.MOVE_SPEED = self.PAD_SEARCH_SPEED if move < 0.0 else self.APPROACH_SPEED
         self._set_target(x, y, self.TUBE_LOOK_ALTITUDE)
@@ -1710,6 +1834,8 @@ class CourseFSM(WindowTraverse):
                                    " nothing seen yet)",
                    self._scan_summary()), throttle_duration_sec=1.0)
             return
+        if not seen and self._retry_scan_from_another_altitude():
+            return
         if not seen:
             self.get_logger().error(
                 f"TUBE_SCAN: {elapsed:.0f} s of sweeping and no opening ever "
@@ -1738,6 +1864,129 @@ class CourseFSM(WindowTraverse):
             return
         self.scan_choice = chosen
         self._enter_tube_stage(self.TUBE_SEARCH)
+
+    def _retry_scan_from_another_altitude(self):
+        """Move the scan altitude and sweep again. True if a retry started.
+
+        A sweep that saw nothing at all is usually a FRAMING problem, not a
+        detection one: from the capped look-from point the gate is close, and
+        at one height the uprights run off the top of the frame while at
+        another their feet are lost against the floor. Yaw alone cannot fix
+        that -- it is the wrong axis -- so the altitude is stepped instead,
+        up first (which lifts the horizon and keeps the feet in frame) and
+        then down, and the whole sweep is flown again from there.
+
+        The aircraft is stationary throughout, well short of the plane, so
+        the only thing moving is its height.
+        """
+        if self.tube_scan_alt_tries >= self.TUBE_SCAN_ALT_STEPS:
+            return False
+        lp = self.local_position
+        if lp is None:
+            return False
+        self.tube_scan_alt_tries += 1
+        # +1, -1, +2, -2 ... about the altitude the stage started from.
+        n = (self.tube_scan_alt_tries + 1) // 2
+        sign = 1.0 if self.tube_scan_alt_tries % 2 else -1.0
+        wanted = self.TUBE_LOOK_ALTITUDE + sign * n * self.TUBE_SCAN_ALT_STEP
+        altitude = min(max(wanted, self.MIN_ALTITUDE), self.MAX_ALTITUDE)
+        if abs(altitude - self.commanded_altitude) < 1e-3:
+            return False
+        self._set_target(lp.x, lp.y, altitude)
+        self.get_logger().error(
+            f"TUBE_SCAN: a whole sweep and nothing came out of the mask. "
+            f"Retry {self.tube_scan_alt_tries} of {self.TUBE_SCAN_ALT_STEPS}: "
+            f"moving the scan altitude {altitude - self.commanded_altitude:+.2f} m "
+            f"to {altitude:.2f} m and sweeping again -- from this close the "
+            "whole obstacle does not fit the frame at every height.")
+        self._begin_tube_scan(True)
+        return True
+
+    # ------------------------------------------- the blind tube crossing
+
+    def _blind_plane_ahead(self):
+        """How far ahead the gate plane is, measured if possible."""
+        near = self._nearest_upright()
+        if near is not None:
+            return near
+        along, _ = self._target_errors()
+        nominal = (self.TUBE_LOOK_STANDOFF if self.tube_plane_ahead is None
+                   else self.tube_plane_ahead)
+        # tube_plane_ahead is measured from the look-from TARGET; anything
+        # still to go to that target is still to go to the plane as well.
+        return max(0.3, nominal + (0.0 if along is None else along))
+
+    def _tube_gave_up(self, why):
+        """A tube stage has run out of camera. Blind crossing, or land."""
+        if self.TUBE_BLIND and not self.tube_blind_flown and self.hold_xy:
+            self._begin_tube_blind(why)
+            return
+        self._abandon(why)
+
+    def _begin_tube_blind(self, why):
+        """Cross on the KNOWN geometry when nothing ever solved.
+
+        The camera has had its yaw sweep, its altitude retries and its search,
+        and has produced nothing that solve_gap or solve_from_hole would
+        accept. The alternative to this is landing in front of the gate, and
+        the geometry is not actually unknown: the gate stands square across
+        the course line, its uprights are tube_spacing apart, and the cell the
+        course is flown through is the one between the middle upright and the
+        upright on tube_gap_prefer's side -- which is the side the course
+        leaves on, and the side the lone back upright is NOT on.
+
+        So: step half a spacing to that side of the track, and fly through at
+        the template altitude. Everything after the crossing -- the sideways
+        step round the back upright and the run-on -- is the normal path,
+        because it never depended on the camera either.
+
+        It is flown once. If the aircraft is not through after that, something
+        is wrong that another blind attempt will not fix.
+        """
+        lp = self.local_position
+        if lp is None:
+            self._abandon(f"{why}, and there is no position to cross blind on")
+            return
+        self.tube_blind_flown = True
+        h = self.traverse_heading
+        fwd = np.array([math.cos(h), math.sin(h)])
+        left = np.array([math.sin(h), -math.cos(h)])
+        v = np.array([lp.x, lp.y])
+
+        side = self.TUBE_GAP_PREFER if self.TUBE_GAP_PREFER != 'none' else 'left'
+        self.gap_side = side
+        sign = 1.0 if side == 'left' else -1.0
+        lateral = sign * 0.5 * self.TUBE_SPACING
+        ahead = self._blind_plane_ahead()
+
+        sol = {
+            'point': v + fwd * ahead + left * lateral,
+            'normal': fwd,
+            'left': left,
+            'heading': h,
+            'width': self.TUBE_SPACING,
+            'offset': 0.0,
+            # The structure's middle is the upright on the track, which is
+            # half a spacing back the other way from where we are crossing.
+            'centre_offset': -lateral,
+            'side': side,
+            'back': None,
+            'hole': None,
+            'matched': 0,
+            'residual': 0.0,
+            'source': 'blind',
+        }
+        self.tube_solution = sol
+        self.tube_reason = 'blind crossing on the known geometry'
+        self.get_logger().error(
+            f"TUBE BLIND CROSSING: {why}. Nothing the camera produced ever "
+            f"solved, so the gate is being flown on its KNOWN geometry: the "
+            f"plane {ahead:.2f} m ahead, {abs(lateral):.2f} m to our "
+            f"{side.upper()} of the track -- between the middle upright and "
+            f"the {side} one -- at {self.tube_altitude:.2f} m. This is the "
+            "alternative to landing in front of it; set tube_blind:=false to "
+            "land instead.")
+        self._begin_tube_align(sol)
 
     def _scan_summary(self):
         cells = self.tube_estimator.holes(
@@ -1797,8 +2046,12 @@ class CourseFSM(WindowTraverse):
             self.get_logger().warning(f"TUBE_LOCK: {self.tube_summary()}.")
             return
         if self._in_stage_for() > self.TUBE_SEARCH_TIMEOUT:
-            self._abandon(f"no tube gap found in {self.TUBE_SEARCH_TIMEOUT:.0f} s. "
-                          f"{self.tube_summary()}")
+            why = (f"no tube gap found in {self.TUBE_SEARCH_TIMEOUT:.0f} s. "
+                   f"{self.tube_summary()}")
+            if self.TUBE_BLIND and not self.tube_blind_flown and self.hold_xy:
+                self._begin_tube_blind(why)
+                return
+            self._abandon(why)
             return
         self.get_logger().info(f"TUBE_SEARCH: {self.tube_summary()}",
                                throttle_duration_sec=1.0)
@@ -1806,7 +2059,7 @@ class CourseFSM(WindowTraverse):
     def _handle_tube_lock(self):
         if self.tube_solution is None:
             if self._in_stage_for() > self.TUBE_STAGE_TIMEOUT:
-                self._abandon(f"lost the tube gap. {self.tube_summary()}")
+                self._tube_gave_up(f"lost the tube gap. {self.tube_summary()}")
             return
         if (self.tube_ok_since is None
                 or time.monotonic() - self.tube_ok_since < self.TUBE_LOCK_SECONDS):
@@ -1853,8 +2106,8 @@ class CourseFSM(WindowTraverse):
             return
         self.tube_settle_since = None
         if self._in_stage_for() > self.TUBE_STAGE_TIMEOUT:
-            self._abandon("could not settle on the gap entry in "
-                          f"{self.TUBE_STAGE_TIMEOUT:.0f} s")
+            self._tube_gave_up("could not settle on the gap entry in "
+                               f"{self.TUBE_STAGE_TIMEOUT:.0f} s")
             return
         self.get_logger().info(
             f"TUBE_ALIGN: {0.0 if along is None else along:+.2f} along / "
@@ -2075,6 +2328,126 @@ class CourseFSM(WindowTraverse):
         self.get_logger().info(
             f"WINDOW2_HOLD: {remaining:.1f} s to the search.",
             throttle_duration_sec=0.5)
+
+    def _window2_search_stalled(self):
+        """True once the second window has been looked for long enough."""
+        return (self.window_pass >= 2 and not self.window2_skipped
+                and self.WINDOW2_SKIP
+                and self.current_stage in (self.SCAN, self.LOCK)
+                and self._in_stage_for() > self.WINDOW2_SEARCH_TIMEOUT
+                and not self.window_is_confirmed())
+
+    def _handle_scan(self):
+        """The inherited sweep, with a deadline on the SECOND window.
+
+        The first window has nothing to fall back on -- the whole course is
+        laid out from it -- so it sweeps until the flight clock says
+        otherwise. The second one does: everything behind it is already
+        flown, so a window that never appears is skipped rather than sat in
+        front of until the battery decides the matter.
+        """
+        if self._window2_search_stalled():
+            self._begin_window2_skip(
+                f"no window found in {self.WINDOW2_SEARCH_TIMEOUT:.0f} s of "
+                "sweeping")
+            return
+        super()._handle_scan()
+
+    def _abandon(self, reason):
+        """Give up -- but on the SECOND window, skip it instead of landing.
+
+        Every way the window mission can fail (the pose never converging, the
+        approach not settling, the vision going away during ALIGN) ends in
+        _abandon, and on the second pass none of them is worth a landing: the
+        course behind is flown, and there is a way past the window that needs
+        no camera at all.
+        """
+        if (self.window_pass >= 2 and self.WINDOW2_SKIP
+                and not self.window2_skipped
+                and self.current_stage not in self.COURSE_STAGES):
+            self._begin_window2_skip(reason)
+            return
+        super()._abandon(reason)
+
+    # ---- skipping it: over the wall, across, and back down ----------------
+
+    def _window2_skip_distance(self):
+        """How far forward the skip flies: the traverse it is replacing."""
+        return self.STANDOFF_DISTANCE + self.EXIT_DISTANCE
+
+    def _begin_window2_skip(self, why):
+        """Fly OVER the second window's wall instead of through the window.
+
+        The aircraft is at the search altitude in front of a window it cannot
+        see, with the whole course behind it already flown. Landing here
+        throws that away. The red bar's crossing altitude is a height this
+        aircraft has already held once on this flight, above everything the
+        course stands up, so the skip climbs to it, crosses the distance the
+        traverse would have covered, and comes back down to the search
+        altitude on the far side.
+
+        It is the failsafe, not the plan: the window is tried first, for
+        window2_search_timeout, and only a window that never appears gets
+        this. And it assumes nothing stands ABOVE the red bar's altitude on
+        the course line -- which is true of this course, and is the one thing
+        to check before enabling it on another.
+        """
+        self.window2_skipped = True
+        self.set_detection('window', False)
+        self.moving = False
+        self.yaw_remaining = 0.0
+        lp = self.local_position
+        if lp is None:
+            super()._abandon(f"{why}, and there is no position to skip on")
+            return
+        self.CLIMB_SPEED = self.COURSE_CLIMB_SPEED
+        self.MOVE_SPEED = self.APPROACH_SPEED
+        self._set_target(lp.x, lp.y, self.red_altitude)
+        self._enter_course_stage(self.WINDOW2_SKIP_RISE)
+        self.get_logger().error(
+            f"WINDOW2 SKIPPED: {why}. NOT landing. Climbing to the red bar's "
+            f"{self.red_altitude:.2f} m -- above everything this course "
+            f"stands up -- then {self._window2_skip_distance():.2f} m forward "
+            f"(the traverse this replaces) and back down to "
+            f"{self.WINDOW2_ALTITUDE:.2f} m.")
+
+    def _handle_window2_skip_rise(self):
+        self._handle_vertical(self._begin_window2_skip_cross,
+                              "the climb over the second window")
+
+    def _begin_window2_skip_cross(self):
+        distance = self._window2_skip_distance()
+        x, y = self._ahead(distance)
+        self.MOVE_SPEED = self.BAR_CROSS_SPEED
+        self._set_target(x, y, self.red_altitude)
+        self._enter_course_stage(self.WINDOW2_SKIP_CROSS)
+        self.get_logger().warning(
+            f"WINDOW2_SKIP_CROSS: {distance:.2f} m forward at "
+            f"{self.red_altitude:.2f} m, over the window rather than through "
+            "it.")
+
+    def _handle_window2_skip_cross(self):
+        self._handle_crossing(self._begin_window2_skip_drop,
+                              "the skip across the second window")
+
+    def _begin_window2_skip_drop(self):
+        x, y = self.move_target_x, self.move_target_y
+        self.course_saved_land_speed = self.LAND_SPEED
+        self.LAND_SPEED = self.COURSE_DESCENT_SPEED
+        self.MOVE_SPEED = self.APPROACH_SPEED
+        self._set_target(x, y, self.WINDOW2_ALTITUDE)
+        self._enter_course_stage(self.WINDOW2_SKIP_DROP)
+        self.get_logger().warning(
+            f"WINDOW2_SKIP_DROP: back down to {self.WINDOW2_ALTITUDE:.2f} m, "
+            "then the landing the course finishes with.")
+
+    def _handle_window2_skip_drop(self):
+        self._handle_vertical(self._finish_window2_skip,
+                              "the descent after the second window")
+
+    def _finish_window2_skip(self):
+        self._restore_land_speed()
+        self._after_the_course("second window skipped -- never detected")
 
     def _begin_second_window(self):
         """Fly the window mission again, from wherever the tubes ended.
@@ -2360,6 +2733,22 @@ class CourseFSM(WindowTraverse):
             self._begin_landing("height estimate went invalid")
             return False
 
+        if self.rangefinder_is_healthy():
+            if self.course_pressed_on:
+                self.get_logger().warning(
+                    "The rangefinder is being fused again after the course "
+                    "pressed on without it. Back to normal.")
+                self.course_pressed_on = False
+        elif self.course_pressed_on and self._height_without_rangefinder():
+            # Already decided, once, that this outage is survivable. Holding
+            # again every tick would be a loop: hold, time out, press on,
+            # hold.
+            self.get_logger().error(
+                "Still no rangefinder fusion; flying on the baro height and "
+                "the flow hold, as decided when the hold timed out.",
+                throttle_duration_sec=5.0)
+            return True
+
         if not self.rangefinder_is_healthy() and self.current_stage != self.COURSE_HOLD:
             # Mid-crossing with a good flow hold: fly it out, then hover clear.
             if self.current_stage in self.FINISH_FIRST_STAGES and self.hold_xy:
@@ -2383,6 +2772,12 @@ class CourseFSM(WindowTraverse):
         """
         if self.rangefinder_is_healthy():
             return True
+        if self.course_pressed_on and self._height_without_rangefinder():
+            self.get_logger().error(
+                "Handing over to a vertical move with no rangefinder fusion, "
+                "on the baro height. Already decided (course_hold_press_on); "
+                "not holding again.", throttle_duration_sec=5.0)
+            return True
         self._hold_and_wait(self.current_stage,
                             "EKF2 stopped fusing the rangefinder")
         return False
@@ -2404,26 +2799,81 @@ class CourseFSM(WindowTraverse):
             f"waiting up to {self.COURSE_HOLD_TIMEOUT:.0f} s for it to come "
             "back, then carrying on. NOT landing.")
 
+    def _resume_from_hold(self, why):
+        """Leave COURSE_HOLD and pick the interrupted stage back up."""
+        resume = self.course_resume_stage or self.RED_RISE
+        self.course_hold_since = None
+        self.course_rng_ok_since = None
+        self.moving = resume not in (self.TUBE_SEARCH, self.TUBE_LOCK,
+                                     self.TUBE_SCAN, self.WINDOW2_HOLD)
+        self._enter_stage(resume)
+        self.get_logger().warning(f"COURSE_HOLD: {why}. Resuming {resume}.")
+
+    def _height_without_rangefinder(self):
+        """True if the EKF still has a height and a position hold without it.
+
+        With EKF2_BARO_CTRL on, losing the range aid costs the HAGL and not
+        the height: z_valid stays true on the barometer. That is enough to
+        fly a bar whose height is known in advance; it is NOT enough to land
+        on, which is why this only ever lets the course continue.
+        """
+        lp = self.local_position
+        return (lp is not None and lp.z_valid and lp.v_z_valid
+                and self.hold_xy and self.relative_altitude() is not None)
+
     def _handle_course_hold(self):
-        """Hover until the estimate is back, then resume the interrupted stage."""
+        """Hover, dead still, until the estimate is back AND has stayed back.
+
+        This is the stage that catches the rangefinder outage over the red bar
+        -- the lidar steps a bar's height in one frame, EKF2 declares the
+        range kinematically inconsistent and stops fusing it, and on the
+        hardware logs it took about ten seconds to come back. Through all of
+        it the aircraft holds this exact point: no forward drift, no descent,
+        the height carried by the barometer while the range is out (which
+        needs EKF2_BARO_CTRL enabled -- see config/px4_sitl_imav.rcS).
+
+        Nothing resumes on the first healthy frame. The flag flickers as the
+        fusion re-establishes, so it has to stay healthy for
+        course_hold_confirm_seconds before the next obstacle is attempted.
+        """
         self._try_latch_xy_hold()
         self.log_flight_state()
-        waited = time.monotonic() - (self.course_hold_since or time.monotonic())
+        now = time.monotonic()
+        waited = now - (self.course_hold_since or now)
 
-        if self.rangefinder_is_healthy() and self.hold_xy:
-            resume = self.course_resume_stage or self.RED_RISE
-            self.course_hold_since = None
-            self.moving = resume not in (self.TUBE_SEARCH, self.TUBE_LOCK)
-            self._enter_stage(resume)
+        healthy = self.rangefinder_is_healthy() and self.hold_xy
+        if not healthy:
+            self.course_rng_ok_since = None
+        elif self.course_rng_ok_since is None:
+            self.course_rng_ok_since = now
             self.get_logger().warning(
-                f"COURSE_HOLD: estimate is back after {waited:.1f} s "
-                f"({self.course_hold_reason} cleared). Resuming {resume}.")
+                f"COURSE_HOLD: the rangefinder is back after {waited:.1f} s. "
+                f"Holding {self.COURSE_HOLD_CONFIRM_SECONDS:.1f} s more to "
+                "confirm the fusion is steady before moving.")
+        elif now - self.course_rng_ok_since >= self.COURSE_HOLD_CONFIRM_SECONDS:
+            self._resume_from_hold(
+                f"{self.course_hold_reason} cleared after {waited:.1f} s and "
+                f"held for {self.COURSE_HOLD_CONFIRM_SECONDS:.1f} s")
             return
 
         if waited > self.COURSE_HOLD_TIMEOUT:
+            if self.COURSE_HOLD_PRESS_ON and self._height_without_rangefinder():
+                self._resume_from_hold(
+                    f"{self.course_hold_reason} did NOT clear in "
+                    f"{self.COURSE_HOLD_TIMEOUT:.0f} s, but the EKF still has "
+                    "a height (baro) and the flow still holds position, so "
+                    "the course goes on rather than landing here. The "
+                    "obstacle ahead is flown on known geometry; watch the "
+                    "height. Set course_hold_press_on:=false to land instead")
+                self.course_pressed_on = True
+                return
             self._abandon(
                 f"{self.course_hold_reason} did not clear in "
-                f"{self.COURSE_HOLD_TIMEOUT:.0f} s of hovering")
+                f"{self.COURSE_HOLD_TIMEOUT:.0f} s of hovering"
+                + ("" if self.COURSE_HOLD_PRESS_ON else
+                   " (course_hold_press_on is false)")
+                + (" and there is no usable height without it"
+                   if self.COURSE_HOLD_PRESS_ON else ""))
             return
 
         lp = self.local_position
@@ -2533,6 +2983,9 @@ class CourseFSM(WindowTraverse):
             self.TUBE_EXIT: self._handle_tube_exit,
             self.WINDOW2_RISE: self._handle_window2_rise,
             self.WINDOW2_HOLD: self._handle_window2_hold,
+            self.WINDOW2_SKIP_RISE: self._handle_window2_skip_rise,
+            self.WINDOW2_SKIP_CROSS: self._handle_window2_skip_cross,
+            self.WINDOW2_SKIP_DROP: self._handle_window2_skip_drop,
             self.PAD_OFFSET: self._handle_pad_offset,
             self.PAD_SEARCH: self._handle_pad_search,
             self.PAD_CENTRE: self._handle_pad_centre,

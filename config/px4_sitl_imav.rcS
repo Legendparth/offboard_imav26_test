@@ -26,8 +26,11 @@
 # Taken BEFORE anything below changes them: once they are set, comparing
 # them tells you nothing. See the restart block at the end of this file.
 NEEDS_EKF2_RESTART=0
+# EKF2_BARO_CTRL is read from the environment (see BARO_FALLBACK below), so
+# the "was it already right?" compare has to use the same value.
+BARO_FALLBACK=${PX4_BARO_CTRL:=1}
 param compare EKF2_HGT_REF 2 || NEEDS_EKF2_RESTART=1
-param compare EKF2_BARO_CTRL 0 || NEEDS_EKF2_RESTART=1
+param compare EKF2_BARO_CTRL $BARO_FALLBACK || NEEDS_EKF2_RESTART=1
 param compare EKF2_GPS_CTRL 5 || NEEDS_EKF2_RESTART=1
 
 param set EKF2_RNG_CTRL 2
@@ -58,7 +61,25 @@ param set EKF2_RNG_A_VMAX 2.0
 # With range as the sole height reference, HAGL IS the range, the innovation
 # is genuinely zero, and the flag stays true through the whole course.
 param set EKF2_HGT_REF 2
-param set EKF2_BARO_CTRL 0
+
+# --- ... but the barometer stays fused, as the fallback ------------------
+# EKF2_BARO_CTRL was 0 here, for the reason written above: baro jitter in
+# HAGL is what pushed the kinematic consistency test over its gate. That was
+# before EKF2_RNG_K_GATE was raised to 5.0, and it left the aircraft with NO
+# height source at all the moment the range dropped out -- which is exactly
+# the failure being defended against, and it is the one the hardware sees
+# after the red bar.
+#
+# So the barometer is fused again, as an AID, while the range stays the
+# height REFERENCE (EKF2_HGT_REF 2). While the range is healthy nothing
+# changes: it is the reference and HAGL is the range. When it stops being
+# fused, z_valid stays true on the baro, course_fsm holds position on the
+# flow, and the course can carry on once the range is back (or, with
+# course_hold_press_on, even if it is not).
+#
+# Set PX4_BARO_CTRL=0 in the environment to go back to the old behaviour.
+param set EKF2_BARO_CTRL $BARO_FALLBACK
+echo "px4_sitl_imav: EKF2_BARO_CTRL $BARO_FALLBACK (1 = baro carries the height while the rangefinder is out)"
 
 # GPS keeps horizontal position and velocity (bits 0 and 2) but loses
 # altitude (bit 1). The real aircraft has no GPS at all and holds x/y on ARK
