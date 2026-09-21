@@ -322,6 +322,20 @@ def generate_launch_description():
         ('pad_max_nudge', '0.30', 'm, the largest single step onto the marker.'),
         ('pad_lost_seconds', '2.0', 's a marker pose stays usable.'),
         ('pad_stage_timeout', '45.0', ''),
+        ('marker_anchor_gain', '0.35',
+         'How much of each new marker fix goes into the ANCHOR -- the pad\'s '
+         'position in NED, which the landing flies to instead of chasing the '
+         'newest frame. Lower = steadier and laggier.'),
+        ('marker_anchor_max_age', '3.0',
+         's the anchor stays usable with no new fix. Longer than '
+         'pad_lost_seconds on purpose: losing SIGHT of the pad must not lose '
+         'the PLACE, which is what lets the descent carry on through the '
+         'blinks that ground effect and a pad overflowing the frame cause.'),
+        ('ground_effect_height', '1.20',
+         'm AGL below which the airframe is in its own downwash. Under it '
+         'the descent halves its rate and the centring gate is RELAXED: '
+         'chasing a wobble that is not a real position error is what makes '
+         'an aircraft hunt in the last metre.'),
         ('max_survey_altitude', '1.6',
          'm above which the MLX readings stop being usable. A HARD ceiling on '
          'the aircraft; raised only by the scaled simulation, where the whole '
@@ -454,6 +468,7 @@ def generate_launch_description():
         'land_search_distance', 'land_search_speed', 'pad_centre_tolerance',
         'pad_centre_seconds', 'pad_descent_rate', 'pad_handoff_height',
         'pad_gain', 'pad_max_nudge', 'pad_lost_seconds', 'pad_stage_timeout',
+        'marker_anchor_gain', 'marker_anchor_max_age', 'ground_effect_height',
     }
 
     common = {n: L(n) for n, _, _ in args if n not in not_flight | fsm_only}

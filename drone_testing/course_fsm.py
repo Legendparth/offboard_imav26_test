@@ -200,6 +200,8 @@ class CourseFSM(WindowTraverse):
 
     PAD_OFFSET = "PAD_OFFSET"       # step right, clear of the tube line
     PAD_SEARCH = "PAD_SEARCH"       # creep forward until the marker is seen
+    PAD_GUIDE = "PAD_GUIDE"         # find the GUIDE marker, centre over it
+    PAD_BACK = "PAD_BACK"           # straight back until the LANDING marker
     PAD_CENTRE = "PAD_CENTRE"       # hold over it while the estimate settles
     PAD_DESCEND = "PAD_DESCEND"     # down, correcting from the marker
 
@@ -216,7 +218,8 @@ class CourseFSM(WindowTraverse):
 
     TUBE_STAGES = (TUBE_CLIMB, TUBE_APPROACH, TUBE_SCAN, TUBE_SEARCH,
                    TUBE_LOCK, TUBE_ALIGN, TUBE_PASS, TUBE_SHIFT, TUBE_EXIT)
-    PAD_STAGES = (PAD_OFFSET, PAD_SEARCH, PAD_CENTRE, PAD_DESCEND)
+    PAD_STAGES = (PAD_OFFSET, PAD_SEARCH, PAD_GUIDE, PAD_BACK, PAD_CENTRE,
+                  PAD_DESCEND)
     # The run-up to the second window. Not TUBE_STAGES (the tube detector is
     # off and there is no tube solution to update) and not the window
     # mission's own stages either -- they begin at SCAN, after this.
@@ -318,8 +321,9 @@ class CourseFSM(WindowTraverse):
     TUBE_SPACING = 0.50
     TUBE_RADIUS = 0.025
     CROSS_BAR_HEIGHT = 0.461
-    DIAGONAL_LEFT_HEIGHT = 2.000
-    DIAGONAL_RIGHT_HEIGHT = 0.922
+    # The diagonal rises to the RIGHT: the tall cell is the right-hand one.
+    DIAGONAL_LEFT_HEIGHT = 0.922
+    DIAGONAL_RIGHT_HEIGHT = 2.000
     GAP_SIDE = 'auto'           # auto = the cell with the bigger opening,
                                 # i.e. the one under the high end of the
                                 # diagonal. 'left'/'right' force it.
@@ -339,7 +343,7 @@ class CourseFSM(WindowTraverse):
                                 # anything at all and going with whatever
                                 # there is
     TUBE_SCAN_SETTLE = 1.5      # s back on the course heading before choosing
-    TUBE_GAP_PREFER = 'left'    # which cell wins a near-tie on area
+    TUBE_GAP_PREFER = 'right'   # which cell wins a near-tie on area
     TUBE_GAP_TIE = 0.25         # a cell within this fraction of the biggest
                                 # counts as a tie
     TUBE_EXIT_FORWARD = 1.50    # m past the tube plane where the tubes are
@@ -363,11 +367,15 @@ class CourseFSM(WindowTraverse):
                                 # and the floor is one horizontal tube, so
                                 # dropping buys headroom against the thing
                                 # that is in the way. Clamped off the floor.
-    TUBE_CROSS_LEFT = 0.05      # m LEFT of the centre of the opening to aim,
-                                # towards the high end of the diagonal and
-                                # towards the side the aircraft leaves on.
+    TUBE_CROSS_LEFT = 0.05      # m off the centre of the opening to aim,
+                                # AWAY from the cell's outer post (see
+                                # _tube_lean). Clamped inside the opening.
                                 # Clamped off the uprights.
-    TUBE_MERGE_SHIFT = True     # fly the gap and the step round the back
+    # FALSE: after the gate, straight LEFT to clear the back upright, settle,
+    # THEN straight on -- an L, never a diagonal. After a right-cell crossing
+    # the back upright is to the left of the track, so a diagonal from the
+    # gate to the far side of it passes THROUGH it; that is how it was hit.
+    TUBE_MERGE_SHIFT = False    # true = gap exit to clear of the back
                                 # upright as ONE diagonal leg
     TUBE_CLEARANCE = 0.12
     TUBE_CROSS_TOLERANCE = 0.05     # m off the gap centreline: under 10 cm a side
@@ -412,6 +420,14 @@ class CourseFSM(WindowTraverse):
                                 # the obstacle does not fit the frame at one
                                 # height; a different height often frames it.
     TUBE_SCAN_ALT_STEPS = 2     # how many such retries (up first, then down)
+    # When the search after the scan has not solved a crossing in this long,
+    # step SIDEWAYS towards tube_gap_prefer and scan again. The look-from
+    # point is on the course line, and the course line is only as good as the
+    # window's measured normal: a few degrees off, ten metres on, and the
+    # aircraft is parked in front of the wrong cell with the one it wants at
+    # the edge of the sweep, never enclosed in a single frame.
+    TUBE_SIDE_RETRY_AFTER = 5.0 # s in TUBE_SEARCH before the sidestep
+    TUBE_SIDE_STEP = 0.0        # m; 0 = half tube_spacing
     TUBE_BLIND = True           # true = when nothing ever solves, cross on the
                                 # KNOWN geometry instead of landing in front
                                 # of the gate. See _begin_tube_blind().
@@ -443,10 +459,10 @@ class CourseFSM(WindowTraverse):
     # put down, the window is off to one side and the camera cannot see it at
     # all. So the flight steps sideways first and only then starts looking.
     # Positive is to the RIGHT of the arming heading; negative steps left.
-    START_OFFSET_RIGHT = 1.00   # m sideways off the pad before the sweep
+    START_OFFSET_RIGHT = 2.20   # m sideways off the pad before the sweep
     START_OFFSET_TIMEOUT = 30.0 # s before the step is called done regardless
 
-    PAD_RIGHT = 1.50            # m to the RIGHT after the tubes, off the line
+    PAD_RIGHT = 2.20            # m to the RIGHT after the tubes, off the line
                                 # the obstacles stand on
     PAD_SEARCH_DISTANCE = 6.00  # m of forward creep before giving up
     PAD_SEARCH_SPEED = 0.30
@@ -460,6 +476,25 @@ class CourseFSM(WindowTraverse):
     PAD_MAX_NUDGE = 0.30        # m the target may be moved in one correction
     PAD_LOST_SECONDS = 2.0      # of no marker before the descent stops
     PAD_STAGE_TIMEOUT = 60.0
+    # The landing is found in two markers, not one. After the last window and
+    # the step right, the aircraft is over a GUIDE marker; centred on it, it
+    # has a known point on the line the landing pad lies on. From there it
+    # flies straight BACK -- a carrot on a fixed NED line through the guide
+    # marker, along the course heading, so the leg cannot wander sideways --
+    # until the LANDING marker comes into the down camera, then centres on
+    # that one and lands. Markers of any other id are ignored throughout.
+    PAD_GUIDE_ID = 3            # platform_2 in imav2026_scaled
+    PAD_LAND_ID = 1             # landing_platform
+    PAD_GUIDE_TIMEOUT = 20.0    # s looking for the guide before going back
+                                # from wherever the step right ended
+    PAD_BACK_DISTANCE = 11.0    # m of backward flight before giving up
+    PAD_BACK_SPEED = 0.30       # m/s
+    PAD_MARKER_CONFIRM = 3      # fresh fixes of a marker before acting on it
+    # Below this height ABOVE THE PAD, losing the marker is expected -- the
+    # camera is too close to see all of it -- so the descent carries on to
+    # the pad position already measured instead of stopping to look for it.
+    PAD_BLIND_HEIGHT = 0.80     # m
+    PAD_XY_SMOOTHING = 0.3      # weight of each new fix in the pad estimate
     TIMER_PERIOD = 0.05         # s, the base class's loop. The descent walks
                                 # the setpoint down by rate * this each tick.
     ARUCO_DETECT_TOPIC = '/aruco/detected'
@@ -583,7 +618,8 @@ class CourseFSM(WindowTraverse):
         self.TUBE_EXIT_FORWARD = float(n('tube_exit_forward', self.TUBE_EXIT_FORWARD))
         prefer = str(self.declare_parameter(
             'tube_gap_prefer', self.TUBE_GAP_PREFER).value).strip().lower()
-        self.TUBE_GAP_PREFER = prefer if prefer in ('left', 'right', 'none') else 'left'
+        self.TUBE_GAP_PREFER = (prefer if prefer in ('left', 'right', 'none')
+                                else self.TUBE_GAP_PREFER)
         self.TUBE_GAP_TIE = float(n('tube_gap_tie', self.TUBE_GAP_TIE))
         self.TUBE_ALLOW_SHIFT_RIGHT = bool(self.declare_parameter(
             'tube_allow_shift_right', False).value)
@@ -595,6 +631,9 @@ class CourseFSM(WindowTraverse):
         self.TUBE_BACK_OFF_MAX = float(n('tube_back_off_max', self.TUBE_BACK_OFF_MAX))
         self.TUBE_SCAN_ALT_STEP = float(n('tube_scan_alt_step', self.TUBE_SCAN_ALT_STEP))
         self.TUBE_SCAN_ALT_STEPS = int(n('tube_scan_alt_steps', self.TUBE_SCAN_ALT_STEPS))
+        self.TUBE_SIDE_RETRY_AFTER = float(n('tube_side_retry_after',
+                                             self.TUBE_SIDE_RETRY_AFTER))
+        self.TUBE_SIDE_STEP = float(n('tube_side_step', self.TUBE_SIDE_STEP))
         self.TUBE_BLIND = bool(self.declare_parameter(
             'tube_blind', self.TUBE_BLIND).value)
         self.WINDOW2_SEARCH_TIMEOUT = float(n('window2_search_timeout',
@@ -623,6 +662,12 @@ class CourseFSM(WindowTraverse):
         self.PAD_GAIN = float(n('pad_gain', self.PAD_GAIN))
         self.PAD_MAX_NUDGE = float(n('pad_max_nudge', self.PAD_MAX_NUDGE))
         self.PAD_LOST_SECONDS = float(n('pad_lost_seconds', self.PAD_LOST_SECONDS))
+        self.PAD_GUIDE_ID = int(n('pad_guide_id', self.PAD_GUIDE_ID))
+        self.PAD_LAND_ID = int(n('pad_land_id', self.PAD_LAND_ID))
+        self.PAD_GUIDE_TIMEOUT = float(n('pad_guide_timeout', self.PAD_GUIDE_TIMEOUT))
+        self.PAD_BACK_DISTANCE = float(n('pad_back_distance', self.PAD_BACK_DISTANCE))
+        self.PAD_BACK_SPEED = float(n('pad_back_speed', self.PAD_BACK_SPEED))
+        self.PAD_BLIND_HEIGHT = float(n('pad_blind_height', self.PAD_BLIND_HEIGHT))
         self.TUBE_EXIT_DISTANCE = float(n('tube_exit_distance', self.TUBE_EXIT_DISTANCE))
         self.TUBE_LATERAL_MARGIN = float(n('tube_lateral_margin', self.TUBE_LATERAL_MARGIN))
         self.TUBE_CROSS_DROP = float(n('tube_cross_drop', self.TUBE_CROSS_DROP))
@@ -701,6 +746,14 @@ class CourseFSM(WindowTraverse):
         self.aruco_point = None
         self.aruco_point_time = None
         self.aruco_seen = 0
+        self.aruco_id = None        # id of the last fix accepted
+        self.pad_want_id = None     # only this id is accepted; None = any
+        self.pad_fixes = 0          # accepted fixes since pad_want_id was set
+        self.pad_line_origin = None
+        self.pad_back_heading = None
+        self.pad_xy = None          # the landing pad in NED, smoothed
+        self.pad_blind = False      # descending on pad_xy with no marker
+        self.pad_landing = False    # the final landing is ON pad_xy
         self.tubes_done = False
         self.scan_since = 0.0
         self.scan_ended = None
@@ -732,6 +785,8 @@ class CourseFSM(WindowTraverse):
         self.window_pass = 1
         self.window2_skipped = False
         self.tube_scan_alt_tries = 0
+        self.tube_side_retried = False
+        self.tube_side_moving = False
         self.tube_blind_flown = False
         self.tube_plane_ahead = None    # m from the look-from point to the
                                         # gate plane, on the course reckoning
@@ -1204,40 +1259,38 @@ class CourseFSM(WindowTraverse):
     def _tube_shift_offset(self, back_lateral, measured=False):
         """How far sideways to step after the gap, + LEFT.
 
-        Left by preference, as far as it takes to have half an airframe plus
-        the clearance between a prop tip and the back upright, and never less
-        than tube_shift_left. Right instead, but only when going left would
-        mean an absurd step -- which is what happens when the back upright is
-        off to the left of the track already.
+        The back upright is ALWAYS gone round on its LEFT, whichever cell of
+        the gate was crossed: as far left as it takes to have half an
+        airframe plus the clearance between a prop tip and the upright, and
+        never less than tube_shift_left. With the diagonal rising to the
+        right the gate is crossed in the right-hand cell, which leaves the
+        back upright to the left of the track -- so this step crosses back
+        over the centreline and past it, and is longer than it used to be.
+        tube_max_shift no longer turns it round: going right of the upright
+        is not the course. It is only a warning threshold now.
+
+        tube_allow_shift_right:=true restores the old choice -- left unless
+        that is longer than tube_max_shift, right otherwise.
         """
         need = self.tube_half_airframe + self.TUBE_CLEARANCE
         least = abs(self.TUBE_SHIFT_LEFT)
         go_left = back_lateral + need
         go_right = back_lateral - need
-        if go_left <= self.TUBE_MAX_SHIFT:
-            return max(least, go_left)
-        if not measured and not self.TUBE_ALLOW_SHIFT_RIGHT:
-            # Left is the direction the course is flown in and the one the
-            # pilot expects to see. Going right instead because an estimate
-            # said the back upright was somewhere odd is how the aircraft ends
-            # up on the wrong side of it, so it is off by default: step the
-            # most we are allowed to, to the LEFT, and say the measurement
-            # looks wrong.
-            self.get_logger().error(
-                f"The back upright measures {back_lateral:+.2f} m to the LEFT "
-                f"of the track, which would take a {go_left:.2f} m step to go "
-                f"round on the left (max {self.TUBE_MAX_SHIFT:.2f}). That is "
-                "probably a bad measurement -- on this course it stands to the "
-                f"right. Stepping {self.TUBE_MAX_SHIFT:.2f} m LEFT anyway; set "
-                "tube_allow_shift_right:=true to let it go round the other "
-                "side instead.")
-            return self.TUBE_MAX_SHIFT
+        if not self.TUBE_ALLOW_SHIFT_RIGHT or go_left <= self.TUBE_MAX_SHIFT:
+            step = max(least, go_left)
+            if step > self.TUBE_MAX_SHIFT:
+                self.get_logger().warning(
+                    f"Stepping {step:.2f} m LEFT after the gap to go round the "
+                    f"back upright on its left ({back_lateral:+.2f} m off the "
+                    f"track{'' if measured else ', assumed'}). That is more "
+                    f"than tube_max_shift {self.TUBE_MAX_SHIFT:.2f} m; flying "
+                    "it anyway, because the left is the side to pass it on.")
+            return step
         self.get_logger().warning(
             f"Stepping {abs(go_right):.2f} m RIGHT after the gap: the back "
-            f"upright is {back_lateral:+.2f} m to the LEFT of the track and "
-            f"going round it on the left would take {go_left:.2f} m. This is "
-            "the correct side when the cell crossed was the right-hand one -- "
-            "stepping left there walks back across the centreline into it.")
+            f"upright is {back_lateral:+.2f} m off the track and going round "
+            f"it on the left would take {go_left:.2f} m "
+            "(tube_allow_shift_right is on).")
         return min(-least, go_right)
 
     def tube_exit_distance(self):
@@ -1260,20 +1313,27 @@ class CourseFSM(WindowTraverse):
     def _tube_lean(self, hint):
         """How far to aim off the middle of the opening, + LEFT.
 
-        tube_cross_left metres TOWARDS THE HIGH END of the diagonal, not
-        towards the aircraft's left. On this obstacle they are the same thing,
-        but only because of how it is built and which way it is approached,
-        and leaning the wrong way is worse than not leaning: a centimetre of
-        lean costs a centimetre of the eight there are to an upright and buys
-        a centimetre of headroom under a diagonal that is half a metre clear.
+        tube_cross_left metres AWAY FROM THE OUTER POST of the cell being
+        crossed -- towards the middle of the structure. For the right cell
+        that is left; for the left cell, right.
 
-        Measured from the roof at the two shoulders of the cell when the
-        camera has it, from whichever cell gap_side picked when it does not.
+        It used to lean towards the HIGH END of the diagonal, for headroom.
+        That was harmless while the high end was on the left, and it is what
+        put the aircraft into the post once the diagonal was flipped: the high
+        end is now on the OUTER post's side, the lean and the opening's own
+        clamp together left about a centimetre to that post, and it was hit
+        a quarter of a metre short of the plane. The headroom it was buying
+        was never needed -- at the crossing height the diagonal is well over a
+        metre up -- and the other edge of the measured opening is not a tube
+        in the plane at all but the back upright seen in projection behind
+        it. The one thing actually in the plane beside the aircraft is the
+        outer post, so that is the thing to keep away from.
+
+        `hint` is unused; the side comes from gap_side, which the scan sets
+        to the cell it chose.
         """
-        if hint is not None and abs(hint['rise']) > 1e-3:
-            return math.copysign(self.TUBE_CROSS_LEFT, hint['rise'])
         return math.copysign(self.TUBE_CROSS_LEFT,
-                             1.0 if self.gap_side == 'left' else -1.0)
+                             -1.0 if self.gap_side == 'left' else 1.0)
 
     @property
     def tube_half_airframe(self):
@@ -1776,7 +1836,7 @@ class CourseFSM(WindowTraverse):
         # backing up. Stopping on it then would cancel the very move that
         # fixes it.
         near = self._nearest_upright()
-        if (along is not None and along > 0.0
+        if (along is not None and along > 0.0 and not self.tube_side_moving
                 and near is not None and near <= self.TUBE_LOOK_STANDOFF):
             self.moving = False
             self.get_logger().warning(
@@ -1810,6 +1870,7 @@ class CourseFSM(WindowTraverse):
         than which way the nose happened to be pointing.
         """
         self.moving = False
+        self.tube_side_moving = False
         self.tube_estimator.hole_samples.clear()
         self.scan_since = time.monotonic()
         self.scan_ended = None
@@ -1927,6 +1988,34 @@ class CourseFSM(WindowTraverse):
             f"to {altitude:.2f} m and sweeping again -- from this close the "
             "whole obstacle does not fit the frame at every height.")
         self._begin_tube_scan(True)
+        return True
+
+    def _begin_tube_side_retry(self):
+        """Sidestep towards tube_gap_prefer and scan again. True if started.
+
+        Flown as a TUBE_APPROACH to a point beside where we are, so it gets
+        that stage's flow handling and arrival check, and then drops into a
+        fresh TUBE_SCAN exactly like the first one. Once per gate.
+        """
+        lp = self.local_position
+        if lp is None or not self.hold_xy:
+            return False
+        self.tube_side_retried = True
+        self.tube_side_moving = True
+        step = self.TUBE_SIDE_STEP if self.TUBE_SIDE_STEP > 0.0 else 0.5 * self.TUBE_SPACING
+        h = self._course_heading()
+        right = np.array([-math.sin(h), math.cos(h)])
+        sign = 1.0 if self.TUBE_GAP_PREFER == 'right' else -1.0
+        target = np.array([lp.x, lp.y]) + right * sign * step
+        self.MOVE_SPEED = self.APPROACH_SPEED
+        self._set_target(float(target[0]), float(target[1]), self.commanded_altitude)
+        self._enter_tube_stage(self.TUBE_APPROACH)
+        self.get_logger().error(
+            f"TUBE_SEARCH: nothing flyable after {self.TUBE_SIDE_RETRY_AFTER:.0f} s "
+            f"from here ({self.tube_summary()}). Stepping {step:.2f} m "
+            f"{self.TUBE_GAP_PREFER.upper()}, towards the cell the course "
+            "prefers, and scanning again -- from here it is at the edge of the "
+            "sweep and never enclosed in one frame.")
         return True
 
     # ------------------------------------------- the blind tube crossing
@@ -2050,6 +2139,22 @@ class CourseFSM(WindowTraverse):
             want_left = self.TUBE_GAP_PREFER == 'left'
             best = max(tied, key=lambda c: c['lateral'] if want_left else -c['lateral'])
 
+        # Which cell of the structure this is, for everything that depends on
+        # the side (the lean away from the outer post, the back upright's
+        # fallback position): the right one if another opening was seen to
+        # its left, the left one if to its right. One opening alone says
+        # nothing about which cell it is, so gap_side keeps the template's.
+        others = [c for c in cells if c is not best]
+        if others:
+            side = ('left' if all(best['lateral'] > c['lateral'] for c in others)
+                    else 'right' if all(best['lateral'] < c['lateral'] for c in others)
+                    else self.gap_side)
+            if side != self.gap_side:
+                self.get_logger().warning(
+                    f"TUBE_SCAN: the chosen opening is the {side.upper()} cell; "
+                    f"gap_side {self.gap_side} -> {side}.")
+                self.gap_side = side
+
         for c in cells:
             self.get_logger().warning(
                 "TUBE_SCAN saw: %.2f m2%s opening, %.2f m wide, %.2f m tall, "
@@ -2071,6 +2176,10 @@ class CourseFSM(WindowTraverse):
         if self.tube_solution is not None and self.hold_xy:
             self._enter_tube_stage(self.TUBE_LOCK)
             self.get_logger().warning(f"TUBE_LOCK: {self.tube_summary()}.")
+            return
+        if (not self.tube_side_retried and self.TUBE_GAP_PREFER != 'none'
+                and self._in_stage_for() > self.TUBE_SIDE_RETRY_AFTER
+                and self._begin_tube_side_retry()):
             return
         if self._in_stage_for() > self.TUBE_SEARCH_TIMEOUT:
             why = (f"no tube gap found in {self.TUBE_SEARCH_TIMEOUT:.0f} s. "
@@ -2537,7 +2646,16 @@ class CourseFSM(WindowTraverse):
         scaled by whatever error the quoted field of view carries, and the
         rangefinder knows better.
         """
+        # aruco_pose names the marker in the frame id: 'camera_body/<id>'.
+        try:
+            marker = int(msg.header.frame_id.rsplit('/', 1)[1])
+        except (IndexError, ValueError):
+            marker = None
+        if self.pad_want_id is not None and marker != self.pad_want_id:
+            return
         self.aruco_seen += 1
+        self.pad_fixes += 1
+        self.aruco_id = marker
         self.aruco_point = (float(msg.point.y), float(msg.point.x))
         self.aruco_point_time = time.monotonic()
 
@@ -2555,9 +2673,25 @@ class CourseFSM(WindowTraverse):
             return None
         forward, right = self.aruco_point
         h = lp.heading
-        # forward along the heading, right 90 degrees clockwise from it
-        return np.array([forward * math.cos(h) + right * math.sin(h),
-                         forward * math.sin(h) - right * math.cos(h)])
+        # The body axes in NED are forward = (cos h, sin h) and right =
+        # (-sin h, cos h), so the offset is forward*f + right*r.
+        #
+        # THE EAST COMPONENT USED TO BE NEGATED HERE, and it was never
+        # caught because course_mission_sitl runs pad_detector:=false -- the
+        # pad stages fly the pattern with no marker to converge on, so the
+        # only consumer of this function was never exercised. thermal_fsm
+        # copied it, ran it against a real marker, and the aircraft drove
+        # AWAY from the pad at exactly the speed the nudge allowed: the
+        # marker was 0.95 m east, this returned 0.92 m WEST, and it ran
+        # 3.2 m the wrong way before the pad left the camera frame.
+        #
+        # thermal_fsm now rotates by the full attitude quaternion instead,
+        # which also removes the tilt error a heading-only rotation leaves
+        # in (see its _aruco_ned). This one is left heading-only and merely
+        # correct; if the pad stages here are ever flown for real, do the
+        # same there.
+        return np.array([forward * math.cos(h) - right * math.sin(h),
+                         forward * math.sin(h) + right * math.cos(h)])
 
     # ------------------------------------------------- off the takeoff pad
 
@@ -2661,11 +2795,14 @@ class CourseFSM(WindowTraverse):
         target = np.array([lp.x, lp.y]) + right * self.PAD_RIGHT
         self.MOVE_SPEED = self.APPROACH_SPEED
         self._enter_tube_stage(self.PAD_OFFSET)
-        self._set_target(float(target[0]), float(target[1]), self.tube_altitude)
+        # At the altitude we are at: after the second window that is the
+        # window's, and dropping to the tube crossing height here is a descent
+        # nothing asked for.
+        self._set_target(float(target[0]), float(target[1]),
+                         self.commanded_altitude)
         self.get_logger().warning(
-            f"PAD_OFFSET: tubes done. {self.PAD_RIGHT:.2f} m RIGHT, clear of "
-            "the line the obstacles stand on, then forward looking for the "
-            "marker.")
+            f"PAD_OFFSET: course done. {self.PAD_RIGHT:.2f} m straight RIGHT, "
+            f"then find guide marker id {self.PAD_GUIDE_ID} below.")
 
     def _handle_pad_offset(self):
         self._aim_yaw_at(self.gap_heading if self.gap_heading is not None
@@ -2677,10 +2814,146 @@ class CourseFSM(WindowTraverse):
         if (along is not None and abs(along) <= self.COURSE_XY_TOLERANCE
                 and abs(cross) <= self.COURSE_XY_TOLERANCE) or \
                 self._in_stage_for() > self.PAD_STAGE_TIMEOUT:
-            self._begin_pad_search()
+            self._begin_pad_guide()
             return
         self.get_logger().info(
             f"PAD_OFFSET: {0.0 if cross is None else cross:+.2f} m across to go.",
+            throttle_duration_sec=1.0)
+
+    def _want_marker(self, marker_id):
+        """Accept fixes of this marker only, starting from a clean slate."""
+        self.pad_want_id = marker_id
+        self.pad_fixes = 0
+        self.aruco_point = None
+        self.aruco_point_time = None
+
+    def _marker_confirmed(self):
+        return self.pad_fixes >= self.PAD_MARKER_CONFIRM and self._aruco_fresh()
+
+    def _begin_pad_guide(self):
+        self._want_marker(self.PAD_GUIDE_ID)
+        self.moving = False
+        self.pad_settle_since = None
+        self.MOVE_SPEED = self.PAD_SEARCH_SPEED
+        self._enter_tube_stage(self.PAD_GUIDE)
+        self.get_logger().warning(
+            f"PAD_GUIDE: looking down for guide marker id {self.PAD_GUIDE_ID} "
+            f"(up to {self.PAD_GUIDE_TIMEOUT:.0f} s).")
+
+    def _handle_pad_guide(self):
+        self._aim_yaw_at(self._course_heading())
+        if not self.hold_xy:
+            self._hold_and_wait(self.PAD_GUIDE, "flow lost over the guide marker")
+            return
+        lp = self.local_position
+        if not self._marker_confirmed():
+            self.pad_settle_since = None
+            if self._in_stage_for() > self.PAD_GUIDE_TIMEOUT:
+                self.get_logger().error(
+                    f"PAD_GUIDE: no guide marker id {self.PAD_GUIDE_ID} in "
+                    f"{self.PAD_GUIDE_TIMEOUT:.0f} s ({self.aruco_seen} fixes of "
+                    "any wanted id all flight). Going back from HERE, on the "
+                    "course heading -- the line is only as good as the step "
+                    "right was.")
+                self._begin_pad_back(np.array([lp.x, lp.y]))
+                return
+            self.get_logger().info(
+                f"PAD_GUIDE: no id {self.PAD_GUIDE_ID} yet, "
+                f"{self._in_stage_for():.0f}/{self.PAD_GUIDE_TIMEOUT:.0f} s.",
+                throttle_duration_sec=1.0)
+            return
+        error = self._nudge_onto_marker()
+        if error is not None and error <= self.PAD_CENTRE_TOLERANCE:
+            now = time.monotonic()
+            if self.pad_settle_since is None:
+                self.pad_settle_since = now
+            elif now - self.pad_settle_since >= self.PAD_CENTRE_SECONDS:
+                # The line goes through the MARKER, not through wherever the
+                # aircraft happens to be within tolerance of it.
+                self._begin_pad_back(np.array([lp.x, lp.y]) + self._aruco_ned())
+            return
+        self.pad_settle_since = None
+        if self._in_stage_for() > self.PAD_GUIDE_TIMEOUT + self.PAD_STAGE_TIMEOUT:
+            self.get_logger().warning(
+                "PAD_GUIDE: never settled on the guide marker; going back "
+                "from its last measured position.")
+            offset = self._aruco_ned()
+            self._begin_pad_back(np.array([lp.x, lp.y])
+                                 + (offset if offset is not None else 0.0))
+            return
+        self.get_logger().info(
+            f"PAD_GUIDE: centring on id {self.PAD_GUIDE_ID}, "
+            f"{'n/a' if error is None else f'{error:.2f} m'} off.",
+            throttle_duration_sec=1.0)
+
+    def _begin_pad_back(self, origin):
+        """Straight back along the course line through `origin`."""
+        h = self._course_heading()
+        fwd = np.array([math.cos(h), math.sin(h)])
+        self.pad_line_origin = np.array(origin, dtype=float)
+        self.pad_back_heading = h
+        end = self.pad_line_origin - fwd * self.PAD_BACK_DISTANCE
+        self._want_marker(self.PAD_LAND_ID)
+        self.MOVE_SPEED = self.PAD_BACK_SPEED
+        self._enter_tube_stage(self.PAD_BACK)
+        # Start the carrot ON the line, abeam of where we are, so the first
+        # thing the leg does is close any sideways error, not carry it.
+        lp = self.local_position
+        along = float(np.dot(np.array([lp.x, lp.y]) - self.pad_line_origin, fwd))
+        self.hold_x, self.hold_y = (self.pad_line_origin + fwd * along).tolist()
+        self._set_target(float(end[0]), float(end[1]), self.commanded_altitude)
+        self.get_logger().warning(
+            f"PAD_BACK: straight BACKWARD at {self.PAD_BACK_SPEED:.2f} m/s, "
+            f"nose held at {math.degrees(h):+.0f} deg, up to "
+            f"{self.PAD_BACK_DISTANCE:.2f} m, until landing marker id "
+            f"{self.PAD_LAND_ID} is below.")
+
+    def _pad_back_errors(self):
+        """(metres gone back, metres off the line + LEFT)."""
+        lp = self.local_position
+        h = self.pad_back_heading
+        d = np.array([lp.x, lp.y]) - self.pad_line_origin
+        fwd = np.array([math.cos(h), math.sin(h)])
+        left = np.array([math.sin(h), -math.cos(h)])
+        return -float(np.dot(d, fwd)), float(np.dot(d, left))
+
+    def _handle_pad_back(self):
+        self._aim_yaw_at(self.pad_back_heading)
+        if not self.hold_xy:
+            self._hold_and_wait(self.PAD_BACK, "flow lost on the way back")
+            return
+        gone, off = self._pad_back_errors()
+        if self._marker_confirmed():
+            self.moving = False
+            self.get_logger().warning(
+                f"PAD_BACK: landing marker id {self.PAD_LAND_ID} below after "
+                f"{gone:.2f} m back ({off:+.2f} m off the line).")
+            self._begin_pad_centre()
+            return
+        timeout = self.PAD_BACK_DISTANCE / max(self.PAD_BACK_SPEED, 1e-3) + 30.0
+        if (gone >= self.PAD_BACK_DISTANCE - self.COURSE_XY_TOLERANCE
+                or self._in_stage_for() > timeout):
+            self.outcome = ("COURSE COMPLETE; no landing marker id "
+                            f"{self.PAD_LAND_ID} in {gone:.2f} m of going back")
+            self.get_logger().error(
+                f"PAD_BACK: {gone:.2f} m back and no landing marker id "
+                f"{self.PAD_LAND_ID}. Landing here.")
+            self._begin_landing("no landing marker found going back")
+            return
+        # Pure pursuit on the line. The target is always ON the line, a short
+        # look-ahead behind where we are now, never the far end: aimed at the
+        # far end, a sideways push mid-leg is flown out as a long shallow
+        # diagonal back to it; aimed a look-ahead away, the same push is
+        # turned straight back onto the line within a few metres.
+        look = max(2.0 * self.MOVE_LEASH, 1.0)
+        t = min(max(gone, 0.0) + look, self.PAD_BACK_DISTANCE)
+        h = self.pad_back_heading
+        p = self.pad_line_origin - np.array([math.cos(h), math.sin(h)]) * t
+        self.move_target_x, self.move_target_y = float(p[0]), float(p[1])
+        self.moving = True
+        self.get_logger().info(
+            f"PAD_BACK: {gone:.2f}/{self.PAD_BACK_DISTANCE:.2f} m back, "
+            f"{off:+.2f} m off the line (+ left), id {self.PAD_LAND_ID} not yet.",
             throttle_duration_sec=1.0)
 
     def _begin_pad_search(self):
@@ -2722,7 +2995,28 @@ class CourseFSM(WindowTraverse):
             f"marker {'YES' if self.aruco_flag else 'no'}.",
             throttle_duration_sec=1.0)
 
+    def _update_pad_xy(self):
+        """Fold a fresh marker fix into pad_xy. Its distance, or None."""
+        offset = self._aruco_ned()
+        if offset is None:
+            return None
+        lp = self.local_position
+        fix = np.array([lp.x, lp.y]) + offset
+        if self.pad_xy is None:
+            self.pad_xy = fix
+        else:
+            self.pad_xy = self.pad_xy + self.PAD_XY_SMOOTHING * (fix - self.pad_xy)
+        return float(np.linalg.norm(offset))
+
+    def _height_above_pad(self):
+        """The rangefinder's height: over a raised pad, above THE PAD."""
+        lp = self.local_position
+        if lp is not None and lp.dist_bottom_valid:
+            return float(lp.dist_bottom)
+        return self.relative_altitude()
+
     def _begin_pad_centre(self):
+        self.pad_xy = None
         self.MOVE_SPEED = self.PAD_SEARCH_SPEED
         self._enter_tube_stage(self.PAD_CENTRE)
         self.pad_settle_since = None
@@ -2748,6 +3042,7 @@ class CourseFSM(WindowTraverse):
         if not self.hold_xy:
             self._hold_and_wait(self.PAD_CENTRE, "flow lost over the marker")
             return
+        self._update_pad_xy()
         error = self._nudge_onto_marker()
         now = time.monotonic()
         if error is None:
@@ -2774,50 +3069,103 @@ class CourseFSM(WindowTraverse):
     def _begin_pad_descend(self):
         self._enter_tube_stage(self.PAD_DESCEND)
         self.pad_lost_since = None
+        self.pad_blind = False
         self.get_logger().warning(
-            f"PAD_DESCEND: down at {self.PAD_DESCENT_RATE:.2f} m/s, correcting "
-            f"off the marker, until {self.PAD_HANDOFF_HEIGHT:.2f} m.")
+            f"PAD_DESCEND: down at {self.PAD_DESCENT_RATE:.2f} m/s onto the "
+            f"measured pad position, until {self.PAD_HANDOFF_HEIGHT:.2f} m above "
+            f"it; below {self.PAD_BLIND_HEIGHT:.2f} m a lost marker is expected "
+            "and the descent carries on.")
 
     def _handle_pad_descend(self):
-        """Walk the setpoint down while the marker keeps saying where it is.
+        """Walk down onto a FIXED point: the pad's measured NED position.
 
-        Losing it stops the descent and holds; it does not keep going blind.
-        Regaining it resumes. Below the handoff height the marker no longer
-        fits in the frame, so PX4's land takes the last part.
+        Each fix of the marker refines pad_xy; the aircraft is held on
+        pad_xy, not nudged at the latest fix, so a noisy frame does not move
+        it. Close to the pad the marker overfills the frame and is lost --
+        that is the expected end of seeing it, not a fault -- so below
+        pad_blind_height the descent continues on the position already
+        measured. Higher up, losing it still stops the descent and holds.
         """
         if not self.hold_xy:
             self._hold_and_wait(self.PAD_DESCEND, "flow lost during the descent")
             return
         now = time.monotonic()
-        alt = self.relative_altitude()
-        error = self._nudge_onto_marker()
+        height = self._height_above_pad()
+        error = self._update_pad_xy()
+
+        if self.pad_xy is not None:
+            self._set_target(float(self.pad_xy[0]), float(self.pad_xy[1]),
+                             self.commanded_altitude)
 
         if error is None:
-            if self.pad_lost_since is None:
-                self.pad_lost_since = now
-                self.get_logger().error(
-                    "PAD_DESCEND: marker lost. Holding altitude until it is back.")
-            if now - self.pad_lost_since > self.PAD_STAGE_TIMEOUT:
-                self._abandon("the marker never came back; landing from here")
-            return
-        if self.pad_lost_since is not None:
+            close = (self.pad_xy is not None and height is not None
+                     and height <= self.PAD_BLIND_HEIGHT)
+            if close:
+                if not self.pad_blind:
+                    self.pad_blind = True
+                    self.get_logger().warning(
+                        f"PAD_DESCEND: marker out of view at {height:.2f} m above "
+                        "the pad -- too close to see all of it. Carrying on down "
+                        f"onto the measured position ({self.pad_xy[0]:+.2f}, "
+                        f"{self.pad_xy[1]:+.2f}).")
+            else:
+                if self.pad_lost_since is None:
+                    self.pad_lost_since = now
+                    self.get_logger().error(
+                        "PAD_DESCEND: marker lost. Holding altitude until it is back.")
+                if now - self.pad_lost_since > self.PAD_STAGE_TIMEOUT:
+                    self._abandon("the marker never came back; landing from here")
+                return
+        elif self.pad_lost_since is not None:
             self.get_logger().warning("PAD_DESCEND: marker back; resuming.")
             self.pad_lost_since = None
 
-        if alt is not None and alt <= self.PAD_HANDOFF_HEIGHT:
-            self.outcome = ("COURSE COMPLETE: window, red bar, both blue bars, "
-                            f"tubes, landing on the marker {error:.2f} m off centre")
-            self._begin_landing("over the marker, handing the last "
-                                f"{self.PAD_HANDOFF_HEIGHT:.2f} m to PX4")
+        if height is not None and height <= self.PAD_HANDOFF_HEIGHT:
+            self._begin_pad_touchdown(height)
             return
         self.commanded_altitude = max(
-            self.PAD_HANDOFF_HEIGHT,
-            self.commanded_altitude - self.PAD_DESCENT_RATE * self.TIMER_PERIOD)
+            0.0, self.commanded_altitude - self.PAD_DESCENT_RATE * self.TIMER_PERIOD)
         self.target_z = self.home_z - self.commanded_altitude
         self.get_logger().info(
-            f"PAD_DESCEND: alt {'n/a' if alt is None else f'{alt:.2f}'} -> "
-            f"{self.commanded_altitude:.2f} m, {error:.2f} m off the marker.",
+            f"PAD_DESCEND: {'n/a' if height is None else f'{height:.2f}'} m above "
+            f"the pad, "
+            + ("marker out of view (close), on the measured point." if error is None
+               else f"{error:.2f} m off the marker."),
             throttle_duration_sec=1.0)
+
+    def _begin_pad_touchdown(self, height):
+        """The landing, HELD on the pad's position rather than on 'stay still'.
+
+        The inherited landing drops the position hold for a zero-velocity one,
+        which lets the aircraft drift the whole way down. Here the latched
+        point is the measured pad, so it stays latched: PX4 is flown to a
+        position, not just told not to move. _handle_landing below lets it go
+        only when flow itself stops being trustworthy, in the last few
+        centimetres.
+        """
+        pad = self.pad_xy
+        self.outcome = ("COURSE COMPLETE: landing on the marker"
+                        + ("" if pad is None else
+                           f" at ({pad[0]:+.2f}, {pad[1]:+.2f})"))
+        self._begin_landing(f"{height:.2f} m above the pad, landing on it")
+        if pad is not None and self.flow_is_healthy():
+            self.pad_landing = True
+            self.hold_xy = True
+            self.hold_x, self.hold_y = float(pad[0]), float(pad[1])
+            self.get_logger().warning(
+                f"Landing ON the pad: position held at ({pad[0]:+.2f}, "
+                f"{pad[1]:+.2f}) all the way down.")
+
+    def _handle_landing(self):
+        if self.pad_landing and self.hold_xy and not self.flow_is_healthy():
+            # Flow gives out just above the ground. A position hold on an
+            # estimate that is no longer being corrected can fly a jump in it;
+            # "stay still" cannot, and there is only a hand's width left.
+            self.hold_xy = False
+            self.get_logger().warning(
+                "Landing: flow no longer trustworthy this low; zero-velocity "
+                "hold for the last of it.")
+        super()._handle_landing()
 
     # ------------------------------------------------------ plumbing
 
@@ -3110,6 +3458,8 @@ class CourseFSM(WindowTraverse):
             self.WINDOW2_SKIP_DROP: self._handle_window2_skip_drop,
             self.PAD_OFFSET: self._handle_pad_offset,
             self.PAD_SEARCH: self._handle_pad_search,
+            self.PAD_GUIDE: self._handle_pad_guide,
+            self.PAD_BACK: self._handle_pad_back,
             self.PAD_CENTRE: self._handle_pad_centre,
             self.PAD_DESCEND: self._handle_pad_descend,
             self.COURSE_HOLD: self._handle_course_hold,

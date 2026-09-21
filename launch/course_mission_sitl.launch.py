@@ -101,11 +101,11 @@ USEFUL ARGUMENTS
                         standing past the gate. In THIS world neither holds:
                         the gate does not solve (see THE TUBE GATE) and there
                         is no second window past it.
-    start_offset_right:=2.2  the step sideways off the takeoff pad, flown
+    start_offset_right:=4.84 the step sideways off the takeoff pad, flown
                         before the window sweep starts
-    pad_right:=3.3      how far RIGHT the aircraft steps off the obstacle line
+    pad_right:=4.84     how far RIGHT the aircraft steps off the obstacle line
                         before creeping forward for the marker. A world
-                        distance: the default is the real course's 1.5 m
+                        distance: the default is the real course's 2.2 m
                         scaled by 2.2.
     agent_only:=true    bring the sim and the detectors up but NOT the flight
                         node, so you can run course_fsm by hand with the q/k
@@ -120,7 +120,9 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (AppendEnvironmentVariable, DeclareLaunchArgument,
                             ExecuteProcess, IncludeLaunchDescription,
-                            SetEnvironmentVariable, TimerAction)
+                            RegisterEventHandler, SetEnvironmentVariable,
+                            TimerAction)
+from launch.event_handlers import OnProcessExit
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -176,6 +178,25 @@ def generate_launch_description():
 
     world_file = os.path.join(sim_share, 'world', 'imav2026_scaled.sdf.world')
 
+    # Leftovers from a previous run, killed BEFORE Gazebo starts. When a run
+    # dies badly, launch kills the `ruby gz` wrapper but the real `gz sim`
+    # server underneath can survive it. The next launch then has two worlds
+    # of the same name, PX4 attaches to the OLD one (clock already minutes
+    # in), gets the new one's clock, and logs
+    #     ERROR [vehicle_imu] gyro timestamp error
+    #     timestamp_sample: 20218000, previous timestamp_sample: 299928000
+    # after which the IMU times out, EKF2 never converges and the aircraft can
+    # never arm. The [g] in each pattern stops pkill -f matching this shell's
+    # own command line, which contains the pattern text.
+    cleanup = ExecuteProcess(
+        cmd=['bash', '-c',
+             'pkill -f "[g]z sim"; pkill -x px4; pkill -x MicroXRCEAgent; '
+             'pkill -f "[p]arameter_bridge"; sleep 2; '
+             'pkill -9 -f "[g]z sim"; pkill -9 -x px4; '
+             'rm -f /tmp/px4_lock-0 /tmp/px4-sock-0; true'],
+        output='screen',
+    )
+
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
             get_package_share_directory('ros_gz_sim'), 'launch',
@@ -219,6 +240,8 @@ def generate_launch_description():
             '/camera/rgb/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             '/camera/depth/image_raw@sensor_msgs/msg/Image[gz.msgs.Image',
             '/camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            # The belly camera, for the floor markers (aruco_pose).
+            '/camera/down/image_raw@sensor_msgs/msg/Image[gz.msgs.Image',
             # The flow camera and the lidar both keep Gazebo's DEFAULT scoped
             # topic names, because those are the ones PX4 subscribes to --
             # the flow plugin for the camera it derives flow from, and
@@ -435,12 +458,17 @@ def generate_launch_description():
                 'tube_spacing': '2.2',              # uprights at x = +-1.1
                 'tube_radius': '0.0495',
                 'cross_bar_height': '1.0142',
-                # See the header: -x is the aircraft's LEFT and is the HIGH
-                # end, straight off tube_B_diag's pose in the world file.
-                'diagonal_left_height': '3.754',
-                'diagonal_right_height': '1.674',
-                'gap_side': 'auto',                 # -> left, the tall side
-                'tube_shift_left': '0.88',          # left, away from tube_A at x = 0
+                # +x is the aircraft's RIGHT and is the HIGH end, straight
+                # off tube_B_diag's pose in the world file (pitch +0.8229).
+                'diagonal_left_height': '1.674',
+                'diagonal_right_height': '3.754',
+                'gap_side': 'auto',                 # -> right, the tall side
+                # The minimum step. From the right cell tube_A (x = 0) is to
+                # the LEFT of the track, so the step works out longer than
+                # this and crosses back over the centreline to pass it on
+                # its left -- tube_allow_shift_right stays false for that.
+                'tube_shift_left': '0.88',
+                'tube_allow_shift_right': 'false',
                 'tube_standoff': s(1.20),
                 'tube_pass_exit': s(0.50),
                 'tube_exit_distance': s(0.0),   # = past tube_A, not at it
@@ -457,7 +485,7 @@ def generate_launch_description():
                 # horizon drops far enough down the frame that the uprights'
                 # lower ends are lost against the red floor and every one of
                 # them is rejected as "does not reach the floor".
-                'tube_look_altitude': s(0.90),
+                'tube_look_altitude': s(1.10),
                 # 0 = no cap on backing up, so the full 1.10 m back-off runs
                 # and the scan happens from 2.64 m -- the stand that works.
                 # Capped to 0.44 m it sits 1.98 m out, where a post leaves the
@@ -466,26 +494,31 @@ def generate_launch_description():
                 'tube_exit_forward': s(1.50),
                 'tube_scan_seconds': '8.0',
                 'tube_scan_max_seconds': '20.0',
-                'tube_gap_prefer': 'left',
+                'tube_gap_prefer': 'right',
                 # ---- the pad landing ----
-                # ON, so the stages after the tubes are actually flown, but
-                # this world has nothing to land ON: x500_drone carries only
-                # the forward OAK-D, and the aruco markers in imav2026_scaled
-                # belong to ring_board_assembly, standing upright at z = 1.1,
-                # not lying on the floor. So expect: 1 m right, a creep
-                # forward, no marker, and a landing at the end of the creep.
-                # To make it real, add a downward sensor to
-                # x500_drone.urdf.xacro, bridge it, put a marker on the floor
-                # past the tubes, and set pad_image_topic to the bridged topic.
-                # An ARGUMENT rather than a constant, so pad:=false on the
-                # command line reaches the flight node instead of being
-                # silently dropped here -- which is what happened on the
-                # 2026-09-20 run: it flew the pad stages anyway.
+                # After the last window: straight right pad_right (2.2 m real,
+                # 4.84 m here) onto platform_2's GUIDE marker (id 3, at
+                # x = 4.4, y = 7.15), centre on it, then straight BACK down
+                # strip_R to landing_platform's marker (id 1, x = 4.35,
+                # y = -14.3) -- 21.45 m back on the same line -- and land.
+                # Ids are the TEXTURES (aruco_marker_N.jpg); the visual names
+                # in the world file all say aruco_id0/1 and are wrong.
                 'pad': LaunchConfiguration('pad'),
-                # ... but no detector: there is no /dev/video here, and
-                # aruco_pose opening a camera that does not exist is noise at
-                # best. The pad stages fly, find nothing, and land.
-                'pad_detector': 'false',
+                'pad_detector': 'true',
+                'pad_image_topic': '/camera/down/image_raw',
+                'pad_hfov_deg': '90.0',          # down_cam.xacro, 1.5708 rad
+                'pad_marker_size': '0.88',       # world file, already scaled
+                'pad_guide_id': '3',
+                'pad_land_id': '1',
+                'pad_back_distance': s(11.0),    # 24.2 m, past the 21.45 needed
+                'pad_back_speed': s(0.30),
+                'pad_centre_tolerance': s(0.10),
+                'pad_max_nudge': s(0.30),
+                # The landing platform stands 0.42 m proud of the floor.
+                'pad_handoff_height': s(0.45),   # above the PAD (rangefinder)
+                # The 0.88 m marker stops fitting the 90 deg frame at about
+                # 0.8 m; below this, losing it is expected.
+                'pad_blind_height': s(0.80),
                 # ---- the failsafes ----
                 # Lengths scale with the world; times and counts do not.
                 'takeoff_accept_tolerance': s(0.30),
@@ -661,7 +694,7 @@ def generate_launch_description():
                         'actually standing past the tubes; with tubes:=false '
                         'the tubes never finish and this never runs.'),
         DeclareLaunchArgument(
-            'start_offset_right', default_value=s(1.50),
+            'start_offset_right', default_value=s(2.20),
             description='m the aircraft steps sideways off the TAKEOFF PAD, '
                         'before it starts looking for the window. The pad '
                         '(-4.4, -14.3) is not on the window axis and the '
@@ -670,7 +703,7 @@ def generate_launch_description():
                         'the arming heading. A WORLD distance, so the default '
                         f'is the real 1.0 m scaled by {SCALE}.'),
         DeclareLaunchArgument(
-            'pad_right', default_value=s(1.50),
+            'pad_right', default_value=s(2.20),
             description='m to the RIGHT after the last obstacle before the '
                         'creep forward looking for the marker. A WORLD '
                         'distance, so the default is the real course\'s 1.5 m '
@@ -714,8 +747,10 @@ def generate_launch_description():
         set_domain_id,
         set_plugin_path,
         robot_state_publisher,
-        gazebo,
-        gazebo_headless,
+        cleanup,
+        RegisterEventHandler(OnProcessExit(
+            target_action=cleanup,
+            on_exit=[gazebo, gazebo_headless])),
 
         # ORDER MATTERS, and not just for tidiness. PX4 must not start before
         # the model exists in a world that is already stepping. Started at the

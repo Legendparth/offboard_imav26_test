@@ -85,7 +85,7 @@ from std_msgs.msg import Bool, String
 from px4_msgs.msg import VehicleStatus
 
 from drone_testing.offboard_sequence import spin_node, wrap_pi
-from drone_testing.thermal_drop import ThermalDrop
+from drone_testing.thermal_drop import ThermalDrop, quat_rotate
 
 
 class ThermalFSM(ThermalDrop):
@@ -202,6 +202,19 @@ class ThermalFSM(ThermalDrop):
     PAD_LOST_SECONDS = 2.0          # s a pose stays usable after it arrives
     MARK_STAGE_TIMEOUT = 60.0
     PAD_STAGE_TIMEOUT = 45.0
+    ANCHOR_GAIN = 0.35          # how much of each new marker fix goes into
+                                # the anchor. Brisk enough to follow a real
+                                # correction, slow enough to ignore the
+                                # per-frame jitter of a solver working on an
+                                # 80-pixel marker.
+    MARKER_ANCHOR_MAX_AGE = 3.0 # s an anchor stays usable with no new fix.
+                                # Longer than PAD_LOST_SECONDS on purpose:
+                                # losing SIGHT of the pad must not lose the
+                                # PLACE. Below the handoff height the pad is
+                                # out of frame by design.
+    GROUND_EFFECT_HEIGHT = 1.20 # m AGL below which the airframe is in its
+                                # own downwash, the marker fix gets noisy and
+                                # the vehicle wallows. See _handle_land_descend.
 
     TIMER_PERIOD = 0.05             # s, OffboardSequence's loop period. The
                                     # marker descent walks commanded_altitude
@@ -256,6 +269,11 @@ class ThermalFSM(ThermalDrop):
         self.PAD_GAIN = float(n('pad_gain', self.PAD_GAIN))
         self.PAD_MAX_NUDGE = float(n('pad_max_nudge', self.PAD_MAX_NUDGE))
         self.PAD_LOST_SECONDS = float(n('pad_lost_seconds', self.PAD_LOST_SECONDS))
+        self.ANCHOR_GAIN = float(n('marker_anchor_gain', self.ANCHOR_GAIN))
+        self.MARKER_ANCHOR_MAX_AGE = float(n('marker_anchor_max_age',
+                                             self.MARKER_ANCHOR_MAX_AGE))
+        self.GROUND_EFFECT_HEIGHT = float(n('ground_effect_height',
+                                            self.GROUND_EFFECT_HEIGHT))
 
         # false = no marker hunt at all: hold, then survey from the takeoff
         # point, which is thermal_drop.py's own mission. It is how you fly
@@ -289,6 +307,10 @@ class ThermalFSM(ThermalDrop):
         self.mark_xy = None             # the marker the boxes are measured off
         self.pad_settle_since = None
         self.pad_lost_since = None
+        self.marker_anchor = None       # the pad's position in NED
+        self.marker_anchor_time = None
+        self.marker_error_log = collections.deque(maxlen=60)
+        self._warned_no_attitude = False
 
         # The corridor direction, latched once at the end of the hold. None
         # until then; see _latch_leg_yaw() for why it is not home_yaw.
@@ -324,18 +346,23 @@ class ThermalFSM(ThermalDrop):
         self.aruco_flag = bool(msg.data)
 
     def aruco_point_callback(self, msg):
-        """The marker in the CAMERA body frame -> (forward, right) in metres.
+        """The marker in the CAMERA body frame -> (forward, right, down), m.
 
         aruco_pose publishes +x right in the image, +y up in the image and +z
         opposite to where the camera looks. With the camera pointing down and
-        its image-up towards the nose, that is forward = y, right = x, and
-        height = -z. Only forward and right are taken: the height from a
-        marker is scaled by whatever error the quoted field of view carries,
-        and the rangefinder knows better. (down_cam.xacro says the same thing
-        from the other end.)
+        its image-up towards the nose, that is forward = y, right = x and
+        down = -z (down_cam.xacro says the same thing from the other end).
+
+        The DOWN component is kept as well as the other two, which the first
+        version of this did not. It is not used as a height -- it carries
+        whatever error the quoted field of view has, and the rangefinder
+        knows better -- it is used as the third component of a DIRECTION, so
+        that the vector can be rotated out of the body frame by the full
+        attitude instead of by heading alone. See _aruco_ned().
         """
         self.aruco_seen += 1
-        self.aruco_point = (float(msg.point.y), float(msg.point.x))
+        self.aruco_point = (float(msg.point.y), float(msg.point.x),
+                            -float(msg.point.z))
         self.aruco_point_time = time.monotonic()
         # aruco_pose puts the marker id after the frame name; a mission that
         # visits two pads wants to know which one it is looking at.
@@ -348,34 +375,184 @@ class ThermalFSM(ThermalDrop):
                 and time.monotonic() - self.aruco_point_time <= self.PAD_LOST_SECONDS)
 
     def _aruco_ned(self):
-        """The marker as an NED offset from the aircraft, or None."""
+        """The marker as a (north, east) offset from the aircraft, or None.
+
+        THE FULL ATTITUDE, NOT THE HEADING.
+
+            The body vector is rotated by the attitude quaternion, which is
+            what precision_land.py does and for the reason its docstring
+            gives: the roll and pitch the airframe is CARRYING IN ORDER TO
+            MAKE THE CORRECTION must not themselves show up as extra offset.
+            A belly camera on a vehicle tilted by t sees a marker on the
+            ground displaced by about h*tan(t); at 2.6 m and 5 deg that is
+            23 cm of phantom error, it points the way the vehicle is already
+            leaning, and it oscillates with the correction. That is a
+            centring loop that hunts -- the "drifting slightly here and
+            there" that ground effect makes worse on real hardware, because
+            ground effect is exactly what makes the airframe wobble in the
+            last metre.
+
+        THE HEADING-ONLY FALLBACK HAD ITS EAST COMPONENT INVERTED.
+
+            It read
+
+                north = f*cos(h) + r*sin(h)
+                east  = f*sin(h) - r*cos(h)
+
+            The body axes in NED are forward = (cos h, sin h) and right =
+            (-sin h, cos h), so the correct combination is f*forward +
+            r*right, i.e. east = f*sin(h) + r*cos(h). The old sign made a
+            marker on the RIGHT look like a marker on the LEFT, so the
+            aircraft drove away from it at exactly the speed the nudge
+            allowed, lost it out of frame a few seconds later, and timed
+            out. Measured in the arena: the marker was 0.95 m east, the
+            offset came out 0.92 m WEST, and the aircraft ran 3.2 m the
+            wrong way before the pad left the camera.
+
+            course_fsm.py's _aruco_ned had the same line, never exercised
+            because that simulation runs pad_detector:=false. Both are
+            fixed.
+        """
         if not self._aruco_fresh():
             return None
         lp = self.local_position
         if lp is None:
             return None
-        forward, right = self.aruco_point
+        fwd, right, down = self.aruco_point
+
+        q = self.attitude_q
+        if q is not None:
+            ned = quat_rotate(q, np.array([fwd, right, down]))
+            return np.array([ned[0], ned[1]])
+
+        # No attitude: heading only, uncompensated for tilt, and said out
+        # loud because the numbers are quietly worse.
+        if not self._warned_no_attitude:
+            self._warned_no_attitude = True
+            self.get_logger().error(
+                "No VehicleAttitude: the marker vector cannot be "
+                "tilt-compensated, so every degree the airframe leans adds "
+                "about height*tan(lean) of phantom offset. Falling back to a "
+                "heading-only rotation. Check vehicle_attitude is in PX4's "
+                "DDS topic list.")
         h = lp.heading
-        # forward along the heading, right 90 degrees clockwise from it
-        return np.array([forward * math.cos(h) + right * math.sin(h),
-                         forward * math.sin(h) - right * math.cos(h)])
+        c, sn = math.cos(h), math.sin(h)
+        # forward = (cos h, sin h), right = (-sin h, cos h)
+        return np.array([fwd * c - right * sn, fwd * sn + right * c])
 
-    def _nudge_onto_marker(self):
-        """Walk the hold point onto the marker, a fraction of the error a tick.
-
-        Returns the size of the error it just measured, or None when there is
-        no fresh pose -- which the callers treat as "stop, do not guess".
-        """
+    def _marker_ned(self):
+        """Where the marker IS, in NED, from the newest fix. None if stale."""
         offset = self._aruco_ned()
         if offset is None:
             return None
         lp = self.local_position
-        step = offset * self.PAD_GAIN
+        return np.array([lp.x, lp.y]) + offset
+
+    def _update_marker_anchor(self):
+        """Keep a smoothed, ABSOLUTE NED position for the marker.
+
+        WHY AN ANCHOR AND NOT JUST THE LIVE OFFSET.
+
+            A relative nudge needs a fix every tick. The last metre of a
+            landing is where fixes are scarcest: the pad grows until it
+            overflows the frame, the airframe is wallowing in its own ground
+            effect, and the detector starts dropping frames exactly when
+            precision matters most. A loop with nothing to fall back on
+            drifts whenever it blinks.
+
+            So each good fix is turned into an absolute point in NED and
+            averaged into an anchor. The aircraft then flies to a PLACE. If
+            the marker blinks out the place is still there, and the descent
+            carries on instead of stopping or wandering; when the pad
+            finally leaves the frame for good, below the handoff height, the
+            anchor is what PX4's land is handed.
+
+            The average is exponential and deliberately brisk (ANCHOR_GAIN):
+            enough to kill per-frame jitter, not so much that it lags a real
+            correction.
+        """
+        fix = self._marker_ned()
+        if fix is None:
+            return None
+        if self.marker_anchor is None:
+            self.marker_anchor = fix
+        else:
+            g = self.ANCHOR_GAIN
+            self.marker_anchor = (1.0 - g) * self.marker_anchor + g * fix
+        self.marker_anchor_time = time.monotonic()
+        return self.marker_anchor
+
+    def _anchor_error(self):
+        """How far the aircraft is from the anchor, or None if it is unusable.
+
+        Unusable means no anchor at all, or one that has had no new fix for
+        MARKER_ANCHOR_MAX_AGE. An anchor outlives the SIGHT of the marker on
+        purpose -- that is the whole point of it -- but not indefinitely:
+        past a few seconds with no fix it is dead reckoning on flow, and
+        dead reckoning is not something to land on.
+        """
+        if self.marker_anchor is None or self.marker_anchor_time is None:
+            return None
+        if time.monotonic() - self.marker_anchor_time > self.MARKER_ANCHOR_MAX_AGE:
+            return None
+        lp = self.local_position
+        if lp is None:
+            return None
+        return float(np.linalg.norm(self.marker_anchor - np.array([lp.x, lp.y])))
+
+    def _nudge_onto_marker(self):
+        """Fly at the marker ANCHOR, a bounded step at a time.
+
+        Returns the distance still to go, or None when there is no anchor at
+        all -- which the callers treat as "stop, do not guess".
+
+        The step is capped at PAD_MAX_NUDGE so that one bad pose cannot throw
+        the aircraft further than that, and the commanded point is always
+        derived from the ANCHOR rather than from the newest frame, so a
+        dropped frame costs nothing.
+        """
+        self._update_marker_anchor()
+        error = self._anchor_error()
+        if error is None:
+            return None
+        lp = self.local_position
+        here = np.array([lp.x, lp.y])
+        step = (self.marker_anchor - here) * self.PAD_GAIN
         n = float(np.linalg.norm(step))
         if n > self.PAD_MAX_NUDGE:
             step = step / n * self.PAD_MAX_NUDGE
-        self._move_to(np.array([lp.x, lp.y]) + step)
-        return float(np.linalg.norm(offset))
+        self._move_to(here + step)
+        self._check_runaway(error)
+        return error
+
+    def _check_runaway(self, error):
+        """Shout if the centring is making things worse, instead of leaving.
+
+        A centring loop that is wired up backwards does not fail, it
+        DIVERGES: it drives away from the marker at exactly the speed the
+        nudge allows, loses it out of frame, and reports a timeout somewhere
+        far from the pad. That is what a mirrored camera mount, a wrong
+        cam_yaw_deg or an inverted axis looks like from the log, and it cost
+        a full flight to find. So the error is watched, and if it is bigger
+        than it was a second ago, several times running, the stage says so in
+        as many words rather than flying on.
+        """
+        now = time.monotonic()
+        self.marker_error_log.append((now, error))
+        recent = [(t, e) for t, e in self.marker_error_log if now - t <= 2.0]
+        if len(recent) < 8 or recent[-1][1] < self.PAD_CENTRE_TOLERANCE:
+            return
+        if recent[-1][1] <= recent[0][1] + 0.05:
+            return
+        self.get_logger().error(
+            f"CENTRING IS DIVERGING: {recent[0][1]:.2f} m -> "
+            f"{recent[-1][1]:.2f} m in {now - recent[0][0]:.1f} s. The marker "
+            "offset is being resolved into the wrong direction -- check the "
+            "camera's mounting (flip_lr / cam_yaw_deg) and that "
+            "/aruco/point's forward and right match where the marker really "
+            "is. Holding rather than chasing it further.",
+            throttle_duration_sec=5.0)
+        self.moving = False
 
     def _marker_is_under_us(self):
         return self.aruco_flag and self._aruco_fresh()
@@ -744,6 +921,8 @@ class ThermalFSM(ThermalDrop):
     def _begin_land_centre(self):
         self.MOVE_SPEED = self.LAND_SEARCH_SPEED
         self.pad_settle_since = None
+        self.marker_anchor = None       # a fresh pad, not the one we dropped on
+        self.marker_error_log.clear()
         self._enter_stage(self.LAND_CENTRE)
         self._nudge_onto_marker()
         self.get_logger().warning(
@@ -786,25 +965,54 @@ class ThermalFSM(ThermalDrop):
             f"correcting off the marker, until {self.PAD_HANDOFF_HEIGHT:.2f} m.")
 
     def _handle_land_descend(self):
-        """Walk the setpoint down while the marker keeps saying where it is.
+        """Down onto the anchor, holding station on it the whole way.
 
-        Losing it STOPS the descent and holds; it does not keep going blind.
-        Regaining it resumes. Below the handoff height the marker no longer
-        fits in the frame, so PX4's land takes the last part.
+        HOW THIS DIFFERS FROM "STOP IF THE MARKER BLINKS"
+
+            The first version stopped the descent whenever a frame was
+            missed. That is the wrong instinct for the last two metres,
+            which is precisely where frames go missing: the pad is growing
+            towards the edges of the image, the airframe is wallowing in its
+            own ground effect, and the solver is working on a marker that
+            keeps leaving the frame. Stopping there leaves the aircraft
+            hovering IN ground effect, which is the least stable place it
+            can be, waiting for a fix that gets less likely the longer it
+            waits.
+
+            So the descent flies to the ANCHOR -- an absolute NED point,
+            built from the fixes taken while the marker WAS visible -- and
+            keeps going through a blink. Only when the anchor itself goes
+            stale (marker_anchor_max_age with no new fix at all) does it
+            stop and hold.
+
+        GROUND EFFECT
+
+            Below GROUND_EFFECT_HEIGHT the downwash comes back off the pad,
+            the airframe wanders, and every metre of that wander is a metre
+            of marker error that is NOT a real position error. Two things
+            change there: the descent slows to half rate, so there is more
+            time for the correction to work than for the wobble to build,
+            and the gate on "are we centred enough to keep going down" is
+            relaxed rather than tightened -- fighting a wobble by chasing it
+            is what makes the aircraft hunt. It is the anchor that holds the
+            position, not the last frame.
         """
         now = time.monotonic()
         alt = self.relative_altitude()
         error = self._nudge_onto_marker()
+        in_ground_effect = alt is not None and alt <= self.GROUND_EFFECT_HEIGHT
 
         if error is None:
+            # No anchor at all, or it has gone stale. Hold, do not guess.
             self.moving = False
             if self.pad_lost_since is None:
                 self.pad_lost_since = now
                 self.get_logger().error(
-                    "LAND_DESCEND: marker lost. Holding altitude until it is back.")
+                    "LAND_DESCEND: no marker and no usable anchor. Holding "
+                    "altitude until one of them is back.")
             if now - self.pad_lost_since > self.PAD_STAGE_TIMEOUT:
                 self.get_logger().error(
-                    "LAND_DESCEND: the marker never came back. Landing from here.")
+                    "LAND_DESCEND: nothing came back. Landing from here.")
                 self._finish("marker lost during the descent", land=True)
             return
         if self.pad_lost_since is not None:
@@ -818,15 +1026,30 @@ class ThermalFSM(ThermalDrop):
                          f"{self.PAD_HANDOFF_HEIGHT:.2f} m to PX4", land=True)
             return
 
+        # Only go down while we are actually over the pad. Out past the
+        # gate, hold the height and let the correction catch up -- descending
+        # while 40 cm off just arrives 40 cm off, lower down, with less room
+        # to fix it.
+        gate = self.PAD_CENTRE_TOLERANCE * (2.0 if in_ground_effect else 1.5)
+        if error > gate:
+            self.get_logger().info(
+                f"LAND_DESCEND: holding {alt:.2f} m, {error:.2f} m off "
+                f"(want {gate:.2f} m before going lower).",
+                throttle_duration_sec=1.0)
+            return
+
+        rate = self.PAD_DESCENT_RATE * (0.5 if in_ground_effect else 1.0)
         # DROP_ALTITUDE is the floor _set_altitude() clamps to, and it is
         # above the handoff height, so the descent is walked directly here.
         self.commanded_altitude = max(
             self.PAD_HANDOFF_HEIGHT,
-            self.commanded_altitude - self.PAD_DESCENT_RATE * self.TIMER_PERIOD)
+            self.commanded_altitude - rate * self.TIMER_PERIOD)
         self.target_z = self.home_z - self.commanded_altitude
         self.get_logger().info(
             f"LAND_DESCEND: alt {'n/a' if alt is None else f'{alt:.2f}'} -> "
-            f"{self.commanded_altitude:.2f} m, {error:.2f} m off the marker.",
+            f"{self.commanded_altitude:.2f} m at {rate:.2f} m/s"
+            + (" (ground effect)" if in_ground_effect else "")
+            + f", {error:.2f} m off the marker.",
             throttle_duration_sec=1.0)
 
     # ---------------------------------------------------------------- status
@@ -850,9 +1073,8 @@ class ThermalFSM(ThermalDrop):
                               @ self.leg_unit)
             detail = f"go{along:.1f} x{self.leg_cross:+.2f}"
         else:
-            err = self._aruco_ned()
-            detail = ('mk?' if err is None
-                      else f"mk{float(np.linalg.norm(err)):.2f}")
+            err = self._anchor_error()
+            detail = 'mk?' if err is None else f"mk{err:.2f}"
         self.status_pub.publish(String(data="|".join([
             self.current_stage, 'ARM' if armed else 'DIS',
             f"{alt:.2f}" if alt is not None else 'nan',
@@ -893,11 +1115,15 @@ class ThermalFSM(ThermalDrop):
             c, sn = math.cos(delta), math.sin(delta)
             rot = np.array([[c, -sn], [sn, c]])
             self.leg_start = pivot + rot @ (self.leg_start - pivot)
-        if self.mark_xy is not None and lp is not None:
+        if lp is not None:
             pivot = np.array([lp.x, lp.y])
             c, sn = math.cos(delta), math.sin(delta)
             rot = np.array([[c, -sn], [sn, c]])
-            self.mark_xy = pivot + rot @ (self.mark_xy - pivot)
+            if self.mark_xy is not None:
+                self.mark_xy = pivot + rot @ (self.mark_xy - pivot)
+            # The pad has not moved; the frame around it has.
+            if self.marker_anchor is not None:
+                self.marker_anchor = pivot + rot @ (self.marker_anchor - pivot)
         self.get_logger().warning(
             f"Leg turned with the frame: now "
             f"{math.degrees(self.leg_heading):+.2f} deg.")

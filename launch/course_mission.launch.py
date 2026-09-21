@@ -196,6 +196,10 @@ def generate_launch_description():
                     'camera_index': LaunchConfiguration('pad_camera_index'),
                     'image_topic': LaunchConfiguration('pad_image_topic'),
                     'marker_id': LaunchConfiguration('pad_marker_id'),
+                    # Only the guide and the landing marker count; anything
+                    # else on the floor is ignored by the detector itself.
+                    'marker_ids': [LaunchConfiguration('pad_guide_id'), ',',
+                                   LaunchConfiguration('pad_land_id')],
                     'marker_size': LaunchConfiguration('pad_marker_size'),
                     'hfov_deg': LaunchConfiguration('pad_hfov_deg'),
                     'stream_port': LaunchConfiguration('pad_stream_port'),
@@ -372,6 +376,12 @@ def generate_launch_description():
                     'pad_gain': LaunchConfiguration('pad_gain'),
                     'pad_max_nudge': LaunchConfiguration('pad_max_nudge'),
                     'pad_lost_seconds': LaunchConfiguration('pad_lost_seconds'),
+                    'pad_guide_id': LaunchConfiguration('pad_guide_id'),
+                    'pad_land_id': LaunchConfiguration('pad_land_id'),
+                    'pad_guide_timeout': LaunchConfiguration('pad_guide_timeout'),
+                    'pad_back_distance': LaunchConfiguration('pad_back_distance'),
+                    'pad_back_speed': LaunchConfiguration('pad_back_speed'),
+                    'pad_blind_height': LaunchConfiguration('pad_blind_height'),
                     'tube_cross_tolerance': LaunchConfiguration('tube_cross_tolerance'),
                     'tube_search_timeout': LaunchConfiguration('tube_search_timeout'),
                     'tube_min_matched': LaunchConfiguration('tube_min_matched'),
@@ -915,8 +925,11 @@ def generate_launch_description():
         DeclareLaunchArgument('tube_spacing', default_value='0.50'),
         DeclareLaunchArgument('tube_radius', default_value='0.025'),
         DeclareLaunchArgument('cross_bar_height', default_value='0.461'),
-        DeclareLaunchArgument('diagonal_left_height', default_value='2.0'),
-        DeclareLaunchArgument('diagonal_right_height', default_value='0.922'),
+        # The diagonal rises to the RIGHT: the right cell is the tall one and
+        # is the one crossed. The back upright is still passed on its LEFT
+        # (see tube_allow_shift_right).
+        DeclareLaunchArgument('diagonal_left_height', default_value='0.922'),
+        DeclareLaunchArgument('diagonal_right_height', default_value='2.0'),
         DeclareLaunchArgument('gap_side', default_value='auto'),
         DeclareLaunchArgument('tube_standoff', default_value='1.20'),
         DeclareLaunchArgument('tube_pass_exit', default_value='0.50'),
@@ -952,14 +965,18 @@ def generate_launch_description():
                         'yet. Once an opening has been seen the sweep ends on '
                         'tube_scan_seconds and the best of it is flown.'),
         DeclareLaunchArgument(
-            'tube_gap_prefer', default_value='left',
+            'tube_gap_prefer', default_value='right',
             description='left/right/none: which opening wins a near-tie on '
                         'measured area.'),
         DeclareLaunchArgument('tube_gap_tie', default_value='0.25'),
         DeclareLaunchArgument(
             'tube_exit_forward', default_value='1.50',
             description='m past the tube plane where the tubes are done.'),
-        DeclareLaunchArgument('tube_allow_shift_right', default_value='false'),
+        DeclareLaunchArgument(
+            'tube_allow_shift_right', default_value='false',
+            description='false = the back upright is ALWAYS passed on its '
+                        'left, however far that step is. true = left unless '
+                        'that is longer than tube_max_shift, right otherwise.'),
         DeclareLaunchArgument('tube_far_tube_band', default_value='0.40'),
         DeclareLaunchArgument('tube_far_tube_grow', default_value='3.0'),
         DeclareLaunchArgument('tube_min_hole_width', default_value='0.30'),
@@ -967,7 +984,12 @@ def generate_launch_description():
         DeclareLaunchArgument('tube_clearance', default_value='0.12'),
         DeclareLaunchArgument('tube_cross_drop', default_value='0.15'),
         DeclareLaunchArgument('tube_cross_left', default_value='0.05'),
-        DeclareLaunchArgument('tube_merge_shift', default_value='true'),
+        DeclareLaunchArgument(
+            'tube_merge_shift', default_value='false',
+            description='false = after the gate, straight sideways round the '
+                        'back upright, settle, then straight on (an L). '
+                        'true = one diagonal leg, which cuts through the back '
+                        'upright when the gate is crossed on the right.'),
         DeclareLaunchArgument('tube_cross_tolerance', default_value='0.05'),
         DeclareLaunchArgument('tube_search_timeout', default_value='45.0'),
         DeclareLaunchArgument('tube_min_matched', default_value='3'),
@@ -1091,13 +1113,13 @@ def generate_launch_description():
                         'midpoint of the window-to-red gap; there is no red '
                         'bar after this window, so it may be longer.'),
         DeclareLaunchArgument(
-            'start_offset_right', default_value='1.00',
+            'start_offset_right', default_value='2.20',
             description='m the aircraft steps sideways off the takeoff pad '
                         'after the climb and before the window sweep starts. '
                         'Positive is right of the arming heading, negative is '
                         'left; 0 skips the step and sweeps from the pad.'),
         DeclareLaunchArgument(
-            'pad_right', default_value='1.50',
+            'pad_right', default_value='2.20',
             description='m to the RIGHT after the last obstacle, off the line '
                         'the obstacles stand on, before the creep forward '
                         'looking for the marker.'),
@@ -1109,6 +1131,28 @@ def generate_launch_description():
         DeclareLaunchArgument('pad_gain', default_value='0.8'),
         DeclareLaunchArgument('pad_max_nudge', default_value='0.30'),
         DeclareLaunchArgument('pad_lost_seconds', default_value='2.0'),
+        DeclareLaunchArgument(
+            'pad_guide_id', default_value='3',
+            description='ArUco id of the GUIDE marker under the aircraft after '
+                        'the last window and the step right. Not landed on: '
+                        'centred on, to fix the line the landing pad is on.'),
+        DeclareLaunchArgument(
+            'pad_land_id', default_value='1',
+            description='ArUco id of the LANDING marker, found by flying '
+                        'straight back from the guide marker.'),
+        DeclareLaunchArgument('pad_guide_timeout', default_value='20.0'),
+        DeclareLaunchArgument(
+            'pad_back_distance', default_value='11.0',
+            description='m of straight backward flight from the guide marker '
+                        'before giving up on the landing marker and landing.'),
+        DeclareLaunchArgument('pad_back_speed', default_value='0.30'),
+        DeclareLaunchArgument(
+            'pad_blind_height', default_value='0.80',
+            description='m above the landing pad below which losing the marker '
+                        'is expected (too close to see all of it): the descent '
+                        'carries on onto the measured pad position instead of '
+                        'stopping. Set to where the marker stops fitting the '
+                        'down camera frame.'),
         DeclareLaunchArgument(
             'pad_camera_index', default_value='0',
             description='V4L2 index of the DOWNWARD camera.'),

@@ -492,10 +492,21 @@ def generate_launch_description():
                 'pad_max_nudge': s(0.30),
                 'pad_lost_seconds': '2.0',          # a TIME
                 'pad_stage_timeout': '45.0',
+                'marker_anchor_gain': '0.35',       # a fraction, not a length
+                'marker_anchor_max_age': '3.0',     # a TIME
+                # A world height: the downwash comes off the pad at a scaled
+                # distance like everything else here.
+                'ground_effect_height': s(0.55),
 
                 # ---- the retreat ----
                 'retreat_altitude': s(1.20),        # 2.64
-                'retreat_right': s(1.0),           # 3.30, the "1.5 m" scaled
+                'retreat_right': s(1.0),            # 2.20, the "1 m" scaled.
+                                                    # Far enough to be clear
+                                                    # of the box, close
+                                                    # enough that platform_2
+                                                    # is already in the down
+                                                    # camera when
+                                                    # LAND_SEARCH starts.
                 'retreat_timeout': '30.0',
                 'land_after_drop': 'true',
 
