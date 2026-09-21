@@ -29,6 +29,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'servo_controller = drone_testing.servo_controller:main',
             'pixhawk_node = drone_testing.pixhawk_node:main',
             'offboard_mission = drone_testing.offboard_mission:main',
             'offboard_takeoff = drone_testing.offboard_takeoff:main',
