@@ -257,6 +257,7 @@ def generate_launch_description():
                         'request_offboard_from_ros'),
                     # ---- the traversal ----
                     'standoff_distance': LaunchConfiguration('standoff_distance'),
+                    'min_standoff_distance': LaunchConfiguration('min_standoff_distance'),
                     'exit_distance': LaunchConfiguration('exit_distance'),
                     'altitude_offset': LaunchConfiguration('altitude_offset'),
                     'gear_below_camera': LaunchConfiguration('gear_below_camera'),
@@ -284,7 +285,10 @@ def generate_launch_description():
                     'recentre_timeout': LaunchConfiguration('recentre_timeout'),
                     'recentre_backoff_seconds': LaunchConfiguration(
                         'recentre_backoff_seconds'),
+                    'recentre_alt_step': LaunchConfiguration('recentre_alt_step'),
+                    'recentre_allow_backoff': LaunchConfiguration('recentre_allow_backoff'),
                     'recentre_backoff': LaunchConfiguration('recentre_backoff'),
+                    'recentre_max_retreats': LaunchConfiguration('recentre_max_retreats'),
                     'recentre_max_backoffs': LaunchConfiguration(
                         'recentre_max_backoffs'),
                     'align_yaw_tolerance_deg': LaunchConfiguration(
@@ -645,6 +649,11 @@ def generate_launch_description():
 
         # ---- the traversal ----
         DeclareLaunchArgument(
+            'min_standoff_distance', default_value='0.90',
+            description='m. ALIGN lines up at the current range to the window '
+                        'when already inside standoff_distance, instead of '
+                        'flying back out to it, but never closer than this.'),
+        DeclareLaunchArgument(
             'standoff_distance', default_value='1.6',
             description='m in front of the window plane the approach lines up '
                         'on, along the window normal.'),
@@ -692,9 +701,9 @@ def generate_launch_description():
             'align_alt_tolerance', default_value='0.08',
             description='m of altitude error tolerated before committing to '
                         'the traverse.'),
-        DeclareLaunchArgument('approach_speed', default_value='0.30'),
+        DeclareLaunchArgument('approach_speed', default_value='0.45'),
         DeclareLaunchArgument(
-            'move_leash', default_value='0.40',
+            'move_leash', default_value='0.50',
             description='m the commanded x/y is allowed to lead the measured '
                         'x/y by. This, not the speed arguments, is what sets '
                         'the horizontal speed actually flown: PX4 flies the '
@@ -739,9 +748,22 @@ def generate_launch_description():
                         'window is simply too wide for the field of view from '
                         'here and moves away from it instead.'),
         DeclareLaunchArgument(
-            'recentre_backoff', default_value='0.60',
-            description='m to retreat, backwards along the current heading, on '
-                        'each back-off.'),
+            'recentre_allow_backoff', default_value='false',
+            description='true = when yaw and altitude changes both fail to fit '
+                        'the window in frame, retreat recentre_backoff m '
+                        'backwards along the line of sight (at most '
+                        'recentre_max_retreats times). false = abandon instead.'),
+        DeclareLaunchArgument(
+            'recentre_backoff', default_value='0.40',
+            description='m per retreat, when recentre_allow_backoff is true.'),
+        DeclareLaunchArgument(
+            'recentre_max_retreats', default_value='1',
+            description='retreats allowed per window before abandoning.'),
+        DeclareLaunchArgument(
+            'recentre_alt_step', default_value='0.20',
+            description='m climbed or descended (towards the clipped edge, x/y held) '
+                        'each time yawing alone fails to fit the window in frame. '
+                        'Replaces the old backwards retreat.'),
         DeclareLaunchArgument(
             'recentre_max_backoffs', default_value='2',
             description='how many back-offs before giving up on the window.'),
@@ -860,7 +882,7 @@ def generate_launch_description():
             'bar_radius', default_value='0.02',
             description='m, half the bar thickness. Same value for both bars.'),
         DeclareLaunchArgument(
-            'red_clearance', default_value='0.30',
+            'red_clearance', default_value='0.60',
             description='m between the landing gear and the top of the red bar. '
                         'Crossing altitude = height + radius + this + gear.'),
         DeclareLaunchArgument(
@@ -918,7 +940,7 @@ def generate_launch_description():
             description='m from the SECOND BLUE BAR to the plane the tube '
                         'uprights stand on. A course measurement -- measure it.'),
         DeclareLaunchArgument(
-            'tube_look_standoff', default_value='1.20',
+            'tube_look_standoff', default_value='1.00',
             description='m short of the tube plane to stop, climb and scan '
                         'from. The aircraft never closes inside this before '
                         'it has chosen an opening.'),

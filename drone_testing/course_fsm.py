@@ -897,7 +897,7 @@ class CourseFSM(WindowTraverse):
         """
         if self.blind_traverse_since is None:
             along = self._distance_along_traverse()
-            total = self.STANDOFF_DISTANCE + self.EXIT_DISTANCE
+            total = self.standoff() + self.EXIT_DISTANCE
             remaining = max(0.0, total - along)
             cap = remaining / max(self.TRAVERSE_SPEED, 1e-3)
             self.BLIND_TRAVERSE_SECONDS = min(self._blind_seconds_param, cap)
@@ -2610,7 +2610,10 @@ class CourseFSM(WindowTraverse):
         self.truncated_frames = 0
         self.recentre_untruncated_since = None
         self.recentre_backoffs = 0
-        self.recentre_backoff_target = None
+        self.recentre_alt_target = None
+        self.recentre_alt_start = None
+        self.recentre_retreats = 0
+        self.recentre_retreat_target = None
         self.recentre_attempt_since = None
         self.traverse_entry = None
         self.traverse_exit = None

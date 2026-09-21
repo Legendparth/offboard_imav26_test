@@ -383,6 +383,7 @@ def generate_launch_description():
                 # standoff is 1.2 m of real course rather than 1.6: the arena
                 # floor ends at y = -15.4 and there is nowhere to back up to.
                 'standoff_distance': s(1.2),
+                'min_standoff_distance': s(0.90),
                 'exit_distance': s(0.5),
                 'vertical_clearance': s(0.15),
                 'lateral_clearance': s(0.15),
@@ -394,7 +395,10 @@ def generate_launch_description():
                 'align_along_tolerance': s(0.25),
                 'approach_speed': s(0.30),
                 'traverse_speed': s(0.45),
-                'recentre_backoff': s(0.60),
+                'recentre_alt_step': s(0.20),
+                'recentre_allow_backoff': LaunchConfiguration('recentre_allow_backoff'),
+                'recentre_backoff': s(0.40),
+                'recentre_max_retreats': LaunchConfiguration('recentre_max_retreats'),
                 'blind_traverse_seconds': '3.0',
 
                 # The one that actually governs how fast the aircraft moves.
@@ -405,7 +409,7 @@ def generate_launch_description():
                 # aircraft flew every leg at ~0.27 m/s while being commanded
                 # 0.99, and the blue crossing timed out 1.18 m short of its
                 # target. It is a world distance, so it scales with the world.
-                'move_leash': s(0.40),
+                'move_leash': s(0.50),
 
                 # Stage timeouts, scaled for the same reason: each leg is 2.2x
                 # longer. They are not tight limits, they are the point at
@@ -436,7 +440,7 @@ def generate_launch_description():
                 'red_bar_height': '3.52',
                 'blue_bar_height': '1.76',
                 'bar_radius': '0.044',
-                'red_clearance': s(0.30),
+                'red_clearance': s(0.60),
                 'blue_clearance': s(0.20),
                 'course_climb_speed': s(0.40),
                 'course_descent_speed': s(0.30),
@@ -453,8 +457,8 @@ def generate_launch_description():
                 # from the END of the blue crossing, which put the look-from
                 # point 1.76 m past the gate and flew the aircraft into it.
                 'blue_to_tube_distance': '0.0',     # 0 = use the two below
-                'tube_plane_from_blue': '3.3',      # blue bar 2 -5.5 -> gate -2.2
-                'tube_look_standoff': s(1.20),
+                'tube_plane_from_blue': '2.2',      # blue bar 2 -5.5 -> gate -2.2
+                'tube_look_standoff': s(1.00),
                 'tube_spacing': '2.2',              # uprights at x = +-1.1
                 'tube_radius': '0.0495',
                 'cross_bar_height': '1.0142',
@@ -485,7 +489,7 @@ def generate_launch_description():
                 # horizon drops far enough down the frame that the uprights'
                 # lower ends are lost against the red floor and every one of
                 # them is rejected as "does not reach the floor".
-                'tube_look_altitude': s(1.10),
+                'tube_look_altitude': s(1.20),
                 # 0 = no cap on backing up, so the full 1.10 m back-off runs
                 # and the scan happens from 2.64 m -- the stand that works.
                 # Capped to 0.44 m it sits 1.98 m out, where a post leaves the
@@ -630,6 +634,14 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'rng_dropout_seconds', default_value='10.0',
             description='s it stays away. The hardware logs took about ten.'),
+        DeclareLaunchArgument(
+            'recentre_allow_backoff', default_value='true',
+            description='SITL defaults this ON, for close-spawn window '
+                        'tests: retreat when yaw and altitude cannot fit '
+                        'the window in frame. course_mission defaults it off.'),
+        DeclareLaunchArgument(
+            'recentre_max_retreats', default_value='1',
+            description='retreats allowed per window before abandoning.'),
         DeclareLaunchArgument(
             'tube_back_off_max', default_value=s(0.40),
             description='m the tube scan may back UP by, so it does not '

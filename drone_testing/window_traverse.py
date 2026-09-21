@@ -201,8 +201,10 @@ rather than translates -- a turn on the spot leaves the flow-based position
 hold undisturbed and costs nothing if the bearing is wrong, whereas
 translating on a measurement already known to be wrong is the failure being
 prevented. If yawing does not help within recentre_backoff_seconds the
-window is too wide for the field of view from where the aircraft is, and it
-retreats along its line of sight and looks again.
+aircraft changes its viewpoint VERTICALLY rather than retreating -- there is
+usually no room behind it -- stepping recentre_alt_step towards the visible
+centroid's elevation (climb if the window sits high in the image, descend if
+low), holding x/y, and then yaws again from there.
 
 YAW
 ---
@@ -570,6 +572,11 @@ class WindowTraverse(WindowScan):
                                 # still in frame (at 90 deg HFOV a 1 m window
                                 # subtends ~35 deg here) and close enough that
                                 # the run through it is short.
+    MIN_STANDOFF_DISTANCE = 0.90  # m. ALIGN lines up at the aircraft's
+                                # CURRENT range when that is already inside
+                                # standoff_distance, instead of flying back out
+                                # to it -- but never closer than this, which is
+                                # the room needed to settle before the run.
     EXIT_DISTANCE = 1.50        # m beyond the window plane the traverse ends
     ALTITUDE_OFFSET = 0.0       # m added to the window centre height. Positive
                                 # is higher. Leave at 0 unless the detected
@@ -658,17 +665,27 @@ class WindowTraverse(WindowScan):
     # tick asks for at most RECENTRE_YAW_STEP, re-measuring in between, and the
     # cumulative turn away from the heading RECENTRE started at is capped at
     # RECENTRE_YAW_LIMIT. Past that the window is not merely nudged off the
-    # edge -- it does not fit -- and the back-off is the right answer.
+    # edge -- it does not fit -- and an altitude change is tried next.
     RECENTRE_CLEAR_SECONDS = 0.6    # s the detection must stay untruncated
     RECENTRE_YAW_DEADBAND = math.radians(3.0)
     RECENTRE_YAW_STEP = math.radians(4.0)   # max commanded correction per tick
     RECENTRE_YAW_LIMIT = math.radians(20.0)  # max cumulative turn per attempt
     RECENTRE_TIMEOUT = 20.0         # s per attempt, before backing off
-    RECENTRE_BACKOFF_SECONDS = 7.0  # s of fruitless yawing before deciding the
-                                    # window is simply too close to fit in the
-                                    # frame and backing away from it
-    RECENTRE_BACKOFF = 0.60         # m backwards along the current heading
-    RECENTRE_MAX_BACKOFFS = 2       # then give up
+    RECENTRE_BACKOFF_SECONDS = 7.0  # s of fruitless yawing before changing
+                                    # altitude to get a different view
+    RECENTRE_ALT_STEP = 0.20        # m climbed/descended per viewpoint change.
+                                    # No backwards translation: there is
+                                    # rarely room behind the aircraft.
+    RECENTRE_ALT_DEADBAND = math.radians(3.0)  # |centroid elevation| below
+                                    # this counts as "level"; then it climbs
+    RECENTRE_MAX_BACKOFFS = 2       # altitude changes before retreating/giving up
+    # Last resort, OFF by default: a short retreat backwards along the line of
+    # sight. Only distance fits a window that is bigger than the field of view
+    # (both sides clipped), which neither yaw nor altitude can fix. Capped,
+    # because there is rarely much room behind the aircraft.
+    RECENTRE_ALLOW_BACKOFF = False
+    RECENTRE_BACKOFF = 0.40         # m per retreat
+    RECENTRE_MAX_RETREATS = 1
 
     # ---- how far the flight is allowed to turn ----------------------------
     # A hard cone about the heading the aircraft armed on, and the last line
@@ -736,6 +753,10 @@ class WindowTraverse(WindowScan):
 
         self.STANDOFF_DISTANCE = float(self._declare_number(
             'standoff_distance', self.STANDOFF_DISTANCE))
+        self.MIN_STANDOFF_DISTANCE = float(self._declare_number(
+            'min_standoff_distance', self.MIN_STANDOFF_DISTANCE))
+        # The standoff this approach actually uses; set when ALIGN starts.
+        self.active_standoff = None
         self.EXIT_DISTANCE = float(self._declare_number(
             'exit_distance', self.EXIT_DISTANCE))
         self.ALTITUDE_OFFSET = float(self._declare_number(
@@ -775,10 +796,16 @@ class WindowTraverse(WindowScan):
             'recentre_timeout', self.RECENTRE_TIMEOUT))
         self.RECENTRE_BACKOFF_SECONDS = float(self._declare_number(
             'recentre_backoff_seconds', self.RECENTRE_BACKOFF_SECONDS))
-        self.RECENTRE_BACKOFF = float(self._declare_number(
-            'recentre_backoff', self.RECENTRE_BACKOFF))
+        self.RECENTRE_ALT_STEP = float(self._declare_number(
+            'recentre_alt_step', self.RECENTRE_ALT_STEP))
         self.RECENTRE_MAX_BACKOFFS = int(self._declare_number(
             'recentre_max_backoffs', self.RECENTRE_MAX_BACKOFFS))
+        self.RECENTRE_ALLOW_BACKOFF = bool(self.declare_parameter(
+            'recentre_allow_backoff', self.RECENTRE_ALLOW_BACKOFF).value)
+        self.RECENTRE_BACKOFF = float(self._declare_number(
+            'recentre_backoff', self.RECENTRE_BACKOFF))
+        self.RECENTRE_MAX_RETREATS = int(self._declare_number(
+            'recentre_max_retreats', self.RECENTRE_MAX_RETREATS))
         self.ALIGN_SETTLE_SECONDS = float(self._declare_number(
             'align_settle_seconds', self.ALIGN_SETTLE_SECONDS))
         self.ALIGN_YAW_TOLERANCE = math.radians(float(self._declare_number(
@@ -917,7 +944,11 @@ class WindowTraverse(WindowScan):
         self.recentre_untruncated_since = None
         self.recentre_ref_heading = 0.0
         self.recentre_backoffs = 0
-        self.recentre_backoff_target = None
+        self.recentre_alt_target = None
+        self.recentre_alt_start = None
+        self.recentre_first_dir = 1.0
+        self.recentre_retreats = 0
+        self.recentre_retreat_target = None
         self.recentre_attempt_since = None
         self.last_good_est = None
         self.last_good_est_time = 0.0
@@ -1137,6 +1168,33 @@ class WindowTraverse(WindowScan):
 
     # --------------------------------------------------------- the geometry
 
+    def standoff(self):
+        """The standoff in use: the one ALIGN picked, else the nominal one."""
+        return (self.STANDOFF_DISTANCE if self.active_standoff is None
+                else self.active_standoff)
+
+    def _pick_standoff(self, est):
+        """Line up where the aircraft already is along the window axis.
+
+        The nominal standoff_distance is a MAXIMUM, not a place to fly back
+        to: if the aircraft is already closer, flying out to it is a retreat
+        into space that may not exist. So the range along the window normal
+        right now is kept, clamped to [min_standoff_distance,
+        standoff_distance]. Only when it is inside the minimum does ALIGN move
+        backwards, and then only by the difference.
+        """
+        lp = self.local_position
+        if lp is None:
+            return self.STANDOFF_DISTANCE
+        normal = np.asarray(est['normal'][:2], dtype=float)
+        norm = float(np.linalg.norm(normal))
+        if norm < 1e-6:
+            return self.STANDOFF_DISTANCE
+        rng = float(np.dot(np.array([lp.x - est['centre'][0],
+                                     lp.y - est['centre'][1]]), normal / norm))
+        lo = min(self.MIN_STANDOFF_DISTANCE, self.STANDOFF_DISTANCE)
+        return min(max(rng, lo), self.STANDOFF_DISTANCE)
+
     def approach_points(self, est):
         """(entry, exit, heading) for an estimate, all in NED.
 
@@ -1151,7 +1209,7 @@ class WindowTraverse(WindowScan):
         """
         centre = est['centre']
         normal = est['normal']
-        entry = centre + normal * self.STANDOFF_DISTANCE
+        entry = centre + normal * self.standoff()
         exit_point = centre - normal * self.EXIT_DISTANCE
         heading = math.atan2(-normal[1], -normal[0])
         return entry, exit_point, heading
@@ -1400,7 +1458,7 @@ class WindowTraverse(WindowScan):
             dx, dy = x - pivot[0], y - pivot[1]
             return (pivot[0] + c * dx - sn * dy, pivot[1] + sn * dx + c * dy)
 
-        for name in ('traverse_entry', 'traverse_exit', 'recentre_backoff_target'):
+        for name in ('traverse_entry', 'traverse_exit', 'recentre_retreat_target'):
             point = getattr(self, name, None)
             if point is not None:
                 point[0], point[1] = turn(point[0], point[1])
@@ -1515,7 +1573,8 @@ class WindowTraverse(WindowScan):
         self._enter_stage(self.RECENTRE)
         self.moving = False
         self.recentre_untruncated_since = None
-        self.recentre_backoff_target = None
+        self.recentre_alt_target = None
+        self.recentre_retreat_target = None
         self.recentre_attempt_since = time.monotonic()
         lp = self.local_position
         self.recentre_ref_heading = self.yaw_setpoint if lp is None else lp.heading
@@ -1540,10 +1599,10 @@ class WindowTraverse(WindowScan):
         image centre from it.
 
         Three ways out. The window comes fully into view and AIM takes over;
-        the aperture is simply too big for the field of view from here, so the
-        aircraft backs away and tries again; or neither works and the attempt
-        is abandoned rather than flown at a window whose extent was never
-        measured.
+        yawing alone does not do it, so the aircraft climbs or descends a step
+        (never backwards -- no room) and yaws again from there; or neither
+        works and the attempt is abandoned rather than flown at a window whose
+        extent was never measured.
         """
         if not self._still_flyable():
             return
@@ -1551,24 +1610,39 @@ class WindowTraverse(WindowScan):
         self._try_latch_xy_hold()
         self.log_flight_state()
 
-        # A back-off in progress owns the stage until it arrives: yawing while
-        # translating is the one thing the whole approach is written to avoid.
-        if self.recentre_backoff_target is not None:
-            if self._arrived_at_backoff():
-                self.recentre_backoff_target = None
+        # An altitude change in progress owns the stage until it arrives:
+        # yawing while climbing is the kind of combined motion the stereo
+        # tracking dislikes, and the frame mid-climb answers nothing.
+        if self.recentre_retreat_target is not None:
+            lp = self.local_position
+            if lp is None or math.hypot(
+                    self.recentre_retreat_target[0] - lp.x,
+                    self.recentre_retreat_target[1] - lp.y) <= self.ALIGN_TOLERANCE:
+                self.recentre_retreat_target = None
                 self.recentre_attempt_since = time.monotonic()
-                lp = self.local_position
                 if lp is not None:
                     self.recentre_ref_heading = lp.heading
-                # Both clocks are per ATTEMPT, not per stage: a back-off that
-                # used half the stage timeout getting there must not leave the
-                # look that follows it no time to succeed.
                 self._restart_stage_clock()
                 self.get_logger().info("RECENTRE: backed off; looking again.")
             else:
                 self.get_logger().info(
                     "RECENTRE: backing away from the window to get it all in "
                     "frame.", throttle_duration_sec=1.0)
+                return
+
+        if self.recentre_alt_target is not None:
+            if self._arrived_at_recentre_alt():
+                self.recentre_alt_target = None
+                self.recentre_attempt_since = time.monotonic()
+                # Both clocks are per ATTEMPT, not per stage.
+                self._restart_stage_clock()
+                self.get_logger().info(
+                    f"RECENTRE: now at {self.commanded_altitude:.2f} m; "
+                    "looking again.")
+            else:
+                self.get_logger().info(
+                    "RECENTRE: changing altitude for a better view of the "
+                    "window.", throttle_duration_sec=1.0)
                 return
 
         # Checked before the branches below, so it catches every way of being
@@ -1638,11 +1712,12 @@ class WindowTraverse(WindowScan):
                     f"RECENTRE: turned the full "
                     f"{math.degrees(self.RECENTRE_YAW_LIMIT):.0f} deg and the "
                     "window is still clipped -- it does not fit in the frame "
-                    "from here.", throttle_duration_sec=2.0)
-                self._begin_backoff()
-                return
-            step = math.copysign(min(abs(step), allowed), step)
-            self._aim_yaw_at(wrap_pi(lp.heading + step))
+                    "from here. Holding heading until the altitude change.",
+                    throttle_duration_sec=2.0)
+                step = 0.0
+            else:
+                step = math.copysign(min(abs(step), allowed), step)
+                self._aim_yaw_at(wrap_pi(lp.heading + step))
 
         attempt = time.monotonic() - (self.recentre_attempt_since or time.monotonic())
         if attempt > self.RECENTRE_BACKOFF_SECONDS:
@@ -1656,50 +1731,101 @@ class WindowTraverse(WindowScan):
             throttle_duration_sec=1.0)
 
     def _begin_backoff(self):
-        """Give up on turning and move away from the window instead.
+        """Give up on turning alone and change the viewpoint vertically.
 
-        Yawing only helps while the window fits in the field of view at all.
-        Once it does not -- the aircraft has ended up close to a wide aperture
-        -- turning just swaps which edge is clipped, and the only thing that
-        puts the whole window in frame is distance. Backwards along the
-        current heading, which points at the window, so this retreats along
-        the line of sight and does not lose it.
+        This used to retreat along the line of sight, but on the course there
+        is rarely room behind the aircraft. Instead it climbs or descends
+        RECENTRE_ALT_STEP, holding x/y, towards the visible centroid's
+        elevation: a window clipped at the top of the image sits high, so
+        climbing brings its top edge down into frame, and vice versa. The yaw
+        budget is kept (it is about the heading the attempt started at), so
+        the next look can still nudge sideways. If the centroid is level the
+        step is upwards, which also steepens the view of the sill.
         """
         lp = self.local_position
         if lp is None or not self.hold_xy:
             self.get_logger().warning(
-                "RECENTRE: want to back off but there is no lateral estimate to "
-                "do it on. Holding.", throttle_duration_sec=2.0)
+                "RECENTRE: want to change altitude but there is no position "
+                "estimate to hold x/y on. Holding.", throttle_duration_sec=2.0)
             self.recentre_attempt_since = time.monotonic()
             return
 
         if self.recentre_backoffs >= self.RECENTRE_MAX_BACKOFFS:
-            self._abandon(
-                f"the window was still truncated after "
-                f"{self.RECENTRE_MAX_BACKOFFS} back-offs -- it does not fit in "
-                "the field of view from anywhere this approach can reach")
+            self._begin_retreat_or_abandon(lp)
+            return
+
+        # Altitudes are chosen around where the FIRST change started, fanning
+        # out +1, -1, +2, -2 steps (first sign from the centroid elevation), so
+        # a change never lands back on an altitude already looked from. The
+        # old "pinned, so try the other way" rule sent the second attempt
+        # straight back to the starting altitude.
+        current = self.home_z - lp.z
+        if self.recentre_alt_start is None:
+            det = self.last_detection
+            el = det['centre_el'] if det is not None else 0.0
+            self.recentre_alt_start = current
+            self.recentre_first_dir = -1.0 if el < -self.RECENTRE_ALT_DEADBAND else 1.0
+        target = None
+        k = self.recentre_backoffs
+        for n in range(k, k + 8):
+            sign = self.recentre_first_dir * (1.0 if n % 2 == 0 else -1.0)
+            cand = self.recentre_alt_start + sign * (n // 2 + 1) * self.RECENTRE_ALT_STEP
+            if self.MIN_ALTITUDE <= cand <= self.MAX_ALTITUDE:
+                target = cand
+                break
+        if target is None:
+            self.recentre_backoffs = self.RECENTRE_MAX_BACKOFFS
+            self._begin_retreat_or_abandon(lp)
             return
 
         self.recentre_backoffs += 1
+        self.recentre_alt_target = target
+        self.MOVE_SPEED = self.APPROACH_SPEED
+        self._set_target(self.hold_x, self.hold_y, altitude=target)
+        self._restart_stage_clock()
+        self.get_logger().warning(
+            f"RECENTRE: yawing has not un-truncated the window in "
+            f"{self.RECENTRE_BACKOFF_SECONDS:.0f} s. Changing altitude "
+            f"{current:.2f} -> {target:.2f} m for a different view, holding "
+            f"position (attempt {self.recentre_backoffs}/"
+            f"{self.RECENTRE_MAX_BACKOFFS}).")
+
+    def _begin_retreat_or_abandon(self, lp):
+        """Altitude changes exhausted: a short capped retreat, if allowed."""
+        if (not self.RECENTRE_ALLOW_BACKOFF
+                or self.recentre_retreats >= self.RECENTRE_MAX_RETREATS):
+            why = ("retreat disabled (recentre_allow_backoff:=false)"
+                   if not self.RECENTRE_ALLOW_BACKOFF else
+                   f"after {self.recentre_retreats} retreat(s)")
+            self._abandon(
+                f"the window was still truncated after "
+                f"{self.RECENTRE_MAX_BACKOFFS} altitude changes, {why} -- it "
+                "does not fit in the field of view from here")
+            return
+        self.recentre_retreats += 1
         heading = lp.heading
         target = (self.hold_x - math.cos(heading) * self.RECENTRE_BACKOFF,
                   self.hold_y - math.sin(heading) * self.RECENTRE_BACKOFF)
-        self.recentre_backoff_target = np.array(target)
+        self.recentre_retreat_target = np.array(target)
+        # A fresh set of altitude looks from the new, further viewpoint,
+        # starting from the altitude the aircraft is at now.
+        self.recentre_backoffs = 0
+        self.recentre_alt_start = None
         self.MOVE_SPEED = self.APPROACH_SPEED
         self._set_target(target[0], target[1])
         self._restart_stage_clock()
         self.get_logger().warning(
-            f"RECENTRE: yawing has not un-truncated the window in "
-            f"{self.RECENTRE_BACKOFF_SECONDS:.0f} s, so it does not fit in the "
-            f"frame from here. Backing off {self.RECENTRE_BACKOFF:.2f} m "
-            f"(attempt {self.recentre_backoffs}/{self.RECENTRE_MAX_BACKOFFS}).")
+            f"RECENTRE: yaw and altitude could not fit the window in frame. "
+            f"Retreating {self.RECENTRE_BACKOFF:.2f} m backwards along the "
+            f"line of sight (retreat {self.recentre_retreats}/"
+            f"{self.RECENTRE_MAX_RETREATS}).")
 
-    def _arrived_at_backoff(self):
+    def _arrived_at_recentre_alt(self):
         lp = self.local_position
-        if lp is None or self.recentre_backoff_target is None:
+        if lp is None or self.recentre_alt_target is None:
             return True
-        return math.hypot(self.recentre_backoff_target[0] - lp.x,
-                          self.recentre_backoff_target[1] - lp.y) <= self.ALIGN_TOLERANCE
+        return abs((self.home_z - lp.z) - self.recentre_alt_target) \
+            <= self.ALIGN_ALT_TOLERANCE
 
     # ---------------------------------------------------------------- AIM
 
@@ -1759,6 +1885,7 @@ class WindowTraverse(WindowScan):
     # -------------------------------------------------------------- ALIGN
 
     def _begin_align(self, est):
+        self.active_standoff = self._pick_standoff(est)
         entry, _, heading = self.approach_points(est)
         self._enter_stage(self.ALIGN)
         self.align_in_band_since = None
@@ -1770,8 +1897,9 @@ class WindowTraverse(WindowScan):
         self._set_target(entry[0], entry[1], self.window_altitude(est))
         self.get_logger().warning(
             f"ALIGN: flying to ({entry[0]:+.2f}, {entry[1]:+.2f}) NED, "
-            f"{self.STANDOFF_DISTANCE:.2f} m in front of the window on its "
-            f"axis, at {self.APPROACH_SPEED:.2f} m/s. {self.pose_summary()}.")
+            f"{self.active_standoff:.2f} m in front of the window on its "
+            f"axis (nominal {self.STANDOFF_DISTANCE:.2f}, min "
+            f"{self.MIN_STANDOFF_DISTANCE:.2f}), at {self.APPROACH_SPEED:.2f} m/s. {self.pose_summary()}.")
 
     def _handle_align(self):
         """Fly to the standoff point, re-deriving it from the live estimate.
@@ -1996,8 +2124,8 @@ class WindowTraverse(WindowScan):
             heading = self.yaw_setpoint
             entry = np.array([self.move_target_x, self.move_target_y, 0.0])
             exit_point = entry + np.array([
-                math.cos(heading) * (self.STANDOFF_DISTANCE + self.EXIT_DISTANCE),
-                math.sin(heading) * (self.STANDOFF_DISTANCE + self.EXIT_DISTANCE),
+                math.cos(heading) * (self.standoff() + self.EXIT_DISTANCE),
+                math.sin(heading) * (self.standoff() + self.EXIT_DISTANCE),
                 0.0])
             self.get_logger().warning(
                 "Committing to the traverse on the settled heading: the pose "
@@ -2059,7 +2187,7 @@ class WindowTraverse(WindowScan):
         # the exit point: a metre of crosstrack error would otherwise read as
         # "not there yet" forever and burn the timeout.
         along = self._distance_along_traverse()
-        total = self.STANDOFF_DISTANCE + self.EXIT_DISTANCE
+        total = self.standoff() + self.EXIT_DISTANCE
         if along >= total - self.ALIGN_TOLERANCE:
             self._begin_clear(f"through, {along:.2f} m flown of {total:.2f} m")
             return
@@ -2113,7 +2241,7 @@ class WindowTraverse(WindowScan):
             self.outcome = (
                 f"BLIND: vision lost mid-traverse, pushed on for "
                 f"{self.BLIND_TRAVERSE_SECONDS:.1f} s and reached {along:.2f} m of "
-                f"{self.STANDOFF_DISTANCE + self.EXIT_DISTANCE:.2f} m")
+                f"{self.standoff() + self.EXIT_DISTANCE:.2f} m")
             self._begin_landing(
                 f"vision did not come back within {self.BLIND_TRAVERSE_SECONDS:.1f} s "
                 "of the blind push")
@@ -2242,7 +2370,7 @@ class WindowTraverse(WindowScan):
             _, cross = self._approach_errors()
             detail = "algn?" if cross is None else f"algnX{cross:+.2f}"
         elif self.current_stage == self.TRAVERSE:
-            total = self.STANDOFF_DISTANCE + self.EXIT_DISTANCE
+            total = self.standoff() + self.EXIT_DISTANCE
             detail = f"thru{self._distance_along_traverse():.1f}/{total:.1f}"
         else:
             detail = f"{max(0.0, self.CLEAR_SECONDS - self._in_stage_for()):.0f}s"
