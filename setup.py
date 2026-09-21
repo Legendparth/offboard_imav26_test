@@ -54,6 +54,8 @@ setup(
             'servo_test = drone_testing.servo_test:main',
             'thermal_sensor = drone_testing.thermal_sensor:main',
             'thermal_drop = drone_testing.thermal_drop:main',
+            'thermal_fsm = drone_testing.thermal_fsm:main',
+            'thermal_sim = drone_testing.thermal_sim:main',
             'servo_control = drone_testing.servo_control:main'
         ],
     },

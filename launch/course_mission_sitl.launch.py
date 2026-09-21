@@ -101,6 +101,8 @@ USEFUL ARGUMENTS
                         standing past the gate. In THIS world neither holds:
                         the gate does not solve (see THE TUBE GATE) and there
                         is no second window past it.
+    start_offset_right:=2.2  the step sideways off the takeoff pad, flown
+                        before the window sweep starts
     pad_right:=3.3      how far RIGHT the aircraft steps off the obstacle line
                         before creeping forward for the marker. A world
                         distance: the default is the real course's 1.5 m
@@ -500,6 +502,7 @@ def generate_launch_description():
                 'window2_altitude': LaunchConfiguration('window2_altitude'),
                 'window2_hold_seconds': LaunchConfiguration('window2_hold_seconds'),
                 'scan_span_deg': LaunchConfiguration('scan_span_deg'),
+                'start_offset_right': LaunchConfiguration('start_offset_right'),
                 'pad_right': LaunchConfiguration('pad_right'),
                 'pad_search_distance': s(2.50),
                 'pad_search_speed': s(0.30),
@@ -561,7 +564,7 @@ def generate_launch_description():
                         'course_fsm, so you can run it by hand and keep the '
                         'q/k keyboard aborts.'),
         DeclareLaunchArgument(
-            'tubes', default_value='false',
+            'tubes', default_value='true',
             description='true attempts the tube gate after the blue bars. It '
                         'will not solve in THIS world -- see THE TUBE GATE in '
                         'the header -- so the default lands after the bars, '
@@ -638,7 +641,7 @@ def generate_launch_description():
             description='s stationary at that altitude before the search '
                         'starts. Not a length: it is not scaled.'),
         DeclareLaunchArgument(
-            'window2_exit_distance', default_value=s(1.00),
+            'window2_exit_distance', default_value=s(1.50),
             description='m beyond the SECOND window its traverse ends. A '
                         'world distance. 0 keeps exit_distance, which the '
                         'course pins to the window-to-red midpoint.'),
@@ -649,7 +652,7 @@ def generate_launch_description():
                         'the SECOND window search as well, which starts from '
                         'wherever the tubes left the aircraft pointing.'),
         DeclareLaunchArgument(
-            'window_after_tubes', default_value='false',
+            'window_after_tubes', default_value='true',
             description='true flies a SECOND window traversal -- the blue '
                         'window -- after the tubes, and only then the landing '
                         'the course finishes with. It is the whole window '
@@ -657,6 +660,15 @@ def generate_launch_description():
                         'on what the camera measures, so it needs a window '
                         'actually standing past the tubes; with tubes:=false '
                         'the tubes never finish and this never runs.'),
+        DeclareLaunchArgument(
+            'start_offset_right', default_value=s(1.50),
+            description='m the aircraft steps sideways off the TAKEOFF PAD, '
+                        'before it starts looking for the window. The pad '
+                        '(-4.4, -14.3) is not on the window axis and the '
+                        'window is not in frame from it, so the sweep from '
+                        'the pad itself finds nothing. Positive is right of '
+                        'the arming heading. A WORLD distance, so the default '
+                        f'is the real 1.0 m scaled by {SCALE}.'),
         DeclareLaunchArgument(
             'pad_right', default_value=s(1.50),
             description='m to the RIGHT after the last obstacle before the '
@@ -688,11 +700,13 @@ def generate_launch_description():
                         'seconds reporting an estimator that is still '
                         'starting up.'),
 
-        # Behind the blue window of the exit wall (x = -0.66, y = -12.1),
-        # nose along +y. The arena floor runs to y = -15.4.
-        DeclareLaunchArgument('spawn_x', default_value='-0.66'),
-        DeclareLaunchArgument('spawn_y', default_value='-15.0'),
-        DeclareLaunchArgument('spawn_z', default_value='0.3'),
+        # ON THE TAKEOFF PAD, nose along +y. The pad is off to the LEFT of
+        # the exit wall's blue window (x = -0.66, y = -12.1), which is why the
+        # flight's first move is start_offset_right. The arena floor runs to
+        # y = -15.4.
+        DeclareLaunchArgument('spawn_x', default_value='-4.4'),
+        DeclareLaunchArgument('spawn_y', default_value='-14.3'),
+        DeclareLaunchArgument('spawn_z', default_value='0.5'),
         DeclareLaunchArgument('spawn_yaw', default_value='1.5708'),
 
         set_resource_path,

@@ -19,6 +19,17 @@ it, and with the camera read moved onto its own thread.
 
     image_topic:=<topic> takes frames from ROS instead of a camera device,
     which is how it runs in the simulator and off a bag.
+    marker_ids:=2,3     the markers that COUNT, comma separated. A mission
+                        that visits several pads visits several ids, and one
+                        that arms ON a marked pad must be able to leave that
+                        pad's id out. Defaults to marker_id alone. With more
+                        than one in frame the LARGEST is taken, which is the
+                        nearest. /aruco/point's frame_id carries the id of
+                        the marker each fix is of ("camera_body/2").
+    min_marker_distance_rate:=0.02
+                        needed when the marker lies on a square PAD -- see
+                        the comment by it, and expect zero detections on a
+                        perfectly clear image without it.
     browser             http://<jetson-ip>:8080/  MJPEG of the annotated
                                                   frame. stream_port:=0 off.
 
@@ -183,10 +194,15 @@ class MjpegServer:
         self.thread.start()
 
     def shutdown(self):
+        # BaseException, not Exception: server.shutdown() blocks waiting for
+        # the serve_forever thread, and on a Ctrl-C teardown the SIGINT lands
+        # inside that wait as a KeyboardInterrupt, which is a BaseException
+        # and went straight through `except Exception` as a socketserver
+        # traceback. The thread is a daemon and dies with the process anyway.
         try:
             self.server.shutdown()
             self.server.server_close()
-        except Exception:
+        except BaseException:
             pass
 
 
@@ -248,6 +264,37 @@ class ArucoPose(Node):
 
         self.marker_id = int(self.declare_parameter(
             'marker_id', self.MARKER_ID).value)
+        # MORE THAN ONE ACCEPTABLE MARKER.
+        #
+        #   A mission that visits several pads visits several IDs. The thermal
+        #   drop flies over platform_1 (id 2) on its way out and lands on
+        #   platform_2 (id 3), and it must ignore the takeoff pad (id 0) it is
+        #   sitting on when it arms -- so "any marker" is wrong and one id is
+        #   not enough. marker_ids is the set that counts; marker_id stays as
+        #   the default and as the single-marker spelling, so nothing that
+        #   already passes marker_id changes behaviour.
+        #
+        #   With several in frame the LARGEST is taken, which is the nearest
+        #   one and therefore the one the aircraft is actually over.
+        #   A COMMA-SEPARATED STRING and not an integer array, because a
+        #   launch file can only hand a node a substitution, which is a
+        #   string: an array parameter would have to be built with a
+        #   ParameterValue wrapper at every call site, and getting that
+        #   wrong yields "Type of parameter value is not supported" at
+        #   startup rather than anything about markers.
+        raw = str(self.declare_parameter('marker_ids', '').value)
+        ids = []
+        for part in raw.replace('[', ' ').replace(']', ' ').replace(',', ' ').split():
+            try:
+                ids.append(int(part))
+            except ValueError:
+                self.get_logger().error(
+                    f"marker_ids: '{part}' is not a number; ignoring it.")
+        self.marker_ids = ids if ids else [self.marker_id]
+        # The id of the marker in the LAST solved frame, for the log line and
+        # for /aruco/point's frame_id. A consumer that cares which pad it is
+        # looking at reads it there; one that does not, ignores it.
+        self.last_marker_id = self.marker_ids[0]
         self.marker_size = float(self.declare_parameter(
             'marker_size', self.MARKER_SIZE).value)
         dict_name = str(self.declare_parameter(
@@ -294,6 +341,26 @@ class ArucoPose(Node):
         # Both are supported here, chosen at runtime, because the alternative
         # is a node that dies on import on half the machines it runs on --
         # which is exactly what it did.
+        # MARKERS ON A SMALL, SQUARE PAD.
+        #
+        #   A marker lying on a square plate has a SECOND square contour
+        #   around it -- the plate's own edge -- concentric with it and only
+        #   slightly bigger. cv2.aruco treats two candidates whose corners
+        #   are within minMarkerDistanceRate of each other (5% of the image
+        #   by default) as the same thing and keeps the LARGER, so the
+        #   plate's outline swallows the marker and nothing is ever
+        #   detected: the quad is found, the bits are sampled a cell off,
+        #   and it is rejected. In the simulated arena the pad is 1.10 m and
+        #   the marker 0.88 m, about 2% of the frame apart, and the default
+        #   loses every single frame while the stream looks perfect.
+        #
+        #   0.05 is OpenCV's default and is left alone, because on the real
+        #   course the marker is not ringed by anything. The simulator
+        #   passes 0.02. A value of 0 disables the merge entirely and,
+        #   confusingly, also detects nothing -- do not use it as "off".
+        self.min_marker_distance_rate = float(self.declare_parameter(
+            'min_marker_distance_rate', 0.05).value)
+
         if hasattr(cv2.aruco, 'ArucoDetector'):
             dictionary = cv2.aruco.getPredefinedDictionary(dict_id)
             params = cv2.aruco.DetectorParameters()
@@ -301,12 +368,14 @@ class ArucoPose(Node):
             # corner good to a pixel and one good to a tenth, and every
             # centimetre of lateral accuracy comes through those four corners.
             params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+            params.minMarkerDistanceRate = self.min_marker_distance_rate
             detector = cv2.aruco.ArucoDetector(dictionary, params)
             self._detect = detector.detectMarkers
         else:
             dictionary = cv2.aruco.Dictionary_get(dict_id)
             params = cv2.aruco.DetectorParameters_create()
             params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+            params.minMarkerDistanceRate = self.min_marker_distance_rate
             self._detect = lambda gray: cv2.aruco.detectMarkers(
                 gray, dictionary, parameters=params)
         self.get_logger().info(
@@ -379,7 +448,8 @@ class ArucoPose(Node):
 
         self.timer = self.create_timer(1.0 / max(detect_rate, 1.0), self.detect_once)
         self.get_logger().warning(
-            f"ArUco down-camera pose: id {self.marker_id}, "
+            "ArUco down-camera pose: id "
+            f"{'/'.join(str(i) for i in self.marker_ids)}, "
             f"{self.marker_size * 100:.0f} cm marker, {dict_name}, "
             f"processing at {detect_rate:.0f} Hz.")
 
@@ -486,13 +556,19 @@ class ArucoPose(Node):
 
         pose = None
         quad = None
-        if self.marker_id in seen:
-            c = corners[seen.index(self.marker_id)].reshape(4, 2).astype(np.float64)
+        # Every wanted marker in the frame, biggest first: the biggest is the
+        # nearest, and the nearest is the one the aircraft is over.
+        wanted = [(cv2.contourArea(corners[i].reshape(4, 2).astype(np.float32)), i)
+                  for i, mid in enumerate(seen) if mid in self.marker_ids]
+        if wanted:
+            _, i = max(wanted)
+            c = corners[i].reshape(4, 2).astype(np.float64)
             found, rvec, tvec = cv2.solvePnP(self.objp, c, self.K, self.D,
                                              flags=cv2.SOLVEPNP_IPPE_SQUARE)
             if found:
                 pose = tuple(float(v) for v in R_CF @ tvec.reshape(3))
                 quad = c
+                self.last_marker_id = int(seen[i])
 
         self._update_debounce(pose is not None)
 
@@ -500,15 +576,18 @@ class ArucoPose(Node):
             x, y, z = pose
             msg = PointStamped()
             msg.header.stamp = self.get_clock().now().to_msg()
-            msg.header.frame_id = 'camera_body'
+            # Which marker this fix is of, for a consumer that cares. The
+            # frame is still the camera body frame; the suffix names the pad.
+            msg.header.frame_id = f'camera_body/{self.last_marker_id}'
             msg.point.x, msg.point.y, msg.point.z = x, y, z
             self.point_pub.publish(msg)
             # forward = y, right = x, for the mounting this package assumes.
-            line = (f"id {self.marker_id} SEEN  cam x={x:+.3f} y={y:+.3f} "
+            line = (f"id {self.last_marker_id} SEEN  cam x={x:+.3f} y={y:+.3f} "
                     f"z={z:+.3f} m  height={-z:.3f} m  |  marker is "
                     f"{body_words(y, x)} of the camera")
         else:
-            line = f"id {self.marker_id} not visible (seen: {seen or '-'})"
+            line = (f"id {'/'.join(str(i) for i in self.marker_ids)} not "
+                    f"visible (seen: {seen or '-'})")
 
         self.detected_pub.publish(Bool(data=self.detected))
         self.info_pub.publish(String(data=line))

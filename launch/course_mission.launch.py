@@ -362,6 +362,7 @@ def generate_launch_description():
                     'window2_altitude': LaunchConfiguration('window2_altitude'),
                     'window2_hold_seconds': LaunchConfiguration('window2_hold_seconds'),
                     'pad': LaunchConfiguration('pad'),
+                    'start_offset_right': LaunchConfiguration('start_offset_right'),
                     'pad_right': LaunchConfiguration('pad_right'),
                     'pad_search_distance': LaunchConfiguration('pad_search_distance'),
                     'pad_search_speed': LaunchConfiguration('pad_search_speed'),
@@ -1089,6 +1090,12 @@ def generate_launch_description():
                         'keeps exit_distance, which the course pins to the '
                         'midpoint of the window-to-red gap; there is no red '
                         'bar after this window, so it may be longer.'),
+        DeclareLaunchArgument(
+            'start_offset_right', default_value='1.00',
+            description='m the aircraft steps sideways off the takeoff pad '
+                        'after the climb and before the window sweep starts. '
+                        'Positive is right of the arming heading, negative is '
+                        'left; 0 skips the step and sweeps from the pad.'),
         DeclareLaunchArgument(
             'pad_right', default_value='1.50',
             description='m to the RIGHT after the last obstacle, off the line '

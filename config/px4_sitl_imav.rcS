@@ -32,6 +32,7 @@ BARO_FALLBACK=${PX4_BARO_CTRL:=1}
 param compare EKF2_HGT_REF 2 || NEEDS_EKF2_RESTART=1
 param compare EKF2_BARO_CTRL $BARO_FALLBACK || NEEDS_EKF2_RESTART=1
 param compare EKF2_GPS_CTRL 5 || NEEDS_EKF2_RESTART=1
+param compare EKF2_MAG_TYPE 6 || NEEDS_EKF2_RESTART=1
 
 param set EKF2_RNG_CTRL 2
 
@@ -116,6 +117,47 @@ param set EKF2_OF_CTRL 1
 # simply never fused.
 param set EKF2_RNG_K_GATE 5.0
 param set EKF2_RNG_NOISE 0.2
+
+# --- the magnetometer INITIALISES yaw and is then left alone ------------
+# 6 = "Init": align the heading from the mag at boot, then never fuse it
+# again and carry yaw on the gyro.
+#
+# WHY. With the default (0 = Automatic, 3-axis fusion in flight) EKF2's
+# heading wanders. Measured over one thermal_drop_sitl run, with the
+# airframe spawned at a fixed yaw and standing still on the pad:
+#
+#     VehicleLocalPosition.heading   +1.7 deg .. +8.2 deg over the flight
+#     at arming (where home_yaw is latched)   +6.0 deg
+#     settled, ten seconds later              +3.2 deg
+#
+# Nothing physical moved. That is a 6.5 deg swing in a quantity every
+# straight leg of the mission is aimed by, and it does two things, both
+# bad:
+#
+#   1. The leg is AIMED wrong. thermal_fsm flies "forward" along the
+#      heading it latched, so a heading that was 2.8 deg stale when it was
+#      sampled points the whole 21.5 m run 2.8 deg off the corridor.
+#
+#   2. The airframe PHYSICALLY TURNS. yaw_setpoint is latched from the same
+#      sample, and PX4 then rotates the aircraft until its ESTIMATED
+#      heading matches it. As the estimate settled, the nose followed: true
+#      yaw measured in Gazebo went from the spawned 90.0 deg to 87.6 deg.
+#
+# Together they put the aircraft 1.09 m to the RIGHT after 19.7 m of
+# "straight" flight, which is what this was found chasing.
+#
+# 'Init' is also the honest model of the real aircraft. This flies INDOORS,
+# where the mag is the least trustworthy thing on the airframe: the arena
+# is steel-framed and the vehicle's own currents are a decent fraction of
+# the earth field. A two-minute flight on a gyro whose bias EKF2 is already
+# estimating drifts far less than a mag being fused against that.
+#
+# Not 5 ('None'): that leaves the heading unaligned at boot, with no GNSS
+# yaw alignment to recover it. Init keeps the alignment and drops only the
+# in-flight fusion.
+#
+# reboot_required, which is why it is in the compare block at the top too.
+param set EKF2_MAG_TYPE 6
 
 # --- keep this simulation off everyone else's DDS domain ----------------
 # ROS 2 and uXRCE-DDS both default to domain 0, and DDS discovery is

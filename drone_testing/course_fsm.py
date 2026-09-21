@@ -196,6 +196,8 @@ class CourseFSM(WindowTraverse):
     WINDOW2_SKIP_CROSS = "WINDOW2_SKIP_CROSS"
     WINDOW2_SKIP_DROP = "WINDOW2_SKIP_DROP"
 
+    START_OFFSET = "START_OFFSET"   # step right off the pad, before the sweep
+
     PAD_OFFSET = "PAD_OFFSET"       # step right, clear of the tube line
     PAD_SEARCH = "PAD_SEARCH"       # creep forward until the marker is seen
     PAD_CENTRE = "PAD_CENTRE"       # hold over it while the estimate settles
@@ -220,14 +222,15 @@ class CourseFSM(WindowTraverse):
     # mission's own stages either -- they begin at SCAN, after this.
     WINDOW2_STAGES = (WINDOW2_RISE, WINDOW2_HOLD, WINDOW2_SKIP_RISE,
                       WINDOW2_SKIP_CROSS, WINDOW2_SKIP_DROP)
-    COURSE_STAGES = ((RED_RISE, RED_CROSS, BLUE_DROP, BLUE_CROSS, COURSE_HOLD)
-                     + TUBE_STAGES + WINDOW2_STAGES + PAD_STAGES)
+    COURSE_STAGES = ((START_OFFSET, RED_RISE, RED_CROSS, BLUE_DROP, BLUE_CROSS,
+                      COURSE_HOLD) + TUBE_STAGES + WINDOW2_STAGES + PAD_STAGES)
     # Where horizontal hold is judged on FLOW FUSION ALONE. Crossing a bar or
     # the cross tube steps dist_bottom by a metre or two, EKF2 drops
     # cs_rng_kin_consistent, and it only re-earns that at |vz| > 0.5 m/s -- so
     # it never comes back in a hover. Requiring it here is what landed the
     # aircraft just after the red bar.
-    FLOW_ONLY_STAGES = ((RED_CROSS, BLUE_DROP, BLUE_CROSS, COURSE_HOLD)
+    FLOW_ONLY_STAGES = ((START_OFFSET, RED_CROSS, BLUE_DROP, BLUE_CROSS,
+                         COURSE_HOLD)
                         + TUBE_STAGES + WINDOW2_STAGES + PAD_STAGES)
 
     # ---- the course layout ------------------------------------------------
@@ -436,6 +439,13 @@ class CourseFSM(WindowTraverse):
                                 # after this window, so it can be longer.
     # ---- the landing pad, after the tubes ---------------------------------
     PAD = True                  # false = land where the tubes finish
+    # The takeoff pad does not face the window: from where the aircraft is
+    # put down, the window is off to one side and the camera cannot see it at
+    # all. So the flight steps sideways first and only then starts looking.
+    # Positive is to the RIGHT of the arming heading; negative steps left.
+    START_OFFSET_RIGHT = 1.00   # m sideways off the pad before the sweep
+    START_OFFSET_TIMEOUT = 30.0 # s before the step is called done regardless
+
     PAD_RIGHT = 1.50            # m to the RIGHT after the tubes, off the line
                                 # the obstacles stand on
     PAD_SEARCH_DISTANCE = 6.00  # m of forward creep before giving up
@@ -598,6 +608,11 @@ class CourseFSM(WindowTraverse):
         self.WINDOW2_HOLD_SECONDS = float(n('window2_hold_seconds',
                                             self.WINDOW2_HOLD_SECONDS))
 
+        self.START_OFFSET_RIGHT = float(n('start_offset_right',
+                                          self.START_OFFSET_RIGHT))
+        self.START_OFFSET_TIMEOUT = float(n('start_offset_timeout',
+                                            self.START_OFFSET_TIMEOUT))
+
         self.PAD = bool(self.declare_parameter('pad', self.PAD).value)
         self.PAD_RIGHT = float(n('pad_right', self.PAD_RIGHT))
         self.PAD_SEARCH_DISTANCE = float(n('pad_search_distance', self.PAD_SEARCH_DISTANCE))
@@ -691,6 +706,7 @@ class CourseFSM(WindowTraverse):
         self.scan_ended = None
         self.scan_choice = None
         self.scan_report = None
+        self.start_offset_done = False
         self.pad_search_start = None
         self.pad_settle_since = None
         self.pad_lost_since = None
@@ -778,7 +794,18 @@ class CourseFSM(WindowTraverse):
     # ---------------------------------------------------------- geometry
 
     def _course_heading(self):
-        return self.traverse_heading
+        """The direction the course runs in.
+
+        traverse_heading is the window's, and it does not exist until the
+        window has been measured -- which is only after START_OFFSET, the
+        one course stage that runs BEFORE the window. Every consumer of this
+        (the setpoint geometry, _target_errors, publish_status) takes the
+        answer straight into math.cos, so returning None there is a crash
+        rather than a missing number. Before the window, the course line is
+        the heading the aircraft was armed on, which is what START_OFFSET is
+        flown relative to anyway.
+        """
+        return self.home_yaw if self.traverse_heading is None else self.traverse_heading
 
     def _target_errors(self):
         """(along, cross) from the aircraft to the current move target.
@@ -2532,6 +2559,100 @@ class CourseFSM(WindowTraverse):
         return np.array([forward * math.cos(h) + right * math.sin(h),
                          forward * math.sin(h) - right * math.cos(h)])
 
+    # ------------------------------------------------- off the takeoff pad
+
+    def _handle_hold(self):
+        """The post-takeoff hold, with one lateral step bolted to its end.
+
+        The hook is HERE and not in _begin_scan because the inherited hold
+        has two exits, not one: if the detector is already confirming a
+        window when the hold runs out it locks on immediately and the sweep
+        is never begun. From the takeoff pad that shortcut is exactly the
+        wrong thing to take -- whatever the camera thinks it can see from the
+        pad, the aircraft is not on the window's axis yet -- so the step goes
+        in front of BOTH exits, and the decision between them is deferred to
+        _end_of_hold once the aircraft has moved.
+        """
+        if self.start_offset_done or abs(self.START_OFFSET_RIGHT) < 1e-3:
+            super()._handle_hold()
+            return
+        if not self._still_flyable():
+            return
+        self._try_latch_xy_hold()
+        remaining = self.HOLD_SECONDS - self._in_stage_for()
+        if remaining > 0.0:
+            self.get_logger().info(
+                f"Holding, {remaining:.1f} s to the step off the pad... "
+                f"({self.window_summary()})",
+                throttle_duration_sec=1.0)
+            self.log_flight_state()
+            return
+        if self.local_position is None or not self.hold_xy:
+            # No position hold means no lateral step worth flying: a carrot
+            # walked on velocity hold alone goes an unknown distance. Give
+            # the step up rather than guess, and let the inherited hold take
+            # whichever of its exits it wants.
+            self.start_offset_done = True
+            self.get_logger().error(
+                "START_OFFSET: no xy position hold at the end of the hold; "
+                "skipping the step off the pad and searching from here.")
+            super()._handle_hold()
+            return
+        self._begin_start_offset()
+
+    def _end_of_hold(self):
+        """The inherited end-of-hold decision, taken after the step."""
+        if self.window_is_confirmed():
+            self._lock_on_window("in sight after the step off the pad")
+        else:
+            self._begin_scan()
+
+    def _begin_start_offset(self):
+        """One step sideways off the pad, holding the arming heading."""
+        self.start_offset_done = True
+        # Right of the ARMING heading, not of the current one: this runs
+        # before any window is flown at, so home_yaw is the only direction
+        # the flight has agreed on, and it is the one the operator aimed.
+        h = self.home_yaw
+        right = np.array([-math.sin(h), math.cos(h)])
+        lp = self.local_position
+        target = np.array([lp.x, lp.y]) + right * self.START_OFFSET_RIGHT
+        self.MOVE_SPEED = self.APPROACH_SPEED
+        self._enter_stage(self.START_OFFSET)
+        self._set_target(float(target[0]), float(target[1]),
+                         self.commanded_altitude)
+        self.get_logger().warning(
+            f"START_OFFSET: {abs(self.START_OFFSET_RIGHT):.2f} m "
+            f"{'RIGHT' if self.START_OFFSET_RIGHT >= 0.0 else 'LEFT'} off the "
+            f"takeoff pad at {self.MOVE_SPEED:.2f} m/s, holding "
+            f"{math.degrees(h):+.0f} deg, then the window search.")
+
+    def _handle_start_offset(self):
+        if not self._still_flyable():
+            return
+        self._try_latch_xy_hold()
+        self.log_flight_state()
+        if not self.hold_xy:
+            self._hold_and_wait(self.START_OFFSET, "flow lost stepping off the pad")
+            return
+        self._aim_yaw_at(self.home_yaw)
+        lp = self.local_position
+        left = (None if lp is None or self.move_target_x is None else
+                math.hypot(self.move_target_x - lp.x, self.move_target_y - lp.y))
+        timed_out = self._in_stage_for() > self.START_OFFSET_TIMEOUT
+        if (left is not None and left <= self.COURSE_XY_TOLERANCE) or timed_out:
+            self.moving = False
+            self.get_logger().warning(
+                f"START_OFFSET: off the pad"
+                f"{' (timed out)' if timed_out else ''}"
+                f"{'' if left is None else f', {left:.2f} m short'}"
+                f". Starting the window search. ({self.window_summary()})")
+            self._end_of_hold()
+            return
+        self.get_logger().info(
+            f"START_OFFSET: {0.0 if left is None else left:.2f} m to go.",
+            throttle_duration_sec=1.0)
+
     def _begin_pad_offset(self):
         """One step to the RIGHT, off the line the obstacles stand on."""
         h = self._course_heading()
@@ -2968,6 +3089,7 @@ class CourseFSM(WindowTraverse):
             self.log_flight_state()
 
         {
+            self.START_OFFSET: self._handle_start_offset,
             self.RED_RISE: self._handle_red_rise,
             self.RED_CROSS: self._handle_red_cross,
             self.BLUE_DROP: self._handle_blue_drop,

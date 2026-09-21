@@ -228,6 +228,16 @@ class ThermalDrop(OffboardSequence):
         self.MIN_HOT_MARGIN = float(num('min_hot_margin', 2.0))
 
         # ---- the flight ----
+        # MAX_SURVEY_ALTITUDE is the height above which the real MLX90640's
+        # readings stop being usable, so on the aircraft it is a hard ceiling
+        # and the default below is the only value that should ever be used.
+        # It is a PARAMETER because a scaled simulation is a different sensor
+        # over a different-sized arena: imav2026_scaled is the real course
+        # multiplied by 2.2, so every box is 2.2x further away and the survey
+        # has to be flown 2.2x higher to see the same thing. Raising it for
+        # HARDWARE does not buy a wider survey, it buys a blurrier one.
+        self.MAX_SURVEY_ALTITUDE = float(num('max_survey_altitude',
+                                             self.MAX_SURVEY_ALTITUDE))
         survey_alt = float(num('survey_altitude', 1.5))
         if survey_alt > self.MAX_SURVEY_ALTITUDE:
             self.get_logger().error(
@@ -671,11 +681,21 @@ class ThermalDrop(OffboardSequence):
         self._try_latch_xy_hold()
         self.log_flight_state()
 
-        {self.SURVEY: self._handle_survey,
-         self.APPROACH: self._handle_approach,
-         self.DESCEND: self._handle_descend,
-         self.HOVER: self._handle_hover,
-         self.RETREAT: self._handle_retreat}[self.current_stage]()
+        self._stage_handlers()[self.current_stage]()
+
+    def _stage_handlers(self):
+        """Stage name -> the method that flies it.
+
+        A dict and not a chain of ifs so a subclass can add its own stages by
+        extending it, which is how thermal_fsm.py bolts the marker hunt on
+        the front of this mission and the precision landing on the back
+        without reimplementing any of the middle.
+        """
+        return {self.SURVEY: self._handle_survey,
+                self.APPROACH: self._handle_approach,
+                self.DESCEND: self._handle_descend,
+                self.HOVER: self._handle_hover,
+                self.RETREAT: self._handle_retreat}
 
     def _handle_takeoff(self):
         if self.flight_start is None:
@@ -692,8 +712,21 @@ class ThermalDrop(OffboardSequence):
                 + ('' if self.hold_xy else ' (waiting for flow x/y latch)') + "...",
                 throttle_duration_sec=1.0)
             return
+        self._begin_survey()
+
+    def _begin_survey(self, centre=None):
+        """Start mapping warm blobs, from HERE and from a ring around it.
+
+        Split out of _handle_hold because the survey does not always follow
+        the post-takeoff hover: thermal_fsm.py flies to a marker and steps
+        sideways onto the boxes first, and then starts the survey from
+        WHEREVER that left the aircraft. centre defaults to the current
+        position hold, which is what the plain mission wants.
+        """
         lp = self.local_position
-        self.survey_centre = np.array([self.hold_x, self.hold_y])
+        if centre is None:
+            centre = np.array([self.hold_x, self.hold_y])
+        self.survey_centre = np.asarray(centre, dtype=float)
         c, s = math.cos(self.home_yaw), math.sin(self.home_yaw)
         d = self.SURVEY_STEP
         offsets = [(0.0, 0.0), (d, 0.0), (0.0, d), (-d, 0.0), (0.0, -d)]
@@ -1096,15 +1129,24 @@ class ThermalDrop(OffboardSequence):
         self._move_to(self.retreat_target)
         dist = math.hypot(self.retreat_target[0] - lp.x, self.retreat_target[1] - lp.y)
         if dist <= self.MOVE_TOLERANCE or self._in_stage_for() > self.RETREAT_TIMEOUT:
-            self._finish("payload dropped, clear of the box",
-                         land=self.LAND_AFTER_DROP)
-            if not self.LAND_AFTER_DROP:
-                self.get_logger().info(
-                    "Clear of the box and holding (land_after_drop is false). "
-                    "q to descend.", throttle_duration_sec=5.0)
+            self._after_retreat()
             return
         self.get_logger().info(f"RETREAT: {dist:.2f} m to go.",
                                throttle_duration_sec=1.0)
+
+    def _after_retreat(self):
+        """The end of the mission, once the aircraft is clear of the box.
+
+        A hook, because "clear of the box" is not always the end: thermal_fsm
+        goes looking for a landing marker here instead of putting it down
+        wherever the retreat happened to stop.
+        """
+        self._finish("payload dropped, clear of the box",
+                     land=self.LAND_AFTER_DROP)
+        if not self.LAND_AFTER_DROP:
+            self.get_logger().info(
+                "Clear of the box and holding (land_after_drop is false). "
+                "q to descend.", throttle_duration_sec=5.0)
 
     def _finish(self, reason, land):
         if self.outcome == 'not attempted':

@@ -128,10 +128,19 @@ class MjpegServer:
         self.thread.start()
 
     def shutdown(self):
+        # BaseException, not Exception. server.shutdown() blocks on the
+        # serve_forever thread acknowledging it, and when this runs from a
+        # Ctrl-C teardown the SIGINT lands INSIDE that wait and comes out as
+        # KeyboardInterrupt -- which is a BaseException and sailed straight
+        # through an `except Exception`, printing a socketserver traceback
+        # over the node's closing summary. The thread is a daemon and dies
+        # with the process regardless, so there is nothing to salvage here:
+        # this is best-effort tidying and must never be the last thing the
+        # operator sees.
         try:
             self.server.shutdown()
             self.server.server_close()
-        except Exception:
+        except BaseException:
             pass
 
 
