@@ -1,55 +1,50 @@
 import rclpy
 from rclpy.node import Node
-from px4_msgs.msg import ActuatorMotors, OffboardControlMode
+from px4_msgs.msg import VehicleCommand
+import math
 
-class ServoController(Node):
+class ServoTestNode(Node):
     def __init__(self):
-        super().__init__('servo_controller')
+        super().__init__('servo_test_node')
+        # Publisher for sending commands to PX4
+        self.publisher = self.create_publisher(VehicleCommand, '/fmu/in/vehicle_command', 10)
         
-        # Publishers
-        self.servo_pub = self.create_publisher(ActuatorMotors, '/fmu/in/actuator_motors', 10)
-        self.offboard_mode_pub = self.create_publisher(OffboardControlMode, '/fmu/in/offboard_control_mode', 10)
-        
+        # Timer to publish commands at 10Hz
         self.timer = self.create_timer(0.1, self.timer_callback)
-        self.position_is_zero = True
-        self.counter = 0
+        self.start_time = self.get_clock().now().nanoseconds / 1e9
 
     def timer_callback(self):
-        # 1. Maintain Offboard Mode Heartbeat
-        offboard_msg = OffboardControlMode()
-        offboard_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        offboard_msg.position = False
-        offboard_msg.velocity = False
-        offboard_msg.acceleration = False
-        offboard_msg.attitude = False
-        offboard_msg.body_rate = False
-        offboard_msg.direct_actuator = True
-        self.offboard_mode_pub.publish(offboard_msg)
+        # Generate a smooth sine wave value between -1.0 and 1.0
+        elapsed_time = self.get_clock().now().nanoseconds / 1e9 - self.start_time
+        servo_position = math.sin(elapsed_time * 2.0) 
 
-        # 2. Toggle position every 2 seconds
-        self.counter += 1
-        if self.counter >= 20:
-            self.position_is_zero = not self.position_is_zero
-            self.counter = 0
-
-        # 3. Publish to ActuatorMotors (maps to Actuator Set)
-        motor_msg = ActuatorMotors()
-        motor_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        motor_msg.control = [float('nan')] * 12
+        msg = VehicleCommand()
+        msg.command = VehicleCommand.VEHICLE_CMD_DO_SET_ACTUATOR
         
-        if self.position_is_zero:
-            motor_msg.control[0] = -1.0  # Min position
-        else:
-            motor_msg.control[0] = 1.0   # Max position
-            
-        self.servo_pub.publish(motor_msg)
+        # param1 targets Actuator Set 1 (which is mapped to MAIN 5 in your QGC)
+        msg.param1 = servo_position 
+        
+        msg.target_system = 1
+        msg.target_component = 1
+        msg.source_system = 1
+        msg.source_component = 1
+        msg.from_external = True
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.publisher.publish(msg)
+        self.get_logger().info(f'Commanding MAIN 5 Servo to: {servo_position:.2f}')
 
 def main(args=None):
     rclpy.init(args=args)
-    node = ServoController()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    node = ServoTestNode()
+    
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
