@@ -188,7 +188,26 @@ class ThermalDrop(OffboardSequence):
     DROP_STAGES = (SURVEY, APPROACH, DESCEND, HOVER, RETREAT)
 
     MIN_DROP_ALTITUDE = 0.50    # m. Hard floor, not a parameter.
-    MAX_SURVEY_ALTITUDE = 1.60  # m. Above this the MLX readings are not usable.
+    MAX_SURVEY_ALTITUDE = 2.60  # m. The clamp on survey_altitude.
+                                #
+                                # It was 1.60 when the survey was a RING
+                                # flown 1.5 m up: low and close, five points,
+                                # dwelling at each. That mission is gone. The
+                                # survey is now a single observation from
+                                # 2.50 m -- high enough that all three boxes
+                                # are in one frame and no pattern has to be
+                                # flown to find them -- so the clamp has to
+                                # clear 2.50 m or it would silently undo the
+                                # thing it is there to protect.
+                                #
+                                # 2.50 m IS NEAR THE MLX90640's LIMIT. At
+                                # that height a 30 cm box is about 4 pixels
+                                # across in a 32x24 frame, so min_blob_pixels
+                                # and min_contrast are doing real work; if
+                                # the boxes come back as one blob or as
+                                # nothing, the survey is too high, not too
+                                # fussy. Lower survey_altitude before
+                                # loosening either filter.
 
     def __init__(self):
         super().__init__('thermal_drop')
@@ -238,15 +257,55 @@ class ThermalDrop(OffboardSequence):
         # HARDWARE does not buy a wider survey, it buys a blurrier one.
         self.MAX_SURVEY_ALTITUDE = float(num('max_survey_altitude',
                                              self.MAX_SURVEY_ALTITUDE))
-        survey_alt = float(num('survey_altitude', 1.5))
+        survey_alt = float(num('survey_altitude', 2.5))
         if survey_alt > self.MAX_SURVEY_ALTITUDE:
             self.get_logger().error(
                 f"survey_altitude {survey_alt:.2f} m is above the "
                 f"{self.MAX_SURVEY_ALTITUDE:.2f} m the MLX is usable from; clamping.")
             survey_alt = self.MAX_SURVEY_ALTITUDE
         self.SURVEY_ALTITUDE = survey_alt
-        self.TAKEOFF_ALTITUDE = survey_alt
-        self.commanded_altitude = survey_alt
+
+        # ---- THE CRUISE HEIGHT, AND WHY IT IS NOT THE SURVEY HEIGHT ----
+        #
+        # The aircraft used to take off straight to survey_altitude and fly
+        # the whole outbound mission there -- the marker creep, the hover on
+        # the marker, the sidestep -- because that was the height the survey
+        # needed and nothing had asked for another one.
+        #
+        # It is the wrong height for all three of those. Everything before
+        # the survey is FINDING A MARKER ON THE FLOOR with a downward
+        # camera, and low is better for that in every way that matters: the
+        # marker is more pixels across, so the solver's pose is better; the
+        # camera's footprint is smaller, so a marker in frame is a marker
+        # nearly underneath rather than one 3 m off to the side; and the
+        # aircraft is not carrying a cone around the arena at head height.
+        # The survey is the ONE part that wants altitude, because it wants
+        # all three boxes in one thermal frame, and it is also the one part
+        # that is flown stationary -- so it can simply climb when it gets
+        # there and pay the four seconds once.
+        #
+        # So: take off to cruise_altitude, fly everything up to and
+        # including BOX_OFFSET there, climb to survey_altitude over the
+        # boxes, and descend to drop_altitude from there. _begin_survey()
+        # commands the climb and _handle_survey() waits for it.
+        cruise_alt = float(num('cruise_altitude', 1.2))
+        if cruise_alt < self.MIN_DROP_ALTITUDE:
+            self.get_logger().error(
+                f"cruise_altitude {cruise_alt:.2f} m is below the "
+                f"{self.MIN_DROP_ALTITUDE:.2f} m floor; using the floor.")
+            cruise_alt = self.MIN_DROP_ALTITUDE
+        if cruise_alt > self.SURVEY_ALTITUDE:
+            # Not fatal, just pointless: the survey would then be a DESCENT
+            # and the outbound legs would be flown at the higher height,
+            # which is the arrangement this parameter exists to undo.
+            self.get_logger().warning(
+                f"cruise_altitude {cruise_alt:.2f} m is above "
+                f"survey_altitude {self.SURVEY_ALTITUDE:.2f} m, so the "
+                "outbound legs are the HIGHEST part of the flight and the "
+                "survey climb is a descent. That is backwards; check both.")
+        self.CRUISE_ALTITUDE = cruise_alt
+        self.TAKEOFF_ALTITUDE = cruise_alt
+        self.commanded_altitude = cruise_alt
 
         drop_alt = float(num('drop_altitude', self.MIN_DROP_ALTITUDE))
         if drop_alt < self.MIN_DROP_ALTITUDE:
@@ -257,7 +316,12 @@ class ThermalDrop(OffboardSequence):
         self.DROP_ALTITUDE = drop_alt
 
         self.SURVEY_DWELL = float(num('survey_dwell_seconds', 4.0))
-        self.SURVEY_STEP = float(num('survey_step', 0.5))
+        # 0.0 = NO SEARCH PATTERN. The survey is one observation, taken from
+        # where BOX_OFFSET left the aircraft, at survey_altitude. See
+        # _begin_survey() for why the ring went away. A positive value puts
+        # the old four-point ring back, at that step, for an arena where the
+        # boxes genuinely do not fit in one frame.
+        self.SURVEY_STEP = float(num('survey_step', 0.0))
         self.SURVEY_ALL_POINTS = bool(self.declare_parameter('survey_all_points', False).value)
         self.SURVEY_MOVE_TIMEOUT = 15.0
 
@@ -298,6 +362,28 @@ class ThermalDrop(OffboardSequence):
                 "offboard set index. Nothing will move until it is set.")
         self.SERVO_TEST_ON_START = bool(self.declare_parameter(
             'servo_test_on_start', False).value)
+        # WHO ACTUALLY MOVES THE SERVO.
+        #
+        #   false: this node does, with MAV_CMD_DO_SET_ACTUATOR, exactly as
+        #   it always has. That is what the SITL runs use -- there is no
+        #   servo in Gazebo, the command is the only evidence there is, and
+        #   an extra process to produce it would prove nothing.
+        #
+        #   true: servo_controller.py does. This node still decides WHEN --
+        #   it publishes True on drop_trigger_topic the instant HOVER
+        #   commits, and False when the hold is over -- and stops sending
+        #   actuator commands itself, so the two are never fighting for the
+        #   same output. That is the hardware arrangement: the release lives
+        #   in one small node that can be run, watched and bench-tested on
+        #   its own, and this node's job ends at "now".
+        #
+        #   The node must be RUNNING. If it is not, nothing opens: the ack
+        #   watchdog below cannot see that, because there is no command of
+        #   ours to be acked, so the log says so at release time instead.
+        self.RELEASE_VIA_NODE = bool(self.declare_parameter(
+            'release_via_servo_node', False).value)
+        self.DROP_TRIGGER_TOPIC = str(self.declare_parameter(
+            'drop_trigger_topic', '/servo/drop').value)
         self.SIM_DESCEND_SPEED = float(num('sim_descend_speed', 0.25))
         self.RETREAT_ALTITUDE = float(num('retreat_altitude', 1.2))
         self.RETREAT_RIGHT = float(num('retreat_right', 0.5))
@@ -342,6 +428,12 @@ class ThermalDrop(OffboardSequence):
                                  callback_group=self.sensor_cbg)
         self.led_pub = self.create_publisher(String, 'led/command', 10)
         self.ready_pub = self.create_publisher(Bool, 'thermal_drop/ready', 10)
+        # RELIABLE and depth 10, not the best-effort QoS the sensor streams
+        # use: this is a one-shot command, and a dropped one is a cone that
+        # stays in the aircraft. servo_controller.py subscribes with the
+        # matching profile.
+        self.drop_trigger_pub = self.create_publisher(
+            Bool, self.DROP_TRIGGER_TOPIC, 10)
         self.target_pub = self.create_publisher(String, 'thermal_drop/target', 10)
 
         self.flight_start = None
@@ -380,7 +472,8 @@ class ThermalDrop(OffboardSequence):
             return
 
         self.get_logger().warning(
-            f"Thermal drop: climb {self.SURVEY_ALTITUDE:.2f} m, survey for "
+            f"Thermal drop: climb to {self.CRUISE_ALTITUDE:.2f} m, then "
+            f"{self.SURVEY_ALTITUDE:.2f} m to survey for "
             f"{self.EXPECTED_BOXES} boxes, fly the drop point over the hottest, "
             f"descend to {self.DROP_ALTITUDE:.2f} m, align to "
             f"{self.ALIGN_TOLERANCE * 100:.0f} cm, hover {self.HOVER_SECONDS:.0f} s, "
@@ -715,33 +808,71 @@ class ThermalDrop(OffboardSequence):
         self._begin_survey()
 
     def _begin_survey(self, centre=None):
-        """Start mapping warm blobs, from HERE and from a ring around it.
+        """Watch the boxes from ONE point and take the hottest.
 
         Split out of _handle_hold because the survey does not always follow
         the post-takeoff hover: thermal_fsm.py flies to a marker and steps
         sideways onto the boxes first, and then starts the survey from
         WHEREVER that left the aircraft. centre defaults to the current
         position hold, which is what the plain mission wants.
+
+        THERE IS NO SEARCH PATTERN ANY MORE.
+
+            This used to fly a five-point ring -- centre, then one step
+            forward, right, back and left -- dwelling survey_dwell_seconds
+            at each and moving on until it had mapped expected_boxes. The
+            ring existed because the survey was flown at 1.50 m, where the
+            MLX90640's footprint is about 4.3 m by 2.6 m and three boxes
+            spread over 2.9 m of arena do not reliably all fall inside it.
+
+            Going UP fixes that outright instead of flying around it. At
+            survey_altitude 2.50 m the same footprint is 7.1 m by 3.8 m and
+            all three boxes are in one frame, so the aircraft can simply
+            stop, watch, and rank them. That removes four moves and four
+            dwells -- most of a minute of flight time -- and, more
+            importantly, it removes the failure they brought with them: each
+            step is flown on flow-held position, every one of them drifts a
+            little, and the map the ring builds is a map assembled from five
+            slightly different guesses about where the aircraft was.
+
+            One point, one frame of reference, one decision.
+
+            survey_step > 0 puts the ring back for an arena where the boxes
+            really do not fit in a frame.
         """
         lp = self.local_position
         if centre is None:
             centre = np.array([self.hold_x, self.hold_y])
         self.survey_centre = np.asarray(centre, dtype=float)
-        c, s = math.cos(self.home_yaw), math.sin(self.home_yaw)
-        d = self.SURVEY_STEP
-        offsets = [(0.0, 0.0), (d, 0.0), (0.0, d), (-d, 0.0), (0.0, -d)]
-        self.survey_points = [self.survey_centre + np.array([f * c - r * s, f * s + r * c])
-                              for f, r in offsets]
+        self.survey_points = [self.survey_centre]
+        if self.SURVEY_STEP > 0.0:
+            c, s = math.cos(self.home_yaw), math.sin(self.home_yaw)
+            d = self.SURVEY_STEP
+            self.survey_points += [
+                self.survey_centre + np.array([f * c - r * s, f * s + r * c])
+                for f, r in ((d, 0.0), (0.0, d), (-d, 0.0), (0.0, -d))]
         self.survey_index = 0
         self.survey_arrived_since = None
+        # The climb happens HERE, not at takeoff. Nothing is collected until
+        # it is finished: a map built on the way up is a map of blobs seen
+        # from heights the decision was not made at, and the whole point of
+        # one observation is that it is ONE observation.
+        self.survey_at_altitude = False
+        self._set_altitude(self.SURVEY_ALTITUDE)
         with self._lock:
             self.clusters = []
-            self.collecting = True
+            self.collecting = False
         self._enter_stage(self.SURVEY)
         self.get_logger().warning(
-            f"SURVEY from ({lp.x:+.2f}, {lp.y:+.2f}) at "
-            f"{self.commanded_altitude:.2f} m. {self.frames_seen} thermal frames "
-            "received so far.")
+            f"SURVEY from ({lp.x:+.2f}, {lp.y:+.2f}): climbing "
+            f"{self.relative_altitude() or 0.0:.2f} -> "
+            f"{self.SURVEY_ALTITUDE:.2f} m first, then "
+            + (f"holding still for {self.SURVEY_DWELL:.1f} s and ranking "
+               "whatever is in the frame (no search pattern)"
+               if len(self.survey_points) == 1 else
+               f"then a {self.SURVEY_STEP:.2f} m ring of "
+               f"{len(self.survey_points) - 1} more points")
+            + f". {self.frames_seen} thermal frames received so far.")
 
     # --------------------------------------------------------------- SURVEY
 
@@ -750,6 +881,46 @@ class ThermalDrop(OffboardSequence):
         point = self.survey_points[self.survey_index]
         self._move_to(point)
         now = time.monotonic()
+
+        # THE CLIMB, FIRST. Hold station over the boxes while it happens --
+        # the aircraft is already where it wants to be horizontally, it is
+        # only the height that is wrong. The dwell clock and the move
+        # timeout are both restarted at the top, so the climb is not charged
+        # to either of them, and nothing is collected on the way up.
+        if not self.survey_at_altitude:
+            self._set_altitude(self.SURVEY_ALTITUDE)
+            alt = self.relative_altitude()
+            if alt is None:
+                return
+            # Twice the usual band. The survey height is not a precision
+            # requirement -- 16 cm at 2.50 m moves the thermal footprint by
+            # about 6% and changes nothing about which box is hottest -- and
+            # a tight gate here buys nothing but a chance of sitting in the
+            # climb until the timeout below.
+            if abs(alt - self.SURVEY_ALTITUDE) > 2.0 * self.ALTITUDE_TOLERANCE:
+                if self._in_stage_for() > self.SURVEY_MOVE_TIMEOUT:
+                    self.get_logger().error(
+                        f"SURVEY: still {alt:.2f} m after "
+                        f"{self.SURVEY_MOVE_TIMEOUT:.0f} s of climbing to "
+                        f"{self.SURVEY_ALTITUDE:.2f} m. Surveying from here "
+                        "instead -- the boxes may not all be in frame, so "
+                        "the log below is what it actually saw.")
+                else:
+                    self.get_logger().info(
+                        f"SURVEY: climbing {alt:.2f} -> "
+                        f"{self.SURVEY_ALTITUDE:.2f} m before looking.",
+                        throttle_duration_sec=1.0)
+                    return
+            self.survey_at_altitude = True
+            self.survey_arrived_since = None
+            self._restart_stage_clock()
+            with self._lock:
+                self.clusters = []
+                self.collecting = True
+            self.get_logger().warning(
+                f"SURVEY: at {alt:.2f} m over the boxes. Holding still for "
+                f"{self.SURVEY_DWELL:.1f} s and ranking what is in the frame.")
+            return
         dist = math.hypot(point[0] - lp.x, point[1] - lp.y)
 
         if dist > 2.0 * self.APPROACH_TOLERANCE:
@@ -1008,11 +1179,13 @@ class ThermalDrop(OffboardSequence):
             return
         if not self.servo_returned:
             self.servo_returned = True
-            if self.RELEASE_ENABLED and not self.servo_ack_seen:
+            if self.RELEASE_ENABLED and not self.RELEASE_VIA_NODE \
+                    and not self.servo_ack_seen:
                 self.get_logger().error(
                     "PX4 never acknowledged the servo command. Nothing moved "
                     "because nothing arrived: check the DDS agent, and try "
                     "`ros2 run drone_testing servo_test` on the bench.")
+            self.drop_trigger_pub.publish(Bool(data=False))
             self._send_actuator(self.SERVO_NEUTRAL_VALUE, force=True)
             self._set_led('off')
             self.get_logger().warning("Servo back to neutral, LED off.")
@@ -1045,18 +1218,31 @@ class ThermalDrop(OffboardSequence):
                 "release_enabled is false: NOT commanding the servo.")
             return
         self.servo_ack_seen = False
+        self.drop_trigger_pub.publish(Bool(data=True))
         self._send_actuator(self.SERVO_DROP_VALUE, force=True)
-        self.get_logger().warning(
-            f"DROP: {self.outcome}. Servo set {self.SERVO_DROP_VALUE:+.2f} via "
-            + (f"actuator_test function {self.SERVO_FUNCTION}."
-               if self.SERVO_COMMAND == 'actuator_test'
-               else f"DO_SET_ACTUATOR on offboard actuator set "
-                    f"{self.SERVO_INDEX}.")
-            + " Watching for PX4's ack.")
+        if self.RELEASE_VIA_NODE:
+            self.get_logger().warning(
+                f"DROP: {self.outcome}. True published on "
+                f"{self.DROP_TRIGGER_TOPIC}; servo_controller.py opens the "
+                "servo. If the cone does not go, check that node is running "
+                "(`ros2 node list`) before suspecting the linkage.")
+        else:
+            self.get_logger().warning(
+                f"DROP: {self.outcome}. Servo set {self.SERVO_DROP_VALUE:+.2f} via "
+                + (f"actuator_test function {self.SERVO_FUNCTION}."
+                   if self.SERVO_COMMAND == 'actuator_test'
+                   else f"DO_SET_ACTUATOR on offboard actuator set "
+                        f"{self.SERVO_INDEX}.")
+                + " Watching for PX4's ack.")
 
     def _send_actuator(self, value, force=False):
         """MAV_CMD_DO_SET_ACTUATOR. NaN leaves the other outputs alone."""
         if not self.RELEASE_ENABLED:
+            return
+        if self.RELEASE_VIA_NODE:
+            # servo_controller.py owns the output. Two publishers sending
+            # different values to one actuator at 20 Hz is a servo that
+            # buzzes between them, so this node does not send at all.
             return
         now = time.monotonic()
         if not force and now - self._last_actuator_send < 0.25:

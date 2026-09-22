@@ -94,12 +94,14 @@ class ThermalFSM(ThermalDrop):
     MARK_SEARCH = "MARK_SEARCH"     # forward until a marker is underneath
     MARK_HOVER = "MARK_HOVER"       # centre on it, hold, then step across
     BOX_OFFSET = "BOX_OFFSET"       # the step that puts the boxes in frame
-    LAND_SEARCH = "LAND_SEARCH"     # after the retreat: find the landing pad
+    LAND_SEARCH = "LAND_SEARCH"     # after the retreat: find the FIRST marker
+    LAND_ALIGN = "LAND_ALIGN"       # square up on it -- it is a datum, not a pad
+    LAND_RETURN = "LAND_RETURN"     # back down the corridor to the landing pad
     LAND_CENTRE = "LAND_CENTRE"     # settle over it
     LAND_DESCEND = "LAND_DESCEND"   # down on the marker, then PX4 lands
 
-    FSM_STAGES = (MARK_SEARCH, MARK_HOVER, BOX_OFFSET,
-                  LAND_SEARCH, LAND_CENTRE, LAND_DESCEND)
+    FSM_STAGES = (MARK_SEARCH, MARK_HOVER, BOX_OFFSET, LAND_SEARCH,
+                  LAND_ALIGN, LAND_RETURN, LAND_CENTRE, LAND_DESCEND)
 
     # The inherited timer_callback, flight clock and status line all key off
     # DROP_STAGES, so extending it here is what makes the new stages
@@ -108,7 +110,21 @@ class ThermalFSM(ThermalDrop):
     DROP_STAGES = ThermalDrop.DROP_STAGES + FSM_STAGES
 
     # ---- the legs, in REAL course metres ----------------------------------
-    MARK_SEARCH_DISTANCE = 11.0     # m of forward creep before giving up
+    MARK_SEARCH_DISTANCE = 9.00     # m of forward creep before giving up.
+                                    # MEASURED: the takeoff marker and the
+                                    # marker in front of it are 8.7 m to
+                                    # 8.8 m apart in the real arena, so 9 m
+                                    # is that distance plus the slack for
+                                    # where the aircraft actually left the
+                                    # pad. It is a CAP, not a leg: a marker
+                                    # seen at 8.2 m stops the creep at 8.2 m
+                                    # and the mission carries on from there.
+                                    # Reaching the cap means the marker is
+                                    # not there, and mark_required decides
+                                    # what that means -- by default, land,
+                                    # because 9 m is already past it and
+                                    # further forward is just further from
+                                    # anything known.
     MARK_SEARCH_SPEED = 0.30        # m/s. Slow: a marker that goes through
                                     # the frame between two detector ticks
                                     # is a marker that was never there.
@@ -122,9 +138,53 @@ class ThermalFSM(ThermalDrop):
                                     # if every pad shares an id.
     MARK_HOVER_SECONDS = 1.0        # s stationary over the marker. Not a
                                     # length: NOT scaled.
-    BOX_OFFSET_RIGHT = 1.50         # m RIGHT of the marker, onto the boxes.
-    LAND_SEARCH_DISTANCE = 2.50     # m of forward creep looking for the pad
+    BOX_OFFSET_RIGHT = 2.20         # m RIGHT of the marker, onto the boxes.
+                                    # MEASURED in the real arena. The scaled
+                                    # simulation is a DIFFERENT number
+                                    # before scaling -- 1.50 m, which is
+                                    # where imav2026_scaled puts the boxes
+                                    # relative to platform_1 -- so
+                                    # thermal_drop_sitl.launch.py passes its
+                                    # own value and does not inherit this
+                                    # one. Do not "fix" one to match the
+                                    # other; they are two different arenas.
+    LAND_SEARCH_DISTANCE = 2.50     # m of forward creep looking for the
+                                    # first marker after the sidestep. Short
+                                    # on purpose: the sidestep is supposed to
+                                    # have landed ON it, so this is an
+                                    # acquisition allowance, not a search.
     LAND_SEARCH_SPEED = 0.30
+
+    # ---- the way home -----------------------------------------------------
+    #
+    #   The marker found after the post-drop sidestep is NOT the landing pad.
+    #   It is the pad's opposite number at the far end of the same corridor
+    #   the mission flew up, and the landing pad is 8.7 m to 8.8 m BACK along
+    #   that corridor. So it is used as a datum: square up on it, then fly
+    #   the corridor backwards until the landing marker appears.
+    #
+    #   Backwards, and not turned round, deliberately. A 180 deg turn at the
+    #   end of a mission throws away the one thing the flight has
+    #   established -- leg_yaw, the corridor direction measured while
+    #   stationary and settled -- and replaces it with a fresh heading
+    #   estimate taken mid-rotation, which is the least trustworthy number
+    #   EKF2 produces. The nose stays where it was; only the direction of
+    #   travel reverses.
+    LAND_RETURN_DISTANCE = 9.00     # m of backward creep before giving up.
+                                    # The same 8.7-8.8 m plus slack as
+                                    # MARK_SEARCH_DISTANCE, and for the same
+                                    # reason: it is the same pair of markers.
+    LAND_RETURN_SPEED = 0.30        # m/s. As slow as the outbound creep: a
+                                    # marker that crosses the frame between
+                                    # two detector ticks is a marker that was
+                                    # never seen.
+    LAND_RETURN_MIN_TRAVEL = 1.00   # m that must be flown before a marker is
+                                    # allowed to count. Without it the datum
+                                    # marker -- which the aircraft is sitting
+                                    # directly over when the leg starts -- is
+                                    # instantly "found" again and the
+                                    # aircraft lands on the wrong end of the
+                                    # arena.
 
     # ---- flying a straight line, and why it needs saying ------------------
     #
@@ -243,6 +303,12 @@ class ThermalFSM(ThermalDrop):
                                             self.LAND_SEARCH_DISTANCE))
         self.LAND_SEARCH_SPEED = float(n('land_search_speed',
                                          self.LAND_SEARCH_SPEED))
+        self.LAND_RETURN_DISTANCE = float(n('land_return_distance',
+                                            self.LAND_RETURN_DISTANCE))
+        self.LAND_RETURN_SPEED = float(n('land_return_speed',
+                                         self.LAND_RETURN_SPEED))
+        self.LAND_RETURN_MIN_TRAVEL = float(n('land_return_min_travel',
+                                              self.LAND_RETURN_MIN_TRAVEL))
         self.LEG_LOOKAHEAD = float(n('leg_lookahead', self.LEG_LOOKAHEAD))
         self.LEG_TRIM = math.radians(float(n('leg_trim_deg', self.LEG_TRIM_DEG)))
         self.LEG_BEARING = math.radians(float(n('leg_bearing_deg',
@@ -287,6 +353,15 @@ class ThermalFSM(ThermalDrop):
         # false = plain PX4 land after the retreat, exactly as thermal_drop
         # has always done. true = the LAND_* stages below.
         self.PRECISION_LAND = bool(self.declare_parameter('precision_land', True).value)
+        # true  = the marker found after the sidestep is a DATUM: align on
+        #         it, then fly the corridor backwards to the landing pad.
+        #         This is the arena as it is actually laid out.
+        # false = land on the first marker found after the sidestep, which is
+        #         what this file did before the two ends of the corridor were
+        #         distinguished. Kept as the escape hatch for a bench or a
+        #         one-marker test, where "the pad is the one you can see" is
+        #         the whole truth.
+        self.LAND_RETURN_ON = bool(self.declare_parameter('land_return', True).value)
 
         self.create_subscription(
             Bool, str(self.declare_parameter(
@@ -327,17 +402,25 @@ class ThermalFSM(ThermalDrop):
         if self.MODE == 'fly':
             self.get_logger().warning(
                 "THERMAL FSM: "
+                + f"cruise at {self.CRUISE_ALTITUDE:.2f} m, "
                 + (f"forward up to {self.MARK_SEARCH_DISTANCE:.2f} m at "
                    f"{self.MARK_SEARCH_SPEED:.2f} m/s to the marker, hover "
                    f"{self.MARK_HOVER_SECONDS:.1f} s, "
                    f"{self.BOX_OFFSET_RIGHT:.2f} m RIGHT onto the boxes, then "
                    if self.MARK_SEARCH_ON else "no marker hunt; ")
-                + "the thermal survey, the drop, the retreat, and "
-                + (f"a precision landing on the next marker (creep up to "
-                   f"{self.LAND_SEARCH_DISTANCE:.2f} m, centre to "
-                   f"{self.PAD_CENTRE_TOLERANCE * 100:.0f} cm, down at "
-                   f"{self.PAD_DESCENT_RATE:.2f} m/s, PX4 lands the last "
-                   f"{self.PAD_HANDOFF_HEIGHT:.2f} m)."
+                + f"a climb to {self.SURVEY_ALTITUDE:.2f} m and the thermal "
+                  "survey from there (one observation, no search pattern), "
+                  "the drop from "
+                + f"{self.DROP_ALTITUDE:.2f} m, the retreat, and "
+                + (((f"a datum marker up to {self.LAND_SEARCH_DISTANCE:.2f} m "
+                     f"ahead, then up to {self.LAND_RETURN_DISTANCE:.2f} m "
+                     f"BACKWARDS at {self.LAND_RETURN_SPEED:.2f} m/s to the "
+                     "landing pad, then "
+                     if self.LAND_RETURN_ON else "")
+                    + f"a precision landing on the marker (centre to "
+                      f"{self.PAD_CENTRE_TOLERANCE * 100:.0f} cm, down at "
+                      f"{self.PAD_DESCENT_RATE:.2f} m/s, PX4 lands the last "
+                      f"{self.PAD_HANDOFF_HEIGHT:.2f} m).")
                    if self.PRECISION_LAND else "a plain landing."))
 
     # ------------------------------------------------------------- the marker
@@ -686,6 +769,8 @@ class ThermalFSM(ThermalDrop):
             self.MARK_HOVER: self._handle_mark_hover,
             self.BOX_OFFSET: self._handle_box_offset,
             self.LAND_SEARCH: self._handle_land_search,
+            self.LAND_ALIGN: self._handle_land_align,
+            self.LAND_RETURN: self._handle_land_return,
             self.LAND_CENTRE: self._handle_land_centre,
             self.LAND_DESCEND: self._handle_land_descend,
         })
@@ -723,13 +808,20 @@ class ThermalFSM(ThermalDrop):
 
     def _begin_mark_search(self):
         self._enter_stage(self.MARK_SEARCH)
-        self._set_altitude(self.SURVEY_ALTITUDE)
+        # The CRUISE height, not the survey height. This stage is looking for
+        # a marker on the floor, and low is better for that: more pixels on
+        # the marker, a smaller footprint so "in frame" means "nearly
+        # underneath", and the cone is carried across the arena at knee
+        # height rather than head height. The climb is paid for once, over
+        # the boxes, where the aircraft is stationary anyway -- see
+        # cruise_altitude in thermal_drop.py.
+        self._set_altitude(self.CRUISE_ALTITUDE)
         self._begin_leg(self.leg_yaw, self.MARK_SEARCH_DISTANCE,
                         self.MARK_SEARCH_SPEED)
         self.get_logger().warning(
             f"MARK_SEARCH: forward at {self.MARK_SEARCH_SPEED:.2f} m/s, up to "
             f"{self.MARK_SEARCH_DISTANCE:.2f} m, at "
-            f"{self.SURVEY_ALTITUDE:.2f} m, on a LINE at "
+            f"{self.CRUISE_ALTITUDE:.2f} m, on a LINE at "
             f"{math.degrees(self.leg_heading):+.2f} deg held to "
             f"{self.LEG_LOOKAHEAD:.2f} m lookahead, until the downward camera "
             f"puts a marker under us. The first {self.MARK_MIN_TRAVEL:.2f} m "
@@ -839,7 +931,11 @@ class ThermalFSM(ThermalDrop):
         lp = self.local_position
         self.mark_xy = np.array([lp.x, lp.y])
         self._enter_stage(self.BOX_OFFSET)
-        self._set_altitude(self.SURVEY_ALTITUDE)
+        # Still the cruise height. The climb belongs to the SURVEY, which
+        # starts where this leg ends: climbing before the sidestep would fly
+        # the sidestep high for no gain, and the survey has to wait for the
+        # climb either way.
+        self._set_altitude(self.CRUISE_ALTITUDE)
         # 90 deg RIGHT of the corridor, and flown as a LINE like every other
         # leg, so this step lands square beside the marker instead of
         # somewhere on an arc through it. A negative offset just runs the
@@ -853,8 +949,9 @@ class ThermalFSM(ThermalDrop):
             f"BOX_OFFSET: {abs(self.BOX_OFFSET_RIGHT):.2f} m "
             f"{'RIGHT' if self.BOX_OFFSET_RIGHT >= 0.0 else 'LEFT'} of the "
             f"marker, to ({end[0]:+.2f}, {end[1]:+.2f}) NED, on a line at "
-            f"{math.degrees(self.leg_heading):+.2f} deg. The thermal survey "
-            "starts there.")
+            f"{math.degrees(self.leg_heading):+.2f} deg, at "
+            f"{self.CRUISE_ALTITUDE:.2f} m. The thermal survey starts there, "
+            f"with the climb to {self.SURVEY_ALTITUDE:.2f} m.")
 
     def _handle_box_offset(self):
         along, cross = self._follow_leg()
@@ -897,7 +994,10 @@ class ThermalFSM(ThermalDrop):
     def _handle_land_search(self):
         gone, cross = self._follow_leg()
         if self._marker_is_under_us():
-            self._begin_land_centre()
+            if self.LAND_RETURN_ON:
+                self._begin_land_align()
+            else:
+                self._begin_land_centre()
             return
         timed_out = self._in_stage_for() > self.PAD_STAGE_TIMEOUT
         if gone >= self.LAND_SEARCH_DISTANCE - self.MOVE_TOLERANCE or timed_out:
@@ -916,6 +1016,128 @@ class ThermalFSM(ThermalDrop):
             f"LAND_SEARCH: {gone:.2f}/{self.LAND_SEARCH_DISTANCE:.2f} m, "
             f"{cross:+.2f} m off the line, "
             f"marker {'YES' if self.aruco_flag else 'no'}.",
+            throttle_duration_sec=1.0)
+
+    # ------------------------------------------------- LAND_ALIGN / RETURN
+
+    def _begin_land_align(self):
+        """Square up on the datum marker before the run home.
+
+        Centring here is not cosmetic. Everything that follows is dead
+        reckoning on flow along a 9 m line, and a line has two errors: where
+        it starts and which way it points. This stage fixes the first. Half a
+        metre of offset left here is half a metre of offset carried the whole
+        way back, and the landing marker is only found at all because it
+        passes under a camera whose footprint at this height is a couple of
+        metres wide.
+
+        It reuses the pad centring loop -- anchor, bounded nudge, divergence
+        watchdog -- because "get over that marker accurately" is the same
+        problem as it is at the landing pad. What it does NOT do is descend.
+        """
+        self.MOVE_SPEED = self.LAND_RETURN_SPEED
+        self.pad_settle_since = None
+        self.marker_anchor = None       # the datum, not the box we dropped on
+        self.marker_error_log.clear()
+        self._enter_stage(self.LAND_ALIGN)
+        self._nudge_onto_marker()
+        self.get_logger().warning(
+            "LAND_ALIGN: marker"
+            + (f" (id {self.aruco_id})" if self.aruco_id else "")
+            + " found after the sidestep. This is the DATUM, not the landing "
+            f"pad: centring to {self.PAD_CENTRE_TOLERANCE * 100:.0f} cm, then "
+            f"flying back down the corridor up to "
+            f"{self.LAND_RETURN_DISTANCE:.2f} m to the pad.")
+
+    def _handle_land_align(self):
+        error = self._nudge_onto_marker()
+        now = time.monotonic()
+        if error is None:
+            # No anchor. Do not start the run home from a guess -- but do not
+            # sit here for ever either: the corridor direction is known
+            # independently of the marker, so a lost datum costs accuracy,
+            # not the mission.
+            self.moving = False
+            if self._in_stage_for() > self.PAD_STAGE_TIMEOUT:
+                self.get_logger().warning(
+                    "LAND_ALIGN: datum marker gone and not coming back. "
+                    "Starting the run home from here, on the last fix.")
+                self._begin_land_return()
+            return
+        if error <= self.PAD_CENTRE_TOLERANCE:
+            if self.pad_settle_since is None:
+                self.pad_settle_since = now
+            elif now - self.pad_settle_since >= self.PAD_CENTRE_SECONDS:
+                self._begin_land_return()
+            return
+        self.pad_settle_since = None
+        if self._in_stage_for() > self.PAD_STAGE_TIMEOUT:
+            self.get_logger().warning(
+                f"LAND_ALIGN: still {error:.2f} m off after "
+                f"{self.PAD_STAGE_TIMEOUT:.0f} s. Going home anyway -- that "
+                "offset is carried the whole way back.")
+            self._begin_land_return()
+            return
+        self.get_logger().info(f"LAND_ALIGN: {error:.2f} m off the datum.",
+                               throttle_duration_sec=1.0)
+
+    def _begin_land_return(self):
+        """Fly the corridor BACKWARDS, on the heading it was measured on.
+
+        leg_yaw + 180 deg, so the LINE reverses while _follow_leg keeps
+        pointing the nose at leg_yaw -- see the note in _follow_leg about why
+        the nose is aimed at the corridor and not at the direction of travel.
+        The aircraft flies backwards over the ground, which the flow sensor
+        and the downward camera do not care about, and no 180 deg turn is
+        made at the one point in the flight where the heading estimate is
+        worth the most.
+        """
+        self.pad_settle_since = None
+        self.marker_anchor = None       # the datum is behind us now
+        self.marker_error_log.clear()
+        self._enter_stage(self.LAND_RETURN)
+        self._begin_leg(wrap_pi(self.leg_yaw + math.pi),
+                        self.LAND_RETURN_DISTANCE, self.LAND_RETURN_SPEED)
+        self.get_logger().warning(
+            f"LAND_RETURN: backwards along the corridor at "
+            f"{self.LAND_RETURN_SPEED:.2f} m/s, up to "
+            f"{self.LAND_RETURN_DISTANCE:.2f} m, on a line at "
+            f"{math.degrees(self.leg_heading):+.2f} deg (nose still at "
+            f"{math.degrees(self.leg_yaw):+.2f} deg), until the landing "
+            f"marker is under us. The first {self.LAND_RETURN_MIN_TRAVEL:.2f} m "
+            "do not count -- that is the datum we just left.")
+
+    def _handle_land_return(self):
+        along, cross = self._follow_leg()
+        if self._marker_is_under_us() and along >= self.LAND_RETURN_MIN_TRAVEL:
+            self.get_logger().warning(
+                f"LAND_RETURN: landing marker after {along:.2f} m, "
+                + self._leg_report("track") + ".")
+            self._begin_land_centre()
+            return
+        timed_out = self._in_stage_for() > self.MARK_STAGE_TIMEOUT
+        if along >= self.LAND_RETURN_DISTANCE - self.MOVE_TOLERANCE or timed_out:
+            # NOT a failure, and not a reason to keep looking. The cone is in
+            # the box -- the mission is scored. 9 m is already past where the
+            # pad is, so the aircraft is now the far side of it, and the
+            # honest ending is to put it down here rather than wander an
+            # arena it has lost its datum in.
+            self.outcome = ("MISSION COMPLETE: cone dropped on the hottest "
+                            f"box. No landing marker in {along:.2f} m of the "
+                            f"run home ({self.aruco_seen} poses seen); landed "
+                            "off-pad.")
+            self.get_logger().warning(
+                f"LAND_RETURN: no marker in {along:.2f} m"
+                f"{' (timed out)' if timed_out else ''}. "
+                + self._leg_report("track")
+                + ". Going into the landing sequence here.")
+            self._finish("run home complete, no marker to land on", land=True)
+            return
+        self.get_logger().info(
+            f"LAND_RETURN: {along:.2f}/{self.LAND_RETURN_DISTANCE:.2f} m back, "
+            f"{cross:+.2f} m off the line, "
+            f"marker {'YES' if self.aruco_flag else 'no'} "
+            f"({self.aruco_seen} poses seen).",
             throttle_duration_sec=1.0)
 
     def _begin_land_centre(self):
@@ -1061,7 +1283,7 @@ class ThermalFSM(ThermalDrop):
         alt = self.relative_altitude()
         armed = self.arming_state == VehicleStatus.ARMING_STATE_ARMED
         if self.current_stage in (self.MARK_SEARCH, self.LAND_SEARCH,
-                                  self.BOX_OFFSET):
+                                  self.BOX_OFFSET, self.LAND_RETURN):
             # How far down the leg, and how far OFF it. The cross-track
             # number is the one worth a place on a five-field LCD line: it is
             # what says the aircraft is flying the corridor and not drifting

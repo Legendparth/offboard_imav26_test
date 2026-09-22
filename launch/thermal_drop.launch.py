@@ -41,9 +41,32 @@ THE WHOLE MISSION, NOT JUST THE DROP -- AND IT IS THE DEFAULT
     fsm defaults to TRUE, so the flight node is thermal_fsm and step 4
     above flies the whole competition run:
 
-        takeoff -> forward to an ArUco marker -> hover 1 s on it
-        -> one step RIGHT onto the boxes -> the survey, the drop and the
-        retreat below -> forward to the LANDING marker -> precision landing
+        takeoff to 2.50 m -> forward up to 9.00 m to an ArUco marker
+        -> hover 1 s on it -> 2.20 m RIGHT onto the boxes -> watch all
+        three from 2.50 m and take the hottest -> down to 0.50 m over it
+        -> drop -> climb and step 2.20 m RIGHT onto the corridor
+        -> square up on the marker there (a DATUM, not the pad)
+        -> BACKWARDS up to 9.00 m down the corridor to the LANDING marker
+        -> precision landing on it
+
+    THE THREE MEASURED DISTANCES, ALL CAPS RATHER THAN LEGS
+
+        mark_search_distance    9.00 m   takeoff marker -> the next one
+        land_return_distance    9.00 m   datum marker   -> the landing pad
+        box_offset_right        2.20 m   marker -> the centre of the boxes
+        retreat_right           2.20 m   the boxes -> the datum's corridor
+
+        The two 9 m numbers are the SAME 8.7-8.8 m gap measured in the real
+        arena, plus slack, because the way out and the way home are the same
+        corridor. They are caps: a marker seen at 8.2 m stops the creep
+        there. The two 2.20 m numbers are measured from the CENTRE of the
+        boxes, which themselves sit within about +/-30 cm of it, so the
+        sidestep lands the aircraft in the marker's camera footprint and
+        LAND_ALIGN takes out the rest.
+
+        thermal_drop_sitl.launch.py passes DIFFERENT values for all four:
+        the scaled arena is not the real arena's geometry multiplied, it is
+        its own layout. Do not reconcile them.
 
     It needs the downward camera, so aruco defaults to true as well and
     aruco_min_marker_distance_rate to 0.02 (see that argument for why the
@@ -129,6 +152,13 @@ def generate_launch_description():
     serial_agent = PythonExpression(
         ["'", L('agent'), "'.lower() not in ('false', '0') and '",
          L('mode'), "' != 'bench'"])
+    # The release node runs when it is asked for AND the release is armed.
+    # release_enabled:=false means "fly it all but never move the servo", and
+    # a release node sitting there ready to move it would be exactly that
+    # promise broken.
+    servo_owns_output = PythonExpression(
+        ["'", L('servo_node'), "'.lower() not in ('false', '0') and '",
+         L('release_enabled'), "'.lower() not in ('false', '0')"])
 
     args = [
         ('agent_only', 'true', 'Start agent + sensor but not the flight node.'),
@@ -189,7 +219,16 @@ def generate_launch_description():
         # ---- arena ----
         ('box_height', '0.0', 'm, height of the box tops above the floor.'),
         ('expected_boxes', '3', ''),
-        ('search_radius', '1.5', 'm from the survey centre; blobs further out ignored.'),
+        ('search_radius', '3.0',
+         'm from the survey point; blobs further out are ignored outright. '
+         'It was 1.5 m when the survey was a RING, where the moving centre '
+         'kept coming back within 1.5 m of each box in turn. The survey is '
+         'now ONE point that has to see all three at once, and from 2.20 m '
+         'right of the marker the far box is close to 3 m away -- at 1.5 m '
+         'the mission would quietly rank only the nearest box and drop on '
+         'it, with nothing in the log to say the others were thrown away. '
+         'Keep it just big enough to cover the box cluster: it is also what '
+         'rejects a radiator, a lamp or a person at the edge of frame.'),
         ('cluster_radius', '0.30', ''),
         ('min_hot_margin', '2.0', 'deg C the hottest box should lead by (warning only).'),
         ('verify_frames', '8', 'Frames of evidence before the descent may start.'),
@@ -199,11 +238,31 @@ def generate_launch_description():
          'deg C another blob must beat the target by, consistently, to steal it.'),
 
         # ---- flight ----
-        ('survey_altitude', '1.5', 'm, clamped to 1.6 in the node.'),
+        ('cruise_altitude', '1.2',
+         'm the aircraft takes off to and flies the WHOLE outbound mission '
+         'at: the marker creep, the hover on the marker and the sidestep '
+         'onto the boxes. Low on purpose -- all three are looking for a '
+         'marker on the FLOOR, and low means more pixels on it and a '
+         'smaller footprint, so a marker in frame is a marker nearly '
+         'underneath. The climb to survey_altitude is paid for once, over '
+         'the boxes, where the aircraft is stationary anyway.'),
+        ('survey_altitude', '2.5',
+         'm the boxes are watched from, clamped to max_survey_altitude in the '
+         'node. High enough that all three boxes are in ONE thermal frame, '
+         'which is what lets the survey be a single observation instead of a '
+         'flown pattern. It is NOT the height the rest of the mission flies '
+         'at -- see cruise_altitude. The aircraft climbs to this once it is '
+         'over the boxes and descends from it to drop_altitude.'),
         ('drop_altitude', '0.5', 'm above the floor, floored at 0.5 in the node.'),
-        ('survey_dwell_seconds', '4.0', ''),
-        ('survey_step', '0.5', 'm, ring of extra survey points if boxes are missing.'),
-        ('survey_all_points', 'false', 'true = always fly the whole ring.'),
+        ('survey_dwell_seconds', '4.0',
+         's held still at the survey point, watching. A TIME, not a length.'),
+        ('survey_step', '0.0',
+         'm. 0 = NO SEARCH PATTERN: stop over the boxes, watch, take the '
+         'hottest. A positive value puts the old four-point ring back, for an '
+         'arena where the boxes do not fit in one frame.'),
+        ('survey_all_points', 'false',
+         'true = always fly the whole ring. Only means anything with '
+         'survey_step > 0.'),
         ('approach_tolerance', '0.15', ''),
         ('descend_tolerance', '0.12', 'm; descent pauses while further off than this.'),
         ('descend_speed', '0.12', ''),
@@ -227,9 +286,29 @@ def generate_launch_description():
          'actuator_test. Read it off the Actuators tab; 0 means unset.'),
         ('servo_test_on_start', 'false',
          'Dry run only: open and close the servo once at startup.'),
+        # WHO MOVES THE SERVO. Exactly one of the two, always.
+        ('servo_node', 'true',
+         'Run servo_controller.py, the release node, and let IT drive the '
+         'output. The flight node then only says WHEN, by publishing on '
+         'drop_trigger_topic. false = the flight node commands the actuator '
+         'itself, which is what the SITL does (there is no servo in Gazebo).'),
+        ('drop_trigger_topic', '/servo/drop',
+         'std_msgs/Bool. True the instant the drop commits, False once the '
+         'payload has had servo_hold_seconds to clear. Bench-testable on its '
+         'own:  ros2 topic pub --once /servo/drop std_msgs/Bool "data: true"'),
+        ('servo_close_on_start', 'false',
+         'servo_controller only: send neutral once at startup so the bay is '
+         'known-closed. Off by default -- on a loaded, armed vehicle an '
+         'unasked-for servo command is not a courtesy.'),
         ('sim_descend_speed', '0.25', 'm/s the SIMULATED vehicle descends at.'),
         ('retreat_altitude', '1.2', 'm climbed back to after the drop.'),
-        ('retreat_right', '1.5', 'm stepped to the RIGHT before landing.'),
+        ('retreat_right', '2.2',
+         'm stepped to the RIGHT after the drop, off the centre of the boxes '
+         'and onto the corridor the datum marker is on. MEASURED in the real '
+         'arena, where the boxes themselves sit within about +/-30 cm of that '
+         'centre, so the step lands the aircraft within the datum marker\'s '
+         'camera footprint rather than exactly on it -- which is what '
+         'land_search_distance and then LAND_ALIGN are for.'),
         ('land_after_drop', 'true', 'false = hold clear of the box instead.'),
         ('track_gate', '0.40', ''),
         ('flight_seconds', '150.0', ''),
@@ -287,8 +366,13 @@ def generate_launch_description():
         ('mark_required', 'true',
          'true = a marker that is never found ENDS the mission. false = '
          'survey from wherever the creep gave up (normally bare floor).'),
-        ('mark_search_distance', '11.0',
-         'm of forward creep before the marker hunt gives up.'),
+        ('mark_search_distance', '9.0',
+         'm of forward creep before the marker hunt gives up. MEASURED: the '
+         'takeoff marker and the one in front of it are 8.7-8.8 m apart in '
+         'the real arena, so this is that plus slack for where the aircraft '
+         'actually left the pad. It is a CAP, not a leg -- a marker seen at '
+         '8.2 m stops the creep there. Reaching it means the marker is not '
+         'there, and mark_required says what to do about that.'),
         ('mark_search_speed', '0.30', ''),
         ('mark_min_travel', '1.00',
          'm that must be flown before a marker counts -- the aircraft arms ON '
@@ -323,8 +407,27 @@ def generate_launch_description():
         ('precision_land', 'true',
          'false = plain PX4 land after the retreat, as thermal_drop does.'),
         ('land_search_distance', '2.50',
-         'm of forward creep after the retreat, looking for the landing pad.'),
+         'm of forward creep after the retreat, looking for the DATUM marker. '
+         'Short on purpose: retreat_right is supposed to have landed on it, '
+         'so this is an acquisition allowance, not a search.'),
         ('land_search_speed', '0.30', ''),
+        ('land_return', 'true',
+         'true = the marker found after the sidestep is a DATUM, not the pad: '
+         'align on it, then fly the corridor BACKWARDS to the landing marker '
+         '8.7-8.8 m away. That is the arena as laid out. false = land on the '
+         'first marker found, for a bench or a one-marker test.'),
+        ('land_return_distance', '9.0',
+         'm of backward creep before the run home gives up. The same '
+         '8.7-8.8 m plus slack as mark_search_distance, because it is the '
+         'same pair of markers. Reaching it is NOT a failure -- the cone is '
+         'already in the box -- so the aircraft simply lands where it is.'),
+        ('land_return_speed', '0.30',
+         'm/s backwards. As slow as the outbound creep: a marker that crosses '
+         'the frame between two detector ticks was never seen.'),
+        ('land_return_min_travel', '1.00',
+         'm that must be flown before a marker counts on the way home. '
+         'Without it the datum the aircraft is sitting over is instantly '
+         '"found" again and it lands at the wrong end of the arena.'),
         ('pad_centre_tolerance', '0.10', 'm off the marker that counts as centred.'),
         ('pad_centre_seconds', '1.0', 's it must stay there before descending.'),
         ('pad_descent_rate', '0.20', 'm/s the setpoint walks down.'),
@@ -349,10 +452,13 @@ def generate_launch_description():
          'the descent halves its rate and the centring gate is RELAXED: '
          'chasing a wobble that is not a real position error is what makes '
          'an aircraft hunt in the last metre.'),
-        ('max_survey_altitude', '1.6',
-         'm above which the MLX readings stop being usable. A HARD ceiling on '
-         'the aircraft; raised only by the scaled simulation, where the whole '
-         'arena is 2.2x further away.'),
+        ('max_survey_altitude', '2.6',
+         'm, the clamp on survey_altitude. It was 1.6 when the survey was a '
+         'ring flown 1.5 m up; the survey is now one observation from 2.5 m, '
+         'so the clamp has to clear that. 2.5 m IS near the MLX90640\'s '
+         'limit -- a 30 cm box is about 4 px across there -- so if the boxes '
+         'come back as one blob or as none, lower survey_altitude rather than '
+         'loosening min_contrast or min_blob_pixels.'),
 
         # ---- the downward ArUco detector the marker stages fly on ----
         ('aruco', 'true',
@@ -419,6 +525,28 @@ def generate_launch_description():
         condition=UnlessCondition(L('thermal_sim')),
     )
 
+    # THE RELEASE. One node, one output: it waits for True on
+    # drop_trigger_topic and opens the servo. It is a separate process from
+    # the flight node on purpose -- the release can be run, watched and
+    # bench-tested by itself, with the aircraft on the table and no mission
+    # in the air. release_via_servo_node below is the other half: it stops
+    # the flight node commanding the same output, because two publishers
+    # sending different values to one actuator at 20 Hz is a servo that
+    # buzzes rather than one that opens.
+    servo_node = Node(
+        package='drone_testing', executable='servo_controller',
+        name='servo_controller', output='screen', emulate_tty=True,
+        parameters=[{'drop_trigger_topic': L('drop_trigger_topic'),
+                     'servo_index': L('servo_index'),
+                     'servo_drop_value': L('servo_drop_value'),
+                     'servo_neutral_value': L('servo_neutral_value'),
+                     'servo_hold_seconds': L('servo_hold_seconds'),
+                     'servo_command': L('servo_command'),
+                     'servo_function': L('servo_function'),
+                     'close_on_start': L('servo_close_on_start')}],
+        condition=IfCondition(servo_owns_output),
+    )
+
     # The simulator's stand-in for it: same topic, same encoding, same
     # annotated stream on the same port, same find_blobs. See thermal_sim.py.
     sensor_sim = Node(
@@ -472,6 +600,7 @@ def generate_launch_description():
         'thermal_noise_c', 'aruco', 'aruco_camera_index', 'aruco_image_topic',
         'aruco_marker_ids', 'aruco_marker_size', 'aruco_hfov_deg',
         'aruco_dict', 'aruco_stream_port', 'aruco_min_marker_distance_rate',
+        'servo_node', 'servo_close_on_start',
     }
     # ...and the ones only thermal_fsm declares. Passed to thermal_drop they
     # would be rejected outright, so the two nodes get two parameter sets.
@@ -480,14 +609,23 @@ def generate_launch_description():
         'mark_search_speed', 'mark_min_travel', 'mark_hover_seconds',
         'box_offset_right', 'mark_stage_timeout', 'leg_lookahead',
         'leg_trim_deg', 'leg_bearing_deg', 'precision_land',
-        'land_search_distance', 'land_search_speed', 'pad_centre_tolerance',
+        'land_search_distance', 'land_search_speed', 'land_return',
+        'land_return_distance', 'land_return_speed', 'land_return_min_travel',
+        'pad_centre_tolerance',
         'pad_centre_seconds', 'pad_descent_rate', 'pad_handoff_height',
         'pad_gain', 'pad_max_nudge', 'pad_lost_seconds', 'pad_stage_timeout',
         'marker_anchor_gain', 'marker_anchor_max_age', 'ground_effect_height',
     }
 
     common = {n: L(n) for n, _, _ in args if n not in not_flight | fsm_only}
-    common['takeoff_altitude'] = L('survey_altitude')
+    # Takeoff goes to the CRUISE height. thermal_drop.py overrides
+    # TAKEOFF_ALTITUDE with cruise_altitude anyway; this keeps the parameter
+    # the node reports consistent with what it actually flies.
+    common['takeoff_altitude'] = L('cruise_altitude')
+    # The flight node still decides WHEN and still publishes the trigger; it
+    # stops sending actuator commands of its own whenever the release node is
+    # the one holding the output.
+    common['release_via_servo_node'] = L('servo_node')
     fsm_params = dict(common, **{n: L(n) for n, _, _ in args if n in fsm_only})
 
     # Exactly one of these runs. thermal_fsm IS a thermal_drop, so everything
@@ -507,4 +645,5 @@ def generate_launch_description():
     )
 
     return LaunchDescription(declared + [microxrce, sensor, sensor_sim,
-                                         aruco_node, led_node, flight])
+                                         aruco_node, led_node, servo_node,
+                                         flight])

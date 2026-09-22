@@ -17,31 +17,43 @@ THE MISSION, IN WORLD COORDINATES
     box_red            (-0.44,  +6.38)   21 C
     box_blue           (+0.88,  +7.48)   70 C   <== the target
     box_purple         (+1.76,  +5.28)   21 C
-    platform_2         (+4.40,  +7.15)   ArUco id 3, the LANDING pad
+    platform_2         (+4.40,  +7.15)   ArUco id 3, the DATUM
+    landing_platform   (+4.35, -14.30)   ArUco id 1, the LANDING pad
 
     Nose along +y throughout, so "right" is +x.
 
-      1. Arm on the pad, climb to 3.30 m (the real 1.50 m x 2.2).
-      2. MARK_SEARCH: forward along x = -4.40 for about 21.5 m until the
-         downward camera finds platform_1. Everything in this arena that the
+      1. Arm on the pad, climb to 2.64 m (the real 1.20 m x 2.2). The
+         whole outbound mission is flown at that height -- it is looking
+         for markers on the floor, and low is better for that.
+      2. MARK_SEARCH: forward along x = -4.40, at 2.64 m, for about 21.5 m
+         until the downward camera finds platform_1. Everything in this arena that the
          aircraft could hit -- both walls, the bars, the tube gate -- stands
          between x = -1.65 and +1.65, so this lane is empty. The first 2.2 m
-         do not count, because the pad it just left is also a marker.
+         do not count, because the pad it just left is also a marker. 24.2 m
+         is the CAP: the real arena's pads are 8.7-8.8 m apart and fly a
+         9.0 m cap, and this world's are 21.45 m apart. Reaching the cap
+         means the marker is not there.
       3. MARK_HOVER: centre on id 2, hold 1 s (a TIME, so it is NOT scaled).
-      4. BOX_OFFSET: 3.30 m RIGHT (the real 1.50 m) to (-1.10, +7.15). From
-         there, at 3.30 m, the thermal camera's footprint is about 9.4 m
-         across by 6.9 m along, and all three boxes are inside it:
-             red     0.66 m right, 0.77 m back
-             blue    1.98 m right, 0.33 m on
-             purple  2.86 m right, 1.87 m back
-      5. SURVEY / APPROACH / DESCEND / HOVER: thermal_drop's own mission.
-         Down to 1.10 m (the real 0.50 m), LED blinking red the whole way,
-         servo fired at the bottom.
+      4. BOX_OFFSET: 3.30 m RIGHT (the real 1.50 m; the real ARENA's own
+         number is 2.20 m) to (-1.10, +7.15).
+      5. SURVEY: climbs 2.64 -> 5.50 m over the boxes FIRST, and collects
+         nothing on the way up. Then no search pattern any more: it holds
+         still at 5.50 m, where
+         the thermal footprint is about 15.7 m by 8.4 m and all three boxes
+         are in one frame, watches for the dwell, and takes the hottest.
+         Then APPROACH / DESCEND / HOVER down to 1.10 m (the real 0.50 m),
+         LED blinking red the whole way, servo fired at the bottom.
       6. RETREAT: climb to 2.64 m, then 3.30 m RIGHT, which lands the
-         aircraft at about (+4.18, +7.48) -- 0.39 m from platform_2, so the
-         landing marker is already in frame when LAND_SEARCH starts.
-      7. LAND_SEARCH / LAND_CENTRE / LAND_DESCEND: centre on id 3, walk down
-         to 0.99 m and hand the last of it to PX4.
+         aircraft at about (+4.18, +7.48) -- 0.39 m from platform_2.
+      7. LAND_SEARCH / LAND_ALIGN: find id 3 and square up on it. It is a
+         DATUM, not the pad: the arena's landing marker is at the OTHER end
+         of the corridor.
+      8. LAND_RETURN: backwards down the corridor, up to 24.2 m, nose still
+         along +y -- no 180 deg turn, so the corridor heading the flight
+         measured while stationary is still the one being flown -- until
+         id 1 is under the camera at y = -14.30.
+      9. LAND_CENTRE / LAND_DESCEND: centre on id 1, walk down to 0.99 m and
+         hand the last of it to PX4.
 
 WHY 2.2
 -------
@@ -99,6 +111,8 @@ USEFUL ARGUMENTS
     mark_search:=false  skip the marker hunt and survey from the pad.
     precision_land:=false
                         plain PX4 land after the retreat.
+    land_return:=false  land on the first marker after the retreat (id 3)
+                        instead of flying the corridor home to id 1.
     aruco:=false        no marker detector at all: the MARK_* and LAND_*
                         stages creep their full distance, find nothing and
                         end honestly.
@@ -325,10 +339,17 @@ def generate_launch_description():
                 'thermal_noise_c': '0.1',
                 'aruco': LaunchConfiguration('aruco'),
                 'aruco_image_topic': '/camera/down/image_raw',
-                # id 2 is platform_1, the fix on the way out; id 3 is
-                # platform_2, the landing pad. id 0 is the takeoff pad and is
-                # deliberately NOT here -- the aircraft arms on it.
-                'aruco_marker_ids': '2,3',
+                # id 2 is platform_1, the fix on the way out. id 3 is
+                # platform_2, which is the DATUM the run home is squared up
+                # on, not the pad. id 1 is landing_platform at (4.35, -14.30),
+                # 21.45 m back down the corridor from id 3 -- that is what
+                # the aircraft actually lands on, so it has to be here or
+                # LAND_RETURN would fly the whole cap and never see it.
+                # id 0 is the takeoff pad and is deliberately NOT here --
+                # the aircraft arms on it. It cannot be confused with id 1
+                # either way: the two sit at the same y, 8.75 m apart across
+                # the corridor, so only one of them is ever under the camera.
+                'aruco_marker_ids': '1,2,3',
                 # The marker plate in the world is 0.88 m square, which is the
                 # real course's 0.40 m scaled. Its black border runs to the
                 # plate edge, so this IS the side length solvePnP wants.
@@ -400,17 +421,32 @@ def generate_launch_description():
                 'retarget_margin': '1.5',
 
                 # ---- the climb, the survey and the drop ----
-                'survey_altitude': s(1.50),         # 3.30
-                # The hardware ceiling is 1.6 m because that is where the
-                # real MLX's readings stop being usable. In a world 2.2x too
-                # big the survey has to be flown 2.2x higher to see the same
-                # thing, so the ceiling moves with it. See thermal_drop.py.
-                'max_survey_altitude': s(1.60),     # 3.52
+                # 2.64. The real 1.20 m. Takeoff, the marker creep, the
+                # hover and the sidestep are all flown here; only the
+                # survey goes higher, and only once it is over the boxes.
+                'cruise_altitude': s(1.20),         # 2.64
+                # 5.50. The real mission now watches the boxes from 2.50 m
+                # instead of flying a pattern at 1.50 m, and in a world 2.2x
+                # too big the same view is 2.2x higher up. It is well inside
+                # the arena: the tube gate and the bars are all below 3.5 m.
+                'survey_altitude': s(2.50),         # 5.50
+                # The ceiling moves with it, for the reason thermal_drop.py
+                # gives: it is the clamp on survey_altitude, and a clamp
+                # below the height the mission needs would silently undo the
+                # change above.
+                'max_survey_altitude': s(2.60),     # 5.72
                 'drop_altitude': s(0.50),           # 1.10, the "50 cm" scaled
                 'min_altitude': s(0.40),
+                # Above survey_altitude, or the climb to the survey height
+                # would be clamped short of it.
                 'max_altitude': s(3.00),
                 'survey_dwell_seconds': '4.0',      # a TIME
-                'survey_step': s(0.50),
+                # 0 = NO SEARCH PATTERN. From 5.50 m the thermal footprint is
+                # about 15.7 m by 8.4 m and all three boxes -- spread over
+                # 6.4 m of scaled arena -- are in one frame, so the aircraft
+                # stops, watches for the dwell and ranks them. The five-point
+                # ring is gone; see _begin_survey() in thermal_drop.py.
+                'survey_step': '0.0',
                 'approach_tolerance': s(0.15),
                 'descend_tolerance': s(0.12),
                 'descend_speed': s(0.12),
@@ -437,6 +473,13 @@ def generate_launch_description():
                 # The creep is 21.45 m of world (pad y = -14.30 to
                 # platform_1 y = +7.15). 24.2 leaves a 2.75 m margin and
                 # still stops short of the dark room's wall at y = +9.90.
+                #
+                # NOTE this is NOT the hardware number scaled. The real
+                # arena's two markers are 8.7-8.8 m apart, so the aircraft
+                # flies a 9.0 m cap; the same pair in this world is 21.45 m
+                # apart, which is 9.75 m before scaling, not 8.75. The arena
+                # was scaled from a slightly different layout. Scale the
+                # SIM's own geometry, not the hardware's parameter.
                 'mark_search_distance': s(11.00),
                 'mark_search_speed': s(0.30),       # 0.66 m/s -> about 33 s
                 'mark_min_travel': s(1.00),         # clear of the takeoff pad
@@ -484,6 +527,21 @@ def generate_launch_description():
                 # slack rather than a search.
                 'land_search_distance': s(2.50),
                 'land_search_speed': s(0.30),
+                # THE RUN HOME. platform_2 (id 3) is the DATUM, not the pad:
+                # the aircraft squares up on it and then flies the corridor
+                # BACKWARDS to landing_platform (id 1) at (+4.35, -14.30),
+                # which is what it lands on. That is 21.45 m -- the same
+                # corridor length as the outbound creep, because it is the
+                # same pair of pads mirrored across the arena -- so the cap
+                # is the same s(11.00) = 24.20 m, and for the same reason it
+                # is not the hardware 9.0 m scaled.
+                #
+                # Reaching the cap is NOT a failure: the cone is already in
+                # the box, so the aircraft just lands where it is.
+                'land_return': 'true',
+                'land_return_distance': s(11.00),   # 24.20
+                'land_return_speed': s(0.30),       # 0.66 -> about 33 s
+                'land_return_min_travel': s(1.00),  # clear of the datum
                 'pad_centre_tolerance': s(0.10),
                 'pad_centre_seconds': '1.0',        # a TIME
                 'pad_descent_rate': s(0.20),
@@ -500,13 +558,18 @@ def generate_launch_description():
 
                 # ---- the retreat ----
                 'retreat_altitude': s(1.20),        # 2.64
-                'retreat_right': s(1.0),            # 2.20, the "1 m" scaled.
-                                                    # Far enough to be clear
-                                                    # of the box, close
-                                                    # enough that platform_2
-                                                    # is already in the down
-                                                    # camera when
-                                                    # LAND_SEARCH starts.
+                # 3.30. The step RIGHT off the boxes and onto the corridor
+                # platform_2 stands on. The real arena's number is 2.20 m
+                # and this world's is 1.50 m before scaling -- the same
+                # relationship BOX_OFFSET_RIGHT has, and for the same
+                # reason: the two arenas put the pads at different distances
+                # from the boxes. From box_blue at (+0.88, +7.48) this ends
+                # at about (+4.18, +7.48), which is 0.39 m from platform_2,
+                # so the datum marker is already in the down camera when
+                # LAND_SEARCH starts. It was s(1.0) -- 2.20 m, which stopped
+                # 1.10 m short of the pad and left LAND_SEARCH to find it by
+                # creeping FORWARD, in the one direction the pad is not.
+                'retreat_right': s(1.50),           # 3.30
                 'retreat_timeout': '30.0',
                 'land_after_drop': 'true',
 
@@ -525,11 +588,14 @@ def generate_launch_description():
                 'move_leash': s(0.40),
                 'takeoff_accept_tolerance': s(0.30),
                 'stage_timeout': '60.0',
-                # The whole mission: about 5 s of climb, 4 s of hold, 33 s of
-                # creep, 1 s of hover, 5 s across, up to 25 s of survey, and
-                # then the drop, the retreat and the landing. 400 s is not a
-                # budget, it is the point at which something has clearly hung.
-                'flight_seconds': '400.0',
+                # The whole mission: about 8 s of climb to 5.50 m, 4 s of
+                # hold, 33 s of creep, 1 s of hover, 5 s across, ~10 s of
+                # survey (one observation now, not a five-point ring), the
+                # drop, the retreat -- and then the run home, which is
+                # another 33 s of corridor plus the align and the descent.
+                # 600 s is not a budget, it is the point at which something
+                # has clearly hung.
+                'flight_seconds': '600.0',
                 'flight_node_delay': '8.0',
             }.items(),
         )],

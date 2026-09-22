@@ -1,357 +1,440 @@
-[window_detect-9] [INFO] [1790029862.775958299] [window_detect]: Browser stream on http://<jetson-ip>:8080/ (single frame at /snapshot.jpg).
-[window_detect-9] [INFO] [1790029862.776330039] [window_detect]: Window detection up. image=/camera/rgb/image_raw depth=/camera/depth/image_raw color=blue. Publishing /window_detected, /window_info, /window_geometry, /window_detection/image.
-[tube_detect-10] [WARN] [1790029862.786370624] [tube_detect]: Tube detection up. colour=red image=/camera/rgb/image_raw depth=/camera/depth/image_raw -> /tubes_detected, /tube_geometry, MJPEG on :8082
-[aruco_pose-11] [INFO] [1790029862.821230256] [aruco_pose]: OpenCV 4.5.4, legacy aruco API.
-[aruco_pose-11] [WARN] [1790029862.821705945] [aruco_pose]: No calibration given: fx derived from hfov_deg=90.0. x/y are unaffected by a wrong FOV, HEIGHT is scaled by it, and lens distortion is NOT corrected. Do not use the height.
-[aruco_pose-11] [WARN] [1790029862.830577211] [aruco_pose]: Frames from /camera/down/image_raw, not from a camera device.
-[aruco_pose-11] [INFO] [1790029862.833676846] [aruco_pose]: Browser stream on http://<jetson-ip>:8083/
-[aruco_pose-11] [WARN] [1790029862.834124107] [aruco_pose]: ArUco down-camera pose: id 3/1, 88 cm marker, DICT_5X5_50, processing at 20 Hz.
-[window_detect-9] [INFO] [1790029862.847430982] [window_detect]: CameraInfo from /camera/rgb/camera_info: fx=432.5 fy=432.5 cx=320.0 cy=240.0 (640x480). /window_geometry angles are now metric.
-[tube_detect-10] [INFO] [1790029862.847433424] [tube_detect]: CameraInfo from /camera/rgb/camera_info: fx=432.5 fy=432.5 cx=320.0 cy=240.0.
-[window_detect-9] [INFO] [1790029862.955878350] [window_detect]: First frame from /camera/rgb/image_raw: 640x480.
-[window_detect-9] [INFO] [1790029862.958976872] [window_detect]: window: no   (streak 0 misses, 1 frames processed, 0 skipped by max_fps=15)
-[aruco_pose-11] [INFO] [1790029862.986931574] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [WARN] [1790029863.160354973] [window_detect]: WINDOW DETECTED  (centre=(496,199) offset=+0.55 area=876px dist=0.00m)
-[window_detect-9] [INFO] [1790029864.023701895] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[aruco_pose-11] [INFO] [1790029864.036752692] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029865.099797800] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[aruco_pose-11] [INFO] [1790029865.136672442] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029866.148069608] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[aruco_pose-11] [INFO] [1790029866.186316619] [aruco_pose]: id 3/1 not visible (seen: -)
-[aruco_pose-11] [INFO] [1790029867.186693001] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029867.257248154] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[window_detect-9] [INFO] [1790029868.273774485] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[aruco_pose-11] [INFO] [1790029868.286283243] [aruco_pose]: id 3/1 not visible (seen: -)
-[INFO] [course_fsm-12]: process started with pid [125906]
-[window_detect-9] [INFO] [1790029869.383622132] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[aruco_pose-11] [INFO] [1790029869.436482824] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029869.952244239] [course_fsm]: Airframe: 0.250 m tall, 0.500 m wide, extending 0.101 m below and 0.149 m above the commanded point. A window must measure at least 0.38 x 0.63 m to be flown.
-[course_fsm-12] [WARN] [1790029869.957585255] [course_fsm]: stdin is not a tty; q/k abort is unavailable.
-[course_fsm-12] [WARN] [1790029869.957919261] [course_fsm]: Window traversal on ARK FLOW: climb 2.64 m, hold 5 s, sweep +/-10 deg for the window, lock, line up 2.64 m in front of it and fly through to 1.10 m beyond, then land. Approach 0.66 m/s, traverse 0.99 m/s. Hard limit 600 s from the start of the climb. Press q to abort into a descent, k to force-disarm.
-[course_fsm-12] [INFO] [1790029869.973763184] [course_fsm]: gap_side=auto -> the RIGHT cell is the bigger opening (4.46 m2).
-[course_fsm-12] [WARN] [1790029869.977407216] [course_fsm]: window detection ON.
-[course_fsm-12] [WARN] [1790029869.977774359] [course_fsm]: tube detection OFF.
-[course_fsm-12] [WARN] [1790029869.980856541] [course_fsm]: COURSE: window, then OVER the red bar (3.52 m, cross at 4.99 m), then UNDER the blue bar (1.76 m, cross at 1.13 m), then land 1.76 m past it. Gaps 2.20 / 2.20 m; every vertical move happens at a gap midpoint. Bars are flown on the known geometry along the window's traverse line. Then 0.00 m on to the tubes, gap at 1.81 m (band 1.43-2.69 m), aiming 0.33 m under and 0.11 m left of the middle of the opening. Then back up to 2.64 m, a 2.0 s hover, the whole window mission again on the next window, and the landing after that. READY.
-[course_fsm-12] [INFO] [1790029869.983912641] [course_fsm]: Waiting for VehicleStatus from PX4...
-[course_fsm-12] [INFO] [1790029870.013272653] [course_fsm]: nav_state -> AUTO_LOITER(4)
-[course_fsm-12] [INFO] [1790029870.014574723] [course_fsm]: PX4 failsafe (expected on this airframe, harmless): gcs_connection_lost
-[course_fsm-12] [ERROR] [1790029870.014842876] [course_fsm]: PX4 failsafe SET: manual_control_signal_lost
-[course_fsm-12] [ERROR] [1790029870.049966005] [course_fsm]: Not arming: rangefinder unusable: dist_bottom_valid is false and /fmu/out/estimator_status_flags is not being published, so there is no second opinion.
-[course_fsm-12] [INFO] [1790029870.050317599] [course_fsm]: alt=n/a airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=False vz=-0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.02,-0.01) | hdg=+6 deg yaw_sp=+0 deg
-[course_fsm-12] [INFO] [1790029870.050627776] [course_fsm]: window: /window_geometry has a publisher but has never carried a message: window_detect is not detecting the window. Check the colour, min_area and the lighting.
-[window_detect-9] [INFO] [1790029870.407920011] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[aruco_pose-11] [INFO] [1790029870.436885980] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029871.051594368] [course_fsm]: alt=n/a airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.02,-0.02) | hdg=+6 deg yaw_sp=+0 deg
-[course_fsm-12] [INFO] [1790029871.300378092] [course_fsm]: Setpoint stream established, position estimate healthy.
-[course_fsm-12] [INFO] [1790029871.349477404] [course_fsm]: Requesting Offboard mode...
-[course_fsm-12] [INFO] [1790029871.380215577] [course_fsm]: nav_state -> OFFBOARD(14)
-[course_fsm-12] [INFO] [1790029871.400154427] [course_fsm]: Offboard mode active.
-[window_detect-9] [INFO] [1790029871.409492880] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[bash-6] INFO  [commander] Armed by external command	
-[bash-6] INFO  [tone_alarm] arming warning
-[aruco_pose-11] [INFO] [1790029871.536368150] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029871.699635292] [course_fsm]: Arming point captured: x=-0.06 y=-0.03 z=-0.01 yaw=+6 deg. 'forward' means this heading for the whole flight.
-[course_fsm-12] [WARN] [1790029871.699921630] [course_fsm]: ARMED. Holding on the ground for 5 s.
-[course_fsm-12] [INFO] [1790029871.749689571] [course_fsm]: Armed on the ground, 5.0 s to takeoff...
-[course_fsm-12] [INFO] [1790029872.100257149] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.02,-0.01) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029872.100555314] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depth missing x18)
-[window_detect-9] [INFO] [1790029872.498064509] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[aruco_pose-11] [INFO] [1790029872.536598786] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029872.749886777] [course_fsm]: Armed on the ground, 4.0 s to takeoff...
-[course_fsm-12] [INFO] [1790029873.101802154] [course_fsm]: alt=+0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.01,-0.01) | hdg=+6 deg yaw_sp=+6 deg
-[window_detect-9] [INFO] [1790029873.589488318] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[aruco_pose-11] [INFO] [1790029873.635850437] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029873.800096696] [course_fsm]: Armed on the ground, 2.9 s to takeoff...
-[course_fsm-12] [INFO] [1790029874.101157708] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depth missing x35)
-[course_fsm-12] [INFO] [1790029874.151002447] [course_fsm]: alt=+0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(-0.01,+0.00) | hdg=+6 deg yaw_sp=+6 deg
-[aruco_pose-11] [INFO] [1790029874.686562872] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029874.775689215] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[course_fsm-12] [INFO] [1790029874.850367053] [course_fsm]: Armed on the ground, 1.9 s to takeoff...
-[course_fsm-12] [INFO] [1790029875.200632053] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.01,+0.00) | hdg=+6 deg yaw_sp=+6 deg
-[aruco_pose-11] [INFO] [1790029875.686931540] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029875.778754011] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[course_fsm-12] [INFO] [1790029875.899569186] [course_fsm]: Armed on the ground, 0.8 s to takeoff...
-[course_fsm-12] [INFO] [1790029876.150337807] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depth missing x53)
-[course_fsm-12] [INFO] [1790029876.200989046] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.02,+0.00) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [WARN] [1790029876.750097115] [course_fsm]: Climbing to 2.64 m (datum z=-0.01).
-[aruco_pose-11] [INFO] [1790029876.786325826] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [WARN] [1790029876.799884816] [course_fsm]: Flight clock started: landing in 600 s.
-[window_detect-9] [INFO] [1790029876.858460881] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[course_fsm-12] [INFO] [1790029877.250009073] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=True | xy=VEL-HOLD flow_ok=False vxy=(+0.02,-0.00) | hdg=+6 deg yaw_sp=+6 deg
-[aruco_pose-11] [INFO] [1790029877.886629358] [aruco_pose]: id 3/1 not visible (seen: -)
-[bash-6] INFO  [commander] Takeoff detected	
-[window_detect-9] [INFO] [1790029878.054903194] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[course_fsm-12] [INFO] [1790029878.150378441] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depth missing x70)
-[course_fsm-12] [INFO] [1790029878.299622484] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,-0.01) | hdg=+6 deg yaw_sp=+6 deg
-[aruco_pose-11] [INFO] [1790029878.935992276] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029879.125779387] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[course_fsm-12] [INFO] [1790029879.349623995] [course_fsm]: alt=-0.00 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00) | hdg=+6 deg yaw_sp=+6 deg
-[aruco_pose-11] [INFO] [1790029880.136098940] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029880.151612561] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depth missing x90)
-[window_detect-9] [INFO] [1790029880.219110585] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[course_fsm-12] [INFO] [1790029880.350058619] [course_fsm]: alt=-0.01 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=True vz=+0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.00,-0.00) | hdg=+6 deg yaw_sp=+6 deg
-[window_detect-9] [INFO] [1790029881.399570480] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[course_fsm-12] [INFO] [1790029881.401553344] [course_fsm]: alt=-0.01 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.01 m rng_ok=True vz=+0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.00,-0.01) | hdg=+6 deg yaw_sp=+6 deg
-[aruco_pose-11] [INFO] [1790029881.436264073] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029882.202042024] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depth missing x107)
-[course_fsm-12] [INFO] [1790029882.450171252] [course_fsm]: alt=-0.01 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=True vz=+0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,-0.01) | hdg=+6 deg yaw_sp=+6 deg
-[window_detect-9] [INFO] [1790029882.479885544] [window_detect]: window: YES  centre=(496,199) offset=+0.55 area=876px dist=0.00m
-[aruco_pose-11] [INFO] [1790029882.486439455] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029883.450202496] [course_fsm]: alt=-0.01 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=True vz=-0.00 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.02,-0.01) | hdg=+6 deg yaw_sp=+6 deg
-[aruco_pose-11] [INFO] [1790029883.487257675] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029883.579492890] [window_detect]: window: YES  centre=(496,198) offset=+0.55 area=876px dist=0.00m
-[course_fsm-12] [INFO] [1790029884.250722299] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depth missing x123)
-[course_fsm-12] [INFO] [1790029884.499868382] [course_fsm]: alt=+0.06 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.05 m rng_ok=True vz=-0.25 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.04,+0.02) | hdg=+6 deg yaw_sp=+6 deg
-[window_detect-9] [INFO] [1790029884.619638750] [window_detect]: window: YES  centre=(495,201) offset=+0.55 area=856px dist=0.00m
-[aruco_pose-11] [INFO] [1790029884.636964698] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029885.549902979] [course_fsm]: alt=+0.58 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.49 m rng_ok=True vz=-0.83 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,-0.02) | hdg=+3 deg yaw_sp=+6 deg
-[window_detect-9] [INFO] [1790029885.658246576] [window_detect]: window: YES  centre=(493,209) offset=+0.54 area=852px dist=0.00m
-[aruco_pose-11] [INFO] [1790029885.688162994] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029886.299742356] [course_fsm]: Flow healthy: latching x/y hold at (-0.01, -0.03).
-[course_fsm-12] [INFO] [1790029886.300340440] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 0 truncated; rejections: corner depth missing x135, corner depths disagree x7)
-[course_fsm-12] [INFO] [1790029886.601730669] [course_fsm]: alt=+1.30 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.15 m rng_ok=True vz=-1.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,-0.02) | hdg=+7 deg yaw_sp=+6 deg
-[window_detect-9] [WARN] [1790029886.709934398] [window_detect]: Window LOST.
-[window_detect-9] [INFO] [1790029886.710317618] [window_detect]: window: no   (streak 5 misses, 210 frames processed, 0 skipped by max_fps=15)
-[aruco_pose-11] [INFO] [1790029886.837347399] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [WARN] [1790029887.182491458] [window_detect]: WINDOW DETECTED  (centre=(494,224) offset=+0.55 area=3339px dist=0.00m)
-[course_fsm-12] [INFO] [1790029887.650395839] [course_fsm]: alt=+1.97 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.85 m rng_ok=True vz=-0.68 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.03) | hdg=+6 deg yaw_sp=+6 deg
-[window_detect-9] [INFO] [1790029887.821861805] [window_detect]: window: YES  centre=(466,227) offset=+0.46 area=2964px dist=0.00m
-[aruco_pose-11] [INFO] [1790029887.838343228] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [WARN] [1790029888.291926963] [window_detect]: Window LOST.
-[course_fsm-12] [INFO] [1790029888.301235825] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 1 truncated; rejections: corner depth missing x135, corner depths disagree x11, window is not vertical x1)
-[course_fsm-12] [INFO] [1790029888.700154318] [course_fsm]: alt=+2.27 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.22 m rng_ok=True vz=-0.30 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,+0.00) | hdg=+5 deg yaw_sp=+6 deg
-[window_detect-9] [INFO] [1790029888.858764613] [window_detect]: window: no   (streak 10 misses, 226 frames processed, 0 skipped by max_fps=15)
-[aruco_pose-11] [INFO] [1790029888.886709800] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029889.750375724] [course_fsm]: alt=+2.41 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.39 m rng_ok=True vz=-0.16 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.04) | hdg=+6 deg yaw_sp=+6 deg
-[window_detect-9] [WARN] [1790029889.825589792] [window_detect]: WINDOW DETECTED  (centre=(472,264) offset=+0.47 area=705px dist=0.00m)
-[window_detect-9] [INFO] [1790029889.929381962] [window_detect]: window: YES  centre=(472,264) offset=+0.47 area=705px dist=0.00m
-[aruco_pose-11] [INFO] [1790029889.937277599] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [WARN] [1790029890.306064040] [window_detect]: Window LOST.
-[course_fsm-12] [INFO] [1790029890.350068999] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 1 truncated; rejections: corner depth missing x135, corner depths disagree x14, window is not vertical x1)
-[course_fsm-12] [INFO] [1790029890.800744413] [course_fsm]: alt=+2.49 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.48 m rng_ok=True vz=-0.10 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.00,-0.11) | hdg=+6 deg yaw_sp=+6 deg
-[aruco_pose-11] [INFO] [1790029890.937387180] [aruco_pose]: id 3/1 not visible (seen: [0])
-[window_detect-9] [INFO] [1790029891.072919593] [window_detect]: window: no   (streak 11 misses, 246 frames processed, 0 skipped by max_fps=15)
-[window_detect-9] [WARN] [1790029891.561059160] [window_detect]: WINDOW DETECTED  (centre=(460,209) offset=+0.44 area=832px dist=16.25m)
-[course_fsm-12] [INFO] [1790029891.851513966] [course_fsm]: alt=+2.54 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.54 m rng_ok=True vz=-0.06 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.13) | hdg=+6 deg yaw_sp=+6 deg
-[aruco_pose-11] [INFO] [1790029891.987227461] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029892.127856960] [window_detect]: window: YES  centre=(468,233) offset=+0.46 area=2104px dist=16.25m
-[course_fsm-12] [INFO] [1790029892.350873365] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 1 truncated; rejections: corner depth missing x135, corner depths disagree x21, corners not coplanar x2)
-[course_fsm-12] [INFO] [1790029892.899951511] [course_fsm]: alt=+2.57 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.58 m rng_ok=True vz=-0.04 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.09) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [WARN] [1790029892.951064650] [course_fsm]: Reached 2.57 m. Holding for 5 s.
-[course_fsm-12] [INFO] [1790029892.999925809] [course_fsm]: Holding, 5.0 s to the step off the pad... (window IN SIGHT)
-[window_detect-9] [INFO] [1790029893.169861373] [window_detect]: window: YES  centre=(467,239) offset=+0.46 area=2706px dist=10.76m
-[aruco_pose-11] [INFO] [1790029893.286699345] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029893.901478606] [course_fsm]: alt=+2.59 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.60 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.05) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029894.050318633] [course_fsm]: Holding, 3.9 s to the step off the pad... (window IN SIGHT)
-[aruco_pose-11] [INFO] [1790029894.286964111] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029894.326936590] [window_detect]: window: YES  centre=(467,240) offset=+0.46 area=2614px dist=16.29m
-[course_fsm-12] [INFO] [1790029894.400043231] [course_fsm]: window: no usable pose (0/6 fresh samples, 0 accepted ever, 1 truncated; rejections: corner depth missing x135, corner depths disagree x35, corners not coplanar x3)
-[course_fsm-12] [INFO] [1790029894.949960233] [course_fsm]: alt=+2.61 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.62 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.02) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029895.102041276] [course_fsm]: Holding, 2.9 s to the step off the pad... (window IN SIGHT)
-[aruco_pose-11] [INFO] [1790029895.337168510] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029895.476998791] [window_detect]: window: YES  centre=(465,242) offset=+0.45 area=3382px dist=16.28m
-[course_fsm-12] [INFO] [1790029895.950879774] [course_fsm]: alt=+2.62 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.63 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.01) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029896.150591259] [course_fsm]: Holding, 1.8 s to the step off the pad... (window IN SIGHT)
-[aruco_pose-11] [INFO] [1790029896.386497710] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029896.402696214] [course_fsm]: window: no usable pose (1/6 fresh samples, 1 accepted ever, 1 truncated; rejections: corner depth missing x135, corner depths disagree x48, corners not coplanar x6)
-[window_detect-9] [INFO] [1790029896.538475884] [window_detect]: window: YES  centre=(469,240) offset=+0.47 area=3482px dist=16.25m
-[course_fsm-12] [INFO] [1790029896.999896406] [course_fsm]: alt=+2.63 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.64 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,+0.02) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029897.199783529] [course_fsm]: Holding, 0.8 s to the step off the pad... (window IN SIGHT)
-[aruco_pose-11] [INFO] [1790029897.386808984] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029897.550532512] [window_detect]: window: YES  centre=(470,241) offset=+0.47 area=3248px dist=16.26m
-[course_fsm-12] [WARN] [1790029897.999778970] [course_fsm]: START_OFFSET: 3.30 m RIGHT off the takeoff pad at 0.66 m/s, holding +6 deg, then the window search.
-[course_fsm-12] [INFO] [1790029898.049752163] [course_fsm]: alt=+2.63 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.64 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,+0.03) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029898.050327455] [course_fsm]: START_OFFSET: 3.30 m to go.
-[course_fsm-12] [INFO] [1790029898.450393546] [course_fsm]: window: no usable pose (1/6 fresh samples, 1 accepted ever, 1 truncated; rejections: corner depth missing x135, corner depths disagree x66, corners not coplanar x7)
-[aruco_pose-11] [INFO] [1790029898.487244010] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029898.725475306] [window_detect]: window: YES  centre=(463,240) offset=+0.45 area=3996px dist=16.29m
-[course_fsm-12] [INFO] [1790029899.050277841] [course_fsm]: alt=+2.63 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.64 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,+0.17) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029899.051389981] [course_fsm]: START_OFFSET: 3.26 m to go.
-[aruco_pose-11] [INFO] [1790029899.588019248] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029899.769629777] [window_detect]: window: YES  centre=(468,231) offset=+0.46 area=2234px dist=10.76m
-[course_fsm-12] [INFO] [1790029900.050661940] [course_fsm]: alt=+2.64 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.65 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.05,+0.64) | hdg=+5 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029900.100350993] [course_fsm]: START_OFFSET: 2.93 m to go.
-[course_fsm-12] [INFO] [1790029900.500753376] [course_fsm]: window: no usable pose (0/6 fresh samples, 1 accepted ever, 1 truncated; rejections: corner depth missing x135, corner depths disagree x79, corners not coplanar x9)
-[aruco_pose-11] [INFO] [1790029900.638320188] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029900.824790742] [window_detect]: window: YES  centre=(446,251) offset=+0.40 area=1140px dist=16.37m
-[course_fsm-12] [INFO] [1790029901.100553300] [course_fsm]: alt=+2.64 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.65 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.08,+0.94) | hdg=+5 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029901.102181817] [course_fsm]: START_OFFSET: 2.41 m to go.
-[aruco_pose-11] [INFO] [1790029901.687754079] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029901.860744437] [window_detect]: window: YES  centre=(430,244) offset=+0.34 area=2589px dist=0.00m
-[course_fsm-12] [INFO] [1790029902.150236134] [course_fsm]: alt=+2.64 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.65 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.13,+1.01) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029902.151069275] [course_fsm]: START_OFFSET: 1.74 m to go.
-[course_fsm-12] [INFO] [1790029902.500906152] [course_fsm]: window: no usable pose (1/6 fresh samples, 2 accepted ever, 1 truncated; rejections: corner depth missing x135, corner depths disagree x95, corners not coplanar x9)
-[aruco_pose-11] [INFO] [1790029902.737567998] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029903.004990274] [window_detect]: window: YES  centre=(414,240) offset=+0.29 area=960px dist=0.00m
-[course_fsm-12] [INFO] [1790029903.200440621] [course_fsm]: alt=+2.65 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.67 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.14,+0.97) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029903.201593307] [course_fsm]: START_OFFSET: 1.14 m to go.
-[aruco_pose-11] [INFO] [1790029903.837470166] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029904.070194011] [window_detect]: window: YES  centre=(508,230) offset=+0.59 area=30200px dist=0.00m
-[course_fsm-12] [INFO] [1790029904.249913162] [course_fsm]: alt=+2.65 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.65 m rng_ok=True vz=+0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.11,+0.89) | hdg=+6 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029904.250405238] [course_fsm]: START_OFFSET: 0.59 m to go.
-[course_fsm-12] [INFO] [1790029904.549991351] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 9 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-12] [WARN] [1790029904.700051129] [course_fsm]: START_OFFSET: off the pad, 0.26 m short. Starting the window search. (window IN SIGHT)
-[course_fsm-12] [WARN] [1790029904.700314833] [course_fsm]: WINDOW LOCKED (in sight after the step off the pad). Yaw stopped at +6 deg, holding position. 381.3|218.7|+0.191|70786|1.40|2.19|1.44|1.36|11.06|TRUNC. Landing in 572 s.
-[course_fsm-12] [INFO] [1790029904.750407736] [course_fsm]: Locked, holding. window IN SIGHT. 572 s to landing.
-[course_fsm-12] [WARN] [1790029904.750731830] [course_fsm]: RECENTRE: the window is truncated by the frame edge (0 px), so the quad being measured is only part of it and its centre is not the window's centre. Nudging clockwise in 4 deg steps (up to 20 deg) to bring the rest into view before anything is flown at it.
-[course_fsm-12] [INFO] [1790029904.800002741] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +10 deg), nudging +4.0 deg.
-[aruco_pose-11] [INFO] [1790029904.838297816] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029905.119429697] [window_detect]: window: YES  centre=(393,279) offset=+0.23 area=131252px dist=0.00m
-[course_fsm-12] [INFO] [1790029905.299892636] [course_fsm]: alt=+2.61 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.61 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.07,+0.48) | hdg=+6 deg yaw_sp=+9 deg
-[course_fsm-12] [INFO] [1790029905.800461084] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +0 deg), nudging +0.0 deg.
-[aruco_pose-11] [INFO] [1790029905.839483789] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029906.211922870] [window_detect]: window: YES  centre=(281,210) offset=-0.12 area=213492px dist=16.48m
-[course_fsm-12] [INFO] [1790029906.350115193] [course_fsm]: alt=+2.61 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.62 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.04,-0.25) | hdg=+11 deg yaw_sp=+7 deg
-[course_fsm-12] [INFO] [1790029906.550487769] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 27 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-12] [INFO] [1790029906.801166776] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid -6 deg), nudging -4.0 deg.
-[aruco_pose-11] [INFO] [1790029906.937661227] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029907.316085978] [window_detect]: window: YES  centre=(327,221) offset=+0.02 area=204998px dist=16.71m
-[course_fsm-12] [INFO] [1790029907.400482341] [course_fsm]: alt=+2.63 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.64 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.08,-0.45) | hdg=+7 deg yaw_sp=+6 deg
-[course_fsm-12] [INFO] [1790029907.850328575] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +7 deg), nudging +4.0 deg.
-[aruco_pose-11] [INFO] [1790029907.937777943] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029908.400570383] [course_fsm]: alt=+2.64 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.65 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.08,-0.26) | hdg=+7 deg yaw_sp=+11 deg
-[window_detect-9] [INFO] [1790029908.484878739] [window_detect]: window: YES  centre=(404,215) offset=+0.26 area=191508px dist=0.00m
-[course_fsm-12] [INFO] [1790029908.601949496] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 43 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-12] [INFO] [1790029908.850882780] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +11 deg), nudging +4.0 deg.
-[aruco_pose-11] [INFO] [1790029909.087203332] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029909.449543960] [course_fsm]: alt=+2.64 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.66 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.07,-0.13) | hdg=+14 deg yaw_sp=+18 deg
-[window_detect-9] [INFO] [1790029909.537729102] [window_detect]: window: YES  centre=(398,218) offset=+0.24 area=195031px dist=0.00m
-[course_fsm-12] [INFO] [1790029909.851023921] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +10 deg), nudging +4.0 deg.
-[aruco_pose-11] [INFO] [1790029910.137768466] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029910.449665106] [course_fsm]: alt=+2.64 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.65 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.08,-0.08) | hdg=+21 deg yaw_sp=+25 deg
-[window_detect-9] [INFO] [1790029910.575791225] [window_detect]: window: YES  centre=(372,227) offset=+0.16 area=192892px dist=0.00m
-[course_fsm-12] [INFO] [1790029910.649931447] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 61 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-12] [INFO] [1790029910.901916300] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +5 deg), nudging +1.7 deg.
-[aruco_pose-11] [INFO] [1790029911.187858383] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [WARN] [1790029911.251322364] [course_fsm]: RECENTRE: turned the full 20 deg and the window is still clipped -- it does not fit in the frame from here. Holding heading until the altitude change.
-[course_fsm-12] [INFO] [1790029911.451200236] [course_fsm]: alt=+2.64 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.65 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.05,-0.03) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029911.635202066] [window_detect]: window: YES  centre=(345,229) offset=+0.08 area=190412px dist=0.00m
-[course_fsm-12] [WARN] [1790029911.751411378] [course_fsm]: RECENTRE: yawing has not un-truncated the window in 7 s. Changing altitude 2.64 -> 3.08 m for a different view, holding position (attempt 1/2).
-[course_fsm-12] [INFO] [1790029911.801240029] [course_fsm]: RECENTRE: changing altitude for a better view of the window.
-[aruco_pose-11] [INFO] [1790029912.237711754] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029912.499976718] [course_fsm]: alt=+2.71 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.68 m rng_ok=True vz=-0.35 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.02,+0.03) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029912.676068240] [window_detect]: window: YES  centre=(363,242) offset=+0.13 area=193062px dist=0.00m
-[course_fsm-12] [INFO] [1790029912.699911825] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 77 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-12] [INFO] [1790029912.850339845] [course_fsm]: RECENTRE: changing altitude for a better view of the window.
-[aruco_pose-11] [INFO] [1790029913.287690395] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029913.350836292] [course_fsm]: RECENTRE: now at 3.08 m; looking again.
-[course_fsm-12] [INFO] [1790029913.351255879] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +7 deg), nudging +0.4 deg.
-[course_fsm-12] [INFO] [1790029913.550046729] [course_fsm]: alt=+2.94 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.91 m rng_ok=True vz=-0.19 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.04,+0.04) | hdg=+25 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029913.715574244] [window_detect]: window: YES  centre=(366,252) offset=+0.14 area=169932px dist=0.00m
-[course_fsm-12] [WARN] [1790029914.001675578] [course_fsm]: RECENTRE: turned the full 20 deg and the window is still clipped -- it does not fit in the frame from here. Holding heading until the altitude change.
-[aruco_pose-11] [INFO] [1790029914.338119802] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029914.352425726] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +6 deg), nudging +0.0 deg.
-[course_fsm-12] [INFO] [1790029914.599670198] [course_fsm]: alt=+3.02 m airborne=True xy_valid=True z_valid=True | dist_bottom=3.02 m rng_ok=True vz=-0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.05,-0.00) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [INFO] [1790029914.700967475] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 93 such frames) -- not measurable until the whole aperture is in view
-[window_detect-9] [INFO] [1790029914.761338156] [window_detect]: window: YES  centre=(364,290) offset=+0.14 area=166271px dist=6.15m
-[course_fsm-12] [INFO] [1790029915.352506946] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +6 deg), nudging +0.0 deg.
-[aruco_pose-11] [INFO] [1790029915.387966969] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029915.599912234] [course_fsm]: alt=+3.05 m airborne=True xy_valid=True z_valid=True | dist_bottom=3.05 m rng_ok=True vz=-0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.03,+0.00) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029915.812501010] [window_detect]: window: YES  centre=(371,299) offset=+0.16 area=154134px dist=6.21m
-[course_fsm-12] [INFO] [1790029916.400359523] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +7 deg), nudging +0.0 deg.
-[aruco_pose-11] [INFO] [1790029916.437581111] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029916.601204283] [course_fsm]: alt=+3.06 m airborne=True xy_valid=True z_valid=True | dist_bottom=3.07 m rng_ok=True vz=-0.02 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,+0.02) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [INFO] [1790029916.751972883] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 112 such frames) -- not measurable until the whole aperture is in view
-[window_detect-9] [INFO] [1790029916.874017774] [window_detect]: window: YES  centre=(369,303) offset=+0.15 area=148244px dist=6.22m
-[course_fsm-12] [WARN] [1790029917.300411624] [course_fsm]: RECENTRE: turned the full 20 deg and the window is still clipped -- it does not fit in the frame from here. Holding heading until the altitude change.
-[course_fsm-12] [INFO] [1790029917.401075384] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +6 deg), nudging +0.0 deg.
-[aruco_pose-11] [INFO] [1790029917.487512481] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029917.650219309] [course_fsm]: alt=+3.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=3.08 m rng_ok=True vz=-0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,+0.03) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029918.022983614] [window_detect]: window: YES  centre=(365,305) offset=+0.14 area=147161px dist=6.21m
-[course_fsm-12] [INFO] [1790029918.450589783] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +6 deg), nudging +0.0 deg.
-[aruco_pose-11] [INFO] [1790029918.538262636] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029918.699485702] [course_fsm]: alt=+3.07 m airborne=True xy_valid=True z_valid=True | dist_bottom=3.08 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.03) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [INFO] [1790029918.800142287] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 132 such frames) -- not measurable until the whole aperture is in view
-[window_detect-9] [INFO] [1790029919.113724913] [window_detect]: window: YES  centre=(359,306) offset=+0.12 area=148500px dist=6.20m
-[course_fsm-12] [INFO] [1790029919.500531637] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +5 deg), nudging +0.0 deg.
-[aruco_pose-11] [INFO] [1790029919.638642024] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029919.700417257] [course_fsm]: alt=+3.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=3.09 m rng_ok=True vz=-0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.01,+0.02) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [WARN] [1790029919.802605643] [course_fsm]: RECENTRE: turned the full 20 deg and the window is still clipped -- it does not fit in the frame from here. Holding heading until the altitude change.
-[window_detect-9] [INFO] [1790029920.296498848] [window_detect]: window: YES  centre=(356,306) offset=+0.11 area=149924px dist=6.19m
-[course_fsm-12] [WARN] [1790029920.350804137] [course_fsm]: RECENTRE: yawing has not un-truncated the window in 7 s. Changing altitude 3.08 -> 2.64 m for a different view, holding position (attempt 2/2).
-[course_fsm-12] [INFO] [1790029920.403249281] [course_fsm]: RECENTRE: changing altitude for a better view of the window.
-[aruco_pose-11] [INFO] [1790029920.738696379] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029920.749474106] [course_fsm]: alt=+3.08 m airborne=True xy_valid=True z_valid=True | dist_bottom=3.09 m rng_ok=True vz=+0.05 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(+0.00,+0.00) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [INFO] [1790029920.800897746] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 150 such frames) -- not measurable until the whole aperture is in view
-[window_detect-9] [INFO] [1790029921.383004710] [window_detect]: window: YES  centre=(356,298) offset=+0.11 area=157500px dist=6.19m
-[course_fsm-12] [INFO] [1790029921.450712811] [course_fsm]: RECENTRE: changing altitude for a better view of the window.
-[course_fsm-12] [INFO] [1790029921.750281953] [course_fsm]: alt=+2.95 m airborne=True xy_valid=True z_valid=True | dist_bottom=3.00 m rng_ok=True vz=+0.30 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.01) | hdg=+26 deg yaw_sp=+26 deg
-[aruco_pose-11] [INFO] [1790029921.838862576] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029922.450744322] [course_fsm]: RECENTRE: now at 2.64 m; looking again.
-[course_fsm-12] [INFO] [1790029922.451015278] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +5 deg), nudging +0.0 deg.
-[window_detect-9] [INFO] [1790029922.453525908] [window_detect]: window: YES  centre=(354,220) offset=+0.11 area=147343px dist=0.00m
-[course_fsm-12] [INFO] [1790029922.750479459] [course_fsm]: alt=+2.77 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.81 m rng_ok=True vz=+0.17 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,+0.00) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [INFO] [1790029922.850827011] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 170 such frames) -- not measurable until the whole aperture is in view
-[aruco_pose-11] [INFO] [1790029922.888721714] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029923.501350149] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +4 deg), nudging +0.0 deg.
-[window_detect-9] [INFO] [1790029923.639948824] [window_detect]: window: YES  centre=(346,235) offset=+0.08 area=183324px dist=0.00m
-[course_fsm-12] [INFO] [1790029923.799584558] [course_fsm]: alt=+2.70 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.72 m rng_ok=True vz=+0.07 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,+0.02) | hdg=+26 deg yaw_sp=+26 deg
-[aruco_pose-11] [INFO] [1790029923.939109732] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029924.501738489] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +3 deg), nudging +0.0 deg.
-[window_detect-9] [INFO] [1790029924.734397135] [window_detect]: window: YES  centre=(338,237) offset=+0.06 area=180856px dist=0.00m
-[course_fsm-12] [INFO] [1790029924.801143509] [course_fsm]: alt=+2.67 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.68 m rng_ok=True vz=+0.03 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,+0.01) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [INFO] [1790029924.900226256] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 187 such frames) -- not measurable until the whole aperture is in view
-[aruco_pose-11] [INFO] [1790029925.037827987] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029925.552104082] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +2 deg), nudging +0.0 deg.
-[window_detect-9] [INFO] [1790029925.792022385] [window_detect]: window: YES  centre=(335,234) offset=+0.05 area=184322px dist=0.00m
-[course_fsm-12] [INFO] [1790029925.849921037] [course_fsm]: alt=+2.65 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.67 m rng_ok=True vz=+0.01 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.00,-0.03) | hdg=+26 deg yaw_sp=+26 deg
-[aruco_pose-11] [INFO] [1790029926.038278811] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029926.601255684] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +2 deg), nudging +0.0 deg.
-[window_detect-9] [INFO] [1790029926.810169968] [window_detect]: window: YES  centre=(340,228) offset=+0.06 area=186300px dist=0.00m
-[course_fsm-12] [INFO] [1790029926.850044089] [course_fsm]: alt=+2.65 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.66 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.03) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [INFO] [1790029926.950140291] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 202 such frames) -- not measurable until the whole aperture is in view
-[aruco_pose-11] [INFO] [1790029927.238790904] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029927.651259027] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +3 deg), nudging +0.0 deg.
-[course_fsm-12] [WARN] [1790029927.700267661] [course_fsm]: RECENTRE: turned the full 20 deg and the window is still clipped -- it does not fit in the frame from here. Holding heading until the altitude change.
-[window_detect-9] [INFO] [1790029927.874309090] [window_detect]: window: YES  centre=(343,226) offset=+0.07 area=181920px dist=0.00m
-[course_fsm-12] [INFO] [1790029927.900050652] [course_fsm]: alt=+2.65 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.66 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.02,-0.01) | hdg=+26 deg yaw_sp=+26 deg
-[aruco_pose-11] [INFO] [1790029928.287584152] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029928.700311743] [course_fsm]: RECENTRE: truncated (0 px to the edge, centroid +3 deg), nudging +0.0 deg.
-[window_detect-9] [INFO] [1790029928.934785266] [window_detect]: window: YES  centre=(344,231) offset=+0.08 area=173365px dist=0.00m
-[course_fsm-12] [INFO] [1790029928.950279658] [course_fsm]: alt=+2.64 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.66 m rng_ok=True vz=+0.00 m/s landed=False | xy=POS-HOLD flow_ok=True vxy=(-0.01,-0.01) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [INFO] [1790029928.950653400] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 220 such frames) -- not measurable until the whole aperture is in view
-[aruco_pose-11] [INFO] [1790029929.338255348] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [ERROR] [1790029929.500369934] [course_fsm]: Traverse abandoned: the window was still truncated after 2 altitude changes -- it does not fit in the field of view from here.
-[course_fsm-12] [WARN] [1790029929.500634792] [course_fsm]: Landing: traverse abandoned -- the window was still truncated after 2 altitude changes -- it does not fit in the field of view from here
-[course_fsm-12] [INFO] [1790029929.500913611] [course_fsm]: Horizontal control -> zero-velocity hold for descent.
-[course_fsm-12] [INFO] [1790029929.999908610] [course_fsm]: alt=+2.59 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.64 m rng_ok=True vz=+0.35 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,-0.02) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029930.119494893] [window_detect]: window: YES  centre=(348,218) offset=+0.09 area=169902px dist=0.00m
-[aruco_pose-11] [INFO] [1790029930.338725365] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029930.999913133] [course_fsm]: alt=+2.31 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.39 m rng_ok=True vz=+0.48 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,-0.02) | hdg=+26 deg yaw_sp=+26 deg
-[course_fsm-12] [INFO] [1790029931.000190712] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 237 such frames) -- not measurable until the whole aperture is in view
-[window_detect-9] [INFO] [1790029931.214192121] [window_detect]: window: YES  centre=(350,156) offset=+0.10 area=119164px dist=0.00m
-[aruco_pose-11] [INFO] [1790029931.439172198] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029932.049837234] [course_fsm]: alt=+1.96 m airborne=True xy_valid=True z_valid=True | dist_bottom=2.05 m rng_ok=True vz=+0.48 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,-0.01) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029932.290495185] [window_detect]: window: YES  centre=(343,88) offset=+0.07 area=67888px dist=0.00m
-[aruco_pose-11] [INFO] [1790029932.538266633] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029933.001220703] [course_fsm]: window: window in sight but TRUNCATED (0 px to the frame edge, 256 such frames) -- not measurable until the whole aperture is in view
-[course_fsm-12] [INFO] [1790029933.099773634] [course_fsm]: alt=+1.63 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.71 m rng_ok=True vz=+0.49 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,+0.00) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029933.373082795] [window_detect]: window: YES  centre=(424,19) offset=+0.33 area=7606px dist=1.27m
-[aruco_pose-11] [INFO] [1790029933.588260311] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029934.099996721] [course_fsm]: alt=+1.30 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.38 m rng_ok=True vz=+0.49 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.00,+0.00) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029934.456110905] [window_detect]: window: YES  centre=(242,217) offset=-0.24 area=3500px dist=7.78m
-[aruco_pose-11] [INFO] [1790029934.687497418] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029935.049995839] [course_fsm]: window: no usable pose (0/6 fresh samples, 3 accepted ever, 257 truncated; rejections: corner depth missing x135, corner depths disagree x110, corners not coplanar x9)
-[course_fsm-12] [INFO] [1790029935.149784511] [course_fsm]: alt=+0.95 m airborne=True xy_valid=True z_valid=True | dist_bottom=1.03 m rng_ok=True vz=+0.48 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(+0.01,+0.02) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029935.596115241] [window_detect]: window: YES  centre=(241,215) offset=-0.25 area=3488px dist=0.00m
-[aruco_pose-11] [INFO] [1790029935.736966575] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029936.150311546] [course_fsm]: alt=+0.62 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.71 m rng_ok=True vz=+0.48 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.00,+0.03) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029936.745860972] [window_detect]: window: YES  centre=(239,198) offset=-0.25 area=2966px dist=0.00m
-[aruco_pose-11] [INFO] [1790029936.787542282] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029937.050237595] [course_fsm]: window: no usable pose (0/6 fresh samples, 3 accepted ever, 257 truncated; rejections: corner depth missing x135, corner depths disagree x123, corners not coplanar x9)
-[course_fsm-12] [INFO] [1790029937.150948665] [course_fsm]: alt=+0.29 m airborne=True xy_valid=True z_valid=True | dist_bottom=0.37 m rng_ok=True vz=+0.47 m/s landed=False | xy=VEL-HOLD flow_ok=True vxy=(-0.02,+0.06) | hdg=+26 deg yaw_sp=+26 deg
-[window_detect-9] [INFO] [1790029937.790556202] [window_detect]: window: YES  centre=(238,200) offset=-0.26 area=3657px dist=0.00m
-[aruco_pose-11] [INFO] [1790029937.835872195] [aruco_pose]: id 3/1 not visible (seen: -)
-[course_fsm-12] [INFO] [1790029938.200576992] [course_fsm]: alt=-0.03 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.08 m rng_ok=True vz=+0.47 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(+0.01,+0.03) | hdg=+26 deg yaw_sp=+26 deg
-[aruco_pose-11] [INFO] [1790029938.836496020] [aruco_pose]: id 3/1 not visible (seen: -)
-[window_detect-9] [INFO] [1790029938.987013355] [window_detect]: window: YES  centre=(241,202) offset=-0.25 area=3634px dist=0.00m
-[course_fsm-12] [INFO] [1790029939.051743145] [course_fsm]: window: no usable pose (0/6 fresh samples, 3 accepted ever, 257 truncated; rejections: corner depths disagree x138, corner depth missing x135, corners not coplanar x9)
-[course_fsm-12] [INFO] [1790029939.249744977] [course_fsm]: alt=-0.22 m airborne=False xy_valid=True z_valid=True | dist_bottom=0.00 m rng_ok=True vz=+0.57 m/s landed=False | xy=VEL-HOLD flow_ok=False vxy=(-0.03,+0.01) | hdg=+26 deg yaw_sp=+26 deg
-[aruco_pose-11] [INFO] [1790029939.886359244] [aruco_pose]: id 3/1 not visible (seen: -)
+[INFO] [launch]: All log files can be found below /home/parthbhardwaj/.ros/log/2026-09-22-07-33-52-040651-parth-211910
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [robot_state_publisher-1]: process started with pid [211920]
+[INFO] [ruby $(which gz) sim-2]: process started with pid [211922]
+[robot_state_publisher-1] Error:   link 'down_cam_link' is not unique.
+[robot_state_publisher-1]          at line 178 in ./urdf_parser/src/model.cpp
+[robot_state_publisher-1] Failed to parse robot description using: urdf_xml_parser/URDFXMLParser
+[robot_state_publisher-1] terminate called after throwing an instance of 'std::runtime_error'
+[robot_state_publisher-1]   what():  Unable to initialize urdf::model from robot description
+[ruby $(which gz) sim-2] [Dbg] [gz.cc:166] Subscribing to [/gazebo/starting_world].
+[ruby $(which gz) sim-2] [Dbg] [gz.cc:168] Waiting for a world to be set from the GUI...
+[ruby $(which gz) sim-2] [Msg] Received world [/home/parthbhardwaj/ros2_humble_ws/install/imav_indoor_2026/share/imav_indoor_2026/world/imav2026_scaled.sdf.world] from the GUI.
+[ruby $(which gz) sim-2] [Dbg] [gz.cc:172] Unsubscribing from [/gazebo/starting_world].
+[ruby $(which gz) sim-2] [Msg] Gazebo Sim Server v8.15.0
+[ruby $(which gz) sim-2] [Msg] Loading SDF world file[/home/parthbhardwaj/ros2_humble_ws/install/imav_indoor_2026/share/imav_indoor_2026/world/imav2026_scaled.sdf.world].
+[ruby $(which gz) sim-2] [Msg] Serving entity system service on [/entity/system/add]
+[ruby $(which gz) sim-2] [Dbg] [Physics.cc:1004] Loaded [gz::physics::dartsim::Plugin] from library [/usr/lib/x86_64-linux-gnu/gz-physics-7/engine-plugins/libgz-physics-dartsim-plugin.so]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Physics] for entity [1]
+[ruby $(which gz) sim-2] [Msg] Create service on [/world/imav2026_scaled/create_multiple] (async)
+[ruby $(which gz) sim-2] [Msg] Create service on [/world/imav2026_scaled/create_multiple/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] Remove service on [/world/imav2026_scaled/remove] (async)
+[ruby $(which gz) sim-2] [Msg] Remove service on [/world/imav2026_scaled/remove/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] Pose service on [/world/imav2026_scaled/set_pose] (async)
+[ruby $(which gz) sim-2] [Msg] Pose service on [/world/imav2026_scaled/set_pose/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] Pose service on [/world/imav2026_scaled/set_pose_vector] (async)
+[ruby $(which gz) sim-2] [Msg] Pose service on [/world/imav2026_scaled/set_pose_vector/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] Light configuration service on [/world/imav2026_scaled/light_config] (async)
+[ruby $(which gz) sim-2] [Msg] Light configuration service on [/world/imav2026_scaled/light_config/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] Physics service on [/world/imav2026_scaled/set_physics] (async)
+[ruby $(which gz) sim-2] [Msg] Physics service on [/world/imav2026_scaled/set_physics/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] SphericalCoordinates service on [/world/imav2026_scaled/set_spherical_coordinates] (async)
+[ruby $(which gz) sim-2] [Msg] SphericalCoordinates service on [/world/imav2026_scaled/set_spherical_coordinates/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] Enable collision service on [/world/imav2026_scaled/enable_collision] (async)
+[ruby $(which gz) sim-2] [Msg] Enable collision service on [/world/imav2026_scaled/enable_collision/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] Disable collision service on [/world/imav2026_scaled/disable_collision] (async)
+[ruby $(which gz) sim-2] [Msg] Disable collision service on [/world/imav2026_scaled/disable_collision/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] Material service on [/world/imav2026_scaled/visual_config] (async)
+[ruby $(which gz) sim-2] [Msg] Material service on [/world/imav2026_scaled/visual_config/blocking] (blocking)
+[ruby $(which gz) sim-2] [Msg] Material service on [/world/imav2026_scaled/wheel_slip] (async)
+[ruby $(which gz) sim-2] [Msg] Material service on [/world/imav2026_scaled/wheel_slip/blocking] (blocking)
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::UserCommands] for entity [1]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Contact] for entity [1]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::SceneBroadcaster] for entity [1]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::AirPressure] for entity [1]
+[ruby $(which gz) sim-2] [Dbg] [Magnetometer.cc:261] Magnetometer: using param [use_units_gauss: 1].
+[ruby $(which gz) sim-2] [Dbg] [Magnetometer.cc:269] Magnetometer: using param [use_earth_frame_ned: 1].
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Magnetometer] for entity [1]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::NavSat] for entity [1]
+[ruby $(which gz) sim-2] [Dbg] [Sensors.cc:697] Configuring Sensors system
+[ruby $(which gz) sim-2] [Dbg] [Sensors.cc:557] SensorsPrivate::Run
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Sensors] for entity [1]
+[ruby $(which gz) sim-2] [Dbg] [Sensors.cc:532] SensorsPrivate::RenderThread started
+[ruby $(which gz) sim-2] [Dbg] [Sensors.cc:337] Waiting for init
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Imu] for entity [1]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [custom::OpticalFlowSystem] for entity [1]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [6]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [10]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [14]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [18]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [338]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [342]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [346]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [350]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [354]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [358]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [362]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [363]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [368]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [369]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [374]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [375]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [380]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [381]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [386]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [390]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [394]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [398]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [402]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [443]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [450]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [457]
+[ruby $(which gz) sim-2] [Dbg] [SystemManager.cc:80] Loaded system [gz::sim::systems::Thermal] for entity [464]
+[ruby $(which gz) sim-2] [Msg] Loaded level [default]
+[ruby $(which gz) sim-2] [Msg] Serving world controls on [/world/imav2026_scaled/control], [/world/imav2026_scaled/control/state] and [/world/imav2026_scaled/playback/control]
+[ruby $(which gz) sim-2] [Msg] Serving GUI information on [/world/imav2026_scaled/gui/info]
+[ruby $(which gz) sim-2] [Msg] World [imav2026_scaled] initialized with [1ms] physics profile.
+[ruby $(which gz) sim-2] [Msg] Serving world SDF generation service on [/world/imav2026_scaled/generate_world_sdf]
+[ruby $(which gz) sim-2] [Msg] Serving world names on [/gazebo/worlds]
+[ruby $(which gz) sim-2] [Msg] Resource path add service on [/gazebo/resource_paths/add].
+[ruby $(which gz) sim-2] [Msg] Resource path get service on [/gazebo/resource_paths/get].
+[ERROR] [robot_state_publisher-1]: process has died [pid 211920, exit code -6, cmd '/opt/ros/humble/lib/robot_state_publisher/robot_state_publisher --ros-args --params-file /tmp/launch_params_ejdcoqb5'].
+[ruby $(which gz) sim-2] [Msg] Resource path resolve service on [/gazebo/reso[Msg] Gazebo Sim GUI    v8.15.0
+[ruby $(which gz) sim-2] [Dbg] [Gui.cc:276] Waiting for subscribers to [/gazebo/starting_world]...
+[ruby $(which gz) sim-2] [Dbg] [Application.cc:96] Initializing application.
+[ruby $(which gz) sim-2] [Dbg] [Application.cc:170] Qt using OpenGL graphics interface
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:657] Create main window
+[ruby $(which gz) sim-2] [GUI] [Dbg] [PathManager.cc:68] Requesting resource paths through [/gazebo/resource_paths/get]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Gui.cc:356] GUI requesting list of world names. The server may be busy downloading resources. Please be patient.
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Gui.cc:414] Requesting GUI from [/world/imav2026_scaled/gui/info]...
+[ruby $(which gz) sim-2] [GUI] [Dbg] [PathManager.cc:57] 
+[ruby $(which gz) sim-2] [GUI] [Dbg] [PathManager.cc:57] 
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:149] Requesting initial state from [/world/imav2026_scaled/state]...
+[ruby $(which gz) sim-2] [GUI] [Msg] Loading config [/home/parthbhardwaj/.gz/sim/8/gui.config]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [MinimalScene]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:802] Creating gz-rendering interface for OpenGL
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:802] Creating gz-rendering interface for OpenGL
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:986] Creating render thread interface for OpenGL
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:802] Creating gz-rendering interface for OpenGL
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:986] Creating render thread interface for OpenGL
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [3D View] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [MinimalScene] from path [/usr/lib/x86_64-linux-gnu/gz-gui-8/plugins/libMinimalScene.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [EntityContextMenuPlugin]
+[ruby $(which gz) sim-2] [GUI] [Msg] Currently tracking topic on [/gui/currently_tracked]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Entity Context Menu] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [EntityContextMenuPlugin] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libEntityContextMenuPlugin.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [GzSceneManager]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Scene Manager] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [GzSceneManager] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libGzSceneManager.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [InteractiveViewControl]
+[ruby $(which gz) sim-2] [GUI] [Msg] Camera view controller topic advertised on [/gui/camera/view_control]
+[ruby $(which gz) sim-2] [GUI] [Msg] Camera reference visual topic advertised on [/gui/camera/view_control/reference_visual]
+[ruby $(which gz) sim-2] [GUI] [Msg] Camera view control sensitivity advertised on [/gui/camera/view_control/sensitivity]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Interactive view control] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [InteractiveViewControl] from path [/usr/lib/x86_64-linux-gnu/gz-gui-8/plugins/libInteractiveViewControl.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [CameraTracking]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Camera tracking] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [CameraTracking] from path [/usr/lib/x86_64-linux-gnu/gz-gui-8/plugins/libCameraTracking.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [MarkerManager]
+[ruby $(which gz) sim-2] [GUI] [Msg] Listening to stats on [/world/imav2026_scaled/stats]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Marker Manager] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [MarkerManager] from path [/usr/lib/x86_64-linux-gnu/gz-gui-8/plugins/libMarkerManager.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [SelectEntities]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Select entities] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [SelectEntities] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libSelectEntities.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [Spawn]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Spawn] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [Spawn] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libSpawn.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [VisualizationCapabilities]
+[ruby $(which gz) sim-2] [GUI] [Msg] View as transparent service on [/gui/view/transparent]
+[ruby $(which gz) sim-2] [GUI] [Msg] View as wireframes service on [/gui/view/wireframes]
+[ruby $(which gz) sim-2] [GUI] [Msg] View center of mass service on [/gui/view/com]
+[ruby $(which gz) sim-2] [GUI] [Msg] View inertia service on [/gui/view/inertia]
+[ruby $(which gz) sim-2] [GUI] [Msg] View collisions service on [/gui/view/collisions]
+[ruby $(which gz) sim-2] [GUI] [Msg] View joints service on [/gui/view/joints]
+[ruby $(which gz) sim-2] [GUI] [Msg] View frames service on [/gui/view/frames]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Visualization capabilities] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [VisualizationCapabilities] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libVisualizationCapabilities.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [WorldControl]
+[ruby $(which gz) sim-2] [GUI] [Msg] Using world control service [/world/imav2026_scaled/control]
+[ruby $(which gz) sim-2] [GUI] [Msg] Listening to stats on [/world/imav2026_scaled/stats]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [WorldControl.cc:237] Using an event to share WorldControl msgs with the server
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [World control] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [WorldControl] from path [/usr/lib/x86_64-linux-gnu/gz-gui-8/plugins/libWorldControl.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [WorldStats]
+[ruby $(which gz) sim-2] [GUI] [Msg] Listening to stats on [/world/imav2026_scaled/stats]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [World stats] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [WorldStats] from path [/usr/lib/x86_64-linux-gnu/gz-gui-8/plugins/libWorldStats.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [Shapes]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Shapes] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [Shapes] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libShapes.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [Lights]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Lights] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [Lights] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libLights.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [TransformControl]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Transform control] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [TransformControl] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libTransformControl.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [Screenshot]
+[ruby $(which gz) sim-2] [GUI] [Msg] Screenshot service on [/gui/screenshot]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Screenshot] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [Screenshot] from path [/usr/lib/x86_64-linux-gnu/gz-gui-8/plugins/libScreenshot.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [CopyPaste]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Copy/Paste] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [CopyPaste] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libCopyPaste.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [ComponentInspector]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Component inspector] to main window
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [ComponentInspector] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/libComponentInspector.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:528] Loading plugin [EntityTree]
+[ruby $(which gz) sim-2] [GUI] [Msg] Currently tracking topic on [/gui/currently_tracked]
+[ruby $(which gz) sim-2] [GUI] [Msg] Added plugin [Entity tree] to main window
+[ruby $(which gz) sim-2] [GUI] [Wrn] [Application.cc:908] [QT] file::/WorldStats/WorldStats.qml:53:3: QML RowLayout: Binding loop detected for property "x"
+[ruby $(which gz) sim-2] libEGL warning: egl: failed to create dri2 screen
+[ruby $(which gz) sim-2] libEGL warning: egl: failed to create dri2 screen
+[ruby $(which gz) sim-2] [GUI] [Msg] Loaded plugin [EntityTree] from path [/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/gui/liburce_paths/resolve].
+[ruby $(which gz) sim-2] [Msg] Resource paths published on [/gazebo/resource_paths].
+[ruby $(which gz) sim-2] [Msg] Server control service on [/server_control].
+[ruby $(which gz) sim-2] [Msg] Found no publishers on /stats, adding root stats topic
+[ruby $(which gz) sim-2] [Msg] Found no publishers on /clock, adding root clock topic
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:627] Creating PostUpdate worker threads: 9
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:638] Creating postupdate worker thread (0)
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:638] Creating postupdate worker thread (1)
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:638] Creating postupdate worker thread (2)
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:638] Creating postupdate worker thread (3)
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:638] Creating postupdate worker thread (4)
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:638] Creating postupdate worker thread (5)
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:638] Creating postupdate worker thread (6)
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:638] Creating postupdate worker thread (7)
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:333] Mesh construction from an SDF has not been implemented yet for dartsim. Use AttachMeshShapeFeature to use mesh shapes.
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:865] The geometry element of collision [collision] couldn't be created
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:333] Mesh construction from an SDF has not been implemented yet for dartsim. Use AttachMeshShapeFeature to use mesh shapes.
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:865] The geometry element of collision [collision] couldn't be created
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:333] Mesh construction from an SDF has not been implemented yet for dartsim. Use AttachMeshShapeFeature to use mesh shapes.
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:865] The geometry element of collision [collision] couldn't be created
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:333] Mesh construction from an SDF has not been implemented yet for dartsim. Use AttachMeshShapeFeature to use mesh shapes.
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:865] The geometry element of collision [collision] couldn't be created
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:333] Mesh construction from an SDF has not been implemented yet for dartsim. Use AttachMeshShapeFeature to use mesh shapes.
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:865] The geometry element of collision [collision_0] couldn't be created
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:333] Mesh construction from an SDF has not been implemented yet for dartsim. Use AttachMeshShapeFeature to use mesh shapes.
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:865] The geometry element of collision [collision_0] couldn't be created
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:333] Mesh construction from an SDF has not been implemented yet for dartsim. Use AttachMeshShapeFeature to use mesh shapes.
+[ruby $(which gz) sim-2] [Dbg] [SDFFeatures.cc:865] The geometry element of collision [collision_0] couldn't be created
+[ruby $(which gz) sim-2] [Msg] Serving scene information on [/world/imav2026_scaled/scene/info]
+[ruby $(which gz) sim-2] [Wrn] [Model.hh:69] Skipping serialization / deserialization for models with //pose/@relative_to attribute.
+[ruby $(which gz) sim-2] [Msg] Serving graph information on [/world/imav2026_scEntityTree.so]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:398] Loading window config
+[ruby $(which gz) sim-2] [GUI] [Msg] Using server control service [/server_control]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:671] Applying config
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:802] Creating gz-rendering interface for OpenGL
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:986] Creating render thread interface for OpenGL
+[ruby $(which gz) sim-2] [GUI] [Msg] Loading plugin [gz-rendering-ogre2]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:749] Create scene [scene]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:1037] Creating texture node render interface for OpenGL
+[ruby $(which gz) sim-2] [GUI] [Dbg] [TransformControl.cc:453] TransformControl plugin is using camera [scene::Camera(65527)]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Spawn.cc:308] Spawn plugin is using camera [scene::Camera(65527)]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [SelectEntities.cc:452] SelectEntities plugin is using camera [scene::Camera(65527)]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MarkerManager.cc:169] Advertise /marker/list service.
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MarkerManager.cc:179] Advertise /marker/list.
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MarkerManager.cc:189] Advertise /marker_array.
+[ruby $(which gz) sim-2] [GUI] [Dbg] [CameraTracking.cc:205] CameraTrackingPrivate plugin is moving camera [scene::Camera(65527)]
+[ruby $(which gz) sim-2] [GUI] [Msg] Move to service on [/gui/move_to]
+[ruby $(which gz) sim-2] [GUI] [Msg] Follow service on [/gui/follow] (deprecated)
+[ruby $(which gz) sim-2] [GUI] [Msg] Tracking topic on [/gui/track]
+[ruby $(which gz) sim-2] [GUI] [Msg] Tracking status topic on [/gui/currently_tracked]
+[ruby $(which gz) sim-2] [GUI] [Msg] Move to pose service on [/gui/move_to/pose]
+[ruby $(which gz) sim-2] [GUI] [Msg] Camera pose topic advertised on [/gui/camera/pose]
+[ruby $(which gz) sim-2] [GUI] [Msg] Follow offset service on [/gui/follow/offset] (deprecated)
+[ruby $(which gz) sim-2] [GUI] [Dbg] [InteractiveViewControl.cc:176] InteractiveViewControl plugin is moving camera [scene::Camera(65527)]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [EntityContextMenuPlugin.cc:79] Entity context menu plugin is using camera [scene::Camera(65527)]
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] Warning [Utils.cc:132] [/sdf/plugin[@name="gz::sim::systems::Thermal"]:<data-string>:L1]: XML Element[plugin], child of element[sdf], not defined in SDF. Copying[plugin] as children of [sdf].
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [6] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [6] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [10] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [10] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [14] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [14] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [18] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [18] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [338] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [338] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [342] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [342] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [346] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [346] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [350] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [350] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [354] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [354] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [358] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [358] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [362] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [362] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [363] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [363] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [368] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [368] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [369] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [369] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [374] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [374] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [375] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [375] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [380] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [380] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [381] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [381] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [386] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [386] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [390] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [390] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [394] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [394] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [398] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [398] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [402] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [402] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [443] in GUI
+[ruby $(which gz) sim-2] [GUI] [Wrn] [OBJLoader.cc:202] Missing material for shape[] in OBJ file[/home/parthbhardwaj/ros2_humble_ws/src/imav_indoor_2026/world/materials/meshes/strip_narrow.obj]
+[ruby $(which gz) sim-2] [GUI] [Wrn] [OBJLoader.cc:202] Missing material for shape[] in OBJ file[/home/parthbhardwaj/ros2_humble_ws/src/imav_indoor_2026/world/materials/meshes/strip_wide.obj]
+[INFO] [create-3]: process started with pid [212168]
+[INFO] [parameter_bridge-4]: process started with pid [212170]
+[create-3] [INFO] [1790042644.164510136] [ros_gz_sim]: Requesting list of world names.
+[parameter_bridge-4] [INFO] [1790042644.171939245] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/joint_states (gz.msgs.Model) -> /joint_states (sensor_msgs/msg/JointState)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1790042644.172785637] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/tf (gz.msgs.Pose_V) -> /tf (tf2_msgs/msg/TFMessage)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1790042644.173300395] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/camera/rgb/image_raw (gz.msgs.Image) -> /camera/rgb/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1790042644.173520352] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/camera/rgb/camera_info (gz.msgs.CameraInfo) -> /camera/rgb/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1790042644.173766502] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/camera/depth/image_raw (gz.msgs.Image) -> /camera/depth/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1790042644.173903718] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/camera/down/image_raw (gz.msgs.Image) -> /camera/down/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1790042644.174023472] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/thermal/raw (gz.msgs.Image) -> /thermal/raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1790042644.174132468] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/world/imav2026_scaled/model/x500_drone/link/flow_link/sensor/flow_camera/image (gz.msgs.Image) -> /world/imav2026_scaled/model/x500_drone/link/flow_link/sensor/flow_camera/image (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1790042644.174251963] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/world/imav2026_scaled/model/x500_drone/link/lidar_sensor_link/sensor/lidar/scan (gz.msgs.LaserScan) -> /world/imav2026_scaled/model/x500_drone/link/lidar_sensor_link/sensor/lidar/scan (sensor_msgs/msg/LaserScan)] (Lazy 0)
+[create-3] [INFO] [1790042644.365826235] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042645.365931101] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042646.366054586] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042647.366215414] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042648.366375701] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042649.366550000] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042650.366723099] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042651.366847146] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042652.366968876] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042653.367151768] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[INFO] [bash-5]: process started with pid [212286]
+[INFO] [MicroXRCEAgent-6]: process started with pid [212288]
+[MicroXRCEAgent-6] [1790042654.137865] info     | UDPv4AgentLinux.cpp | init                     | running...             | port: 8888
+[MicroXRCEAgent-6] [1790042654.137990] info     | Root.cpp           | set_verbose_level        | logger setup           | verbose_level: 4
+[create-3] [INFO] [1790042654.367270768] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[bash-5] INFO  [px4] assuming working directory is rootfs, no symlinks needed.
+[bash-5] 
+[bash-5] ______  __   __    ___ 
+[bash-5] | ___ \ \ \ / /   /   |
+[bash-5] | |_/ /  \ V /   / /| |
+[bash-5] |  __/   /   \  / /_| |
+[bash-5] | |     / /^\ \ \___  |
+[bash-5] \_|     \/   \/     |_/
+[bash-5] 
+[bash-5] px4 starting.
+[bash-5] 
+[bash-5] INFO  [px4] startup script: /bin/sh /home/parthbhardwaj/ros2_humble_ws/install/drone_testing/share/drone_testing/config/px4_si
+[bash-5] env SYS_AUTOSTART: 4001
+[bash-5] INFO  [param] selected parameter default file parameters.bson
+[bash-5] INFO  [param] importing from 'parameters.bson'
+[bash-5] INFO  [parameters] BSON document size 931 bytes, decoded 931 bytes (INT32:28, FLOAT:17)
+[bash-5] INFO  [param] selected parameter backup file parameters_backup.bson
+[create-3] [INFO] [1790042655.367396229] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[bash-5] INFO  [dataman] data manager file './dataman' size is 1208528 bytes
+[bash-5] INFO  [init] Gazebo simulator 8.15.0
+[bash-5] INFO  [init] Standalone PX4 launch, waiting for Gazebo
+[create-3] [INFO] [1790042656.367526514] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-3] [INFO] [1790042657.367651083] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[bash-5] INFO  [init] Gazebo world is ready
+[bash-5] INFO  [init] PX4_GZ_MODEL_NAME set, PX4 will attach to existing model
+[bash-5] INFO  [lockstep_scheduler] setting initial absolute time to 23306000 us
+[bash-5] INFO  [gz_bridge] world: imav2026_scaled, model: x500_drone
+[bash-5] INFO  [commander] LED: open /dev/led0 failed (22)
+[bash-5] WARN  [health_and_arming_checks] Preflight Fail: Accel Sensor 0 missing
+[bash-5] WARN  [health_and_arming_checks] Preflight Fail: barometer 0 missing
+[bash-5] WARN  [health_and_arming_checks] Preflight Fail: ekf2 missing data
+[bash-5] WARN  [health_and_arming_checks] Preflight Fail: Gyro Sensor 0 missing
+[bash-5] WARN  [health_and_arming_checks] Preflight Fail: Found 0 compass (required: 1)
+[bash-5] INFO  [uxrce_dds_client] init UDP agent IP:127.0.0.1, port:8888
+[MicroXRCEAgent-6] [1790042658.072734] info     | Root.cpp           | create_client            | create                 | client_key: 0x00000001, session_id: 0x81
+[MicroXRCEAgent-6] [1790042658.072761] info     | SessionManager.hpp | establish_session        | session established    | client_key: 0x00000001, address: 127.0.0.1:42403
+[MicroXRCEAgent-6] [1790042658.074820] info     | ProxyClient.cpp    | create_participant       | participant created    | client_key: 0x00000001, participant_id: 0x001(1)
+[bash-5] INFO  [mavlink] mode: Normal, data rate: 4000000 B/s on udp port 18570 remote port 14550
+[create-3] [INFO] [1790042658.367762769] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[bash-5] INFO  [mavlink] mode: Onboard, data rate: 4000000 B/s on udp port 14580 remote port 14540
+[bash-5] INFO  [mavlink] mode: Onboard, data rate: 4000 B/s on udp port 14280 remote port 14030
+[bash-5] INFO  [mavlink] mode: Gimbal, data rate: 400000 B/s on udp port 13030 remote port 13280
+[bash-5] INFO  [logger] logger started (mode=all)
+[bash-5] INFO  [logger] Start file log (type: full)
+[bash-5] INFO  [logger] [logger] ./log/2026-09-22/02_04_18.ulg	
+[bash-5] INFO  [logger] Opened full log file: ./log/2026-09-22/02_04_18.ulg
+[bash-5] INFO  [mavlink] MAVLink only on localhost (set param MAV_{i}_BROADCAST = 1 to enable network)
+[bash-5] INFO  [mavlink] MAVLink only on localhost (set param MAV_{i}_BROADCAST = 1 to enable network)
+[bash-5] px4_sitl_imav: EKF2_BARO_CTRL 1 (1 = baro carries the height while the rangefinder is out)
+[bash-5] px4_sitl_imav: uXRCE-DDS domain 78 (set ROS_DOMAIN_ID=78 in any terminal that talks to this sim)
+[create-3] [INFO] [1790042659.367893708] [ros_gz_sim]: Waiting messages on topic [robot_description].
 ^C[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
-[robot_state_publisher-1] [INFO] [1790029939.954783326] [rclcpp]: signal_handler(SIGINT/SIGTERM)
-[ERROR] [MicroXRCEAgent-7]: process has died [pid 125114, exit code -2, cmd 'MicroXRCEAgent udp4 -p 8888'].
-[INFO] [bash-6]: process has finished cleanly [pid 125112]
-[bash-6] 
-[bash-6] PX4 Exiting...
-pxh> Exiting NOW.
+[parameter_bridge-4] [INFO] [1790042659.684229277] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[create-3] [INFO] [1790042659.684647847] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[create-3] [ERROR] [1790042659.684728793] [ros_gz_sim]: Failed to get XML from topic [robot_description].
+[ERROR] [MicroXRCEAgent-6]: process has died [pid 212288, exit code -2, cmd 'MicroXRCEAgent udp4 -p 8888'].
+[bash-5] ERROR [px4] Startup script returned with return value: 2
+[ERROR] [bash-5]: process has died [pid 212286, exit code 255, cmd 'bash -c pkill -x px4 2>/dev/null; sleep 1; rm -f /tmp/px4_lock-0 /tmp/px4-sock-0; exec /home/parthbhardwaj/PX4-Autopilot/build/px4_sitl_default/bin/px4 -w /home/parthbhardwaj/PX4-Autopilot/build/px4_sitl_default/rootfs -s /home/parthbhardwaj/ros2_humble_ws/install/drone_testing/share/drone_testing/config/px4_sitl_imav.rcS'].
+[ERROR] [create-3]: process has died [pid 212168, exit code 255, cmd '/opt/ros/humble/lib/ros_gz_sim/create -name x500_drone -topic robot_description -x -4.4 -y -14.3 -z 0.5 -Y 1.5708 --ros-args'].
+[INFO] [parameter_bridge-4]: process has finished cleanly [pid 212170]
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [443] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [450] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [450] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [457] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [457] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [464] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [GuiRunner.cc:358] Loaded system [gz::sim::systems::Thermal] for entity [464] in GUI
+[ruby $(which gz) sim-2] [GUI] [Dbg] [SignalHandler.cc:142] Received signal[2].
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Gui.cc:536] Shutting down gz-sim-gui
+[ruby $(which gz) sim-2] [GUI] [Dbg] [Application.cc:237] Terminating application.
+[ruby $(which gz) sim-2] [GUI] [Dbg] [MinimalScene.cc:841] Destroy scene [scene]
+[ruby $(which gz) sim-2] aled/scene/graph]
+[ruby $(which gz) sim-2] [Msg] Serving full state on [/world/imav2026_scaled/state]
+[ruby $(which gz) sim-2] [Msg] Serving full state (async) on [/world/imav2026_scaled/state_async]
+[ruby $(which gz) sim-2] [Msg] Publishing scene information on [/world/imav2026_scaled/scene/info]
+[ruby $(which gz) sim-2] [Msg] Publishing entity deletions on [/world/imav2026_scaled/scene/deletion]
+[ruby $(which gz) sim-2] [Msg] Publishing state changes on [/world/imav2026_scaled/state]
+[ruby $(which gz) sim-2] [Msg] Publishing pose messages on [/world/imav2026_scaled/pose/info]
+[ruby $(which gz) sim-2] [Msg] Publishing dynamic pose messages on [/world/imav2026_scaled/dynamic_pose/info]
+[ruby $(which gz) sim-2] [Dbg] [EntityComponentManager.cc:1710] Updated state thread iterators: 16 threads processing around 31 entities each.
+[ruby $(which gz) sim-2] [Dbg] [SignalHandler.cc:142] Received signal[2].
+[ruby $(which gz) sim-2] [Dbg] [ServerPrivate.cc:122] Server received signal[2]
+[ruby $(which gz) sim-2] [Dbg] [Sensors.cc:565] SensorsPrivate::Stop
+[ruby $(which gz) sim-2] [Dbg] [Sensors.cc:391] Rendering Thread initialized
+[ruby $(which gz) sim-2] [Dbg] [Sensors.cc:551] SensorsPrivate::RenderThread stopped
+[ruby $(which gz) sim-2] [Dbg] [gz.cc:434] Shutting down gz-sim-server
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:654] [Dbg] [SimulationRunner.cc:654] [Dbg] [SimulationRunner.cc:654] [Dbg] [SimulationRunner.cc:654] Exiting postupdate worker thread (7[Dbg] [SimulationRunner.cc:654] [Dbg] [SimulationRunner.cc:654] Exiting postupdate worker thread (4)
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:654] Exiting postupdate worker thread (2)
+[ruby $(which gz) sim-2] 
+[ruby $(which gz) sim-2] [Dbg] [SimulationRunner.cc:654] )
+[ruby $(which gz) sim-2] Exiting postupdate worker thread (Exiting postupdate worker thread (Exiting postupdate worker thread (Exiting postupdate worker thread (Exiting postupdate worker thread ([Dbg] [SimulationRunner.cc:654] 5[Dbg] [SimulationRunner.cc:654] 5Exiting postupdate worker thread (3)Exiting postupdate worker thread (00)
+[ruby $(which gz) sim-2] 
+[ruby $(which gz) sim-2] 
+[ruby $(which gz) sim-2] 
+[ruby $(which gz) sim-2] 6)
+[ruby $(which gz) sim-2] 6
+[ruby $(which gz) sim-2] 
+[ruby $(which gz) sim-2] [Dbg] [Sensors.cc:565] SensorsPrivate::Stop
+[ERROR] [ruby $(which gz) sim-2]: process has died [pid 211922, exit code -2, cmd 'ruby $(which gz) sim -r -v4 /home/parthbhardwaj/ros2_humble_ws/install/imav_indoor_2026/share/imav_indoor_2026/world/imav2026_scaled.sdf.world --force-version 8'].
+[INFO] [launch]: process[ruby $(which gz) sim-2] was required: shutting down launched system
