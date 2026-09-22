@@ -135,13 +135,26 @@ class ServoController(Node):
         self.get_logger().info(
             f"Servo back to neutral {self.NEUTRAL_VALUE:+.2f} ({why}).")
         if self.awaiting_ack and not self.acked:
+            # Say the right thing for the command actually sent: the two have
+            # different failure causes and telling someone to check the
+            # offboard actuator set when they are using ACTUATOR_TEST, which
+            # does not use it, is a wasted bench session.
+            if self.COMMAND == 'actuator_test':
+                why = ("servo_function is 0, i.e. unset. Find the real one "
+                       "with `ros2 run drone_testing servo_test --ros-args "
+                       "-p command:=sweep`."
+                       if self.FUNCTION == 0 else
+                       f"servo_function {self.FUNCTION} is not the servo's "
+                       "output FUNCTION. Confirm it on QGC's Actuators tab.")
+            else:
+                why = (f"the output must be assigned to \"Offboard Actuator "
+                       f"Set {self.INDEX}\" in QGC, and the vehicle must be "
+                       "ARMED -- PX4 ignores DO_SET_ACTUATOR while disarmed. "
+                       "For a disarmed bench test use "
+                       "servo_command:=actuator_test with servo_function set.")
             self.get_logger().error(
-                "PX4 never acked the actuator command. Check that the output "
-                "is assigned to \"Offboard Actuator Set "
-                f"{self.INDEX}\" in QGC, and that the vehicle is armed -- PX4 "
-                "ignores DO_SET_ACTUATOR while disarmed. For a bench test "
-                "while disarmed use servo_command:=actuator_test with "
-                "servo_function set.")
+                "PX4 never acked the actuator command. Either nothing is "
+                f"carrying it (check the uXRCE-DDS agent) or {why}")
         self.awaiting_ack = False
 
     # -------------------------------------------------------------- px4 wires
