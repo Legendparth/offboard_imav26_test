@@ -100,8 +100,9 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PointStamped
 from std_msgs.msg import Bool, String
+from std_msgs.msg import Header
 
-from drone_testing.window_detect import imgmsg_to_bgr
+from drone_testing.window_detect import array_to_imgmsg, imgmsg_to_bgr
 
 
 # OpenCV's optical frame is (x right, y DOWN, z FORWARD along the view axis).
@@ -416,6 +417,26 @@ class ArucoPose(Node):
         # than to point a camera at the floor. Everything downstream -- the
         # detection, the solve, the frames, the stream -- is the same either
         # way; only where the pixels come from changes.
+        # Re-publish the frames this node captures, so a SECOND detector can
+        # see the same pixels. One v4l2 device cannot be opened twice, and
+        # line_detect needs the same downward camera this node owns -- so the
+        # owner shares rather than the other one prising the device open.
+        # Empty (the default) publishes nothing and costs nothing.
+        self.publish_frames = str(
+            self.declare_parameter('publish_frames', '').value).strip()
+        self.frame_pub = None
+        if self.publish_frames:
+            from sensor_msgs.msg import Image as _Image
+            # Depth 1 and best-effort: a late frame is not worth having, and a
+            # slow subscriber must never back-pressure the detection loop.
+            from rclpy.qos import qos_profile_sensor_data as _sensor_qos
+            self.frame_pub = self.create_publisher(_Image, self.publish_frames,
+                                                   _sensor_qos)
+            self.get_logger().warning(
+                f"Re-publishing frames on {self.publish_frames} for a second "
+                "detector (line_detect). This is the SAME image this node "
+                "detects markers in, rotation included.")
+
         self.image_topic = str(self.declare_parameter('image_topic', '').value).strip()
         self.cap = None
         if self.image_topic:
@@ -549,6 +570,14 @@ class ArucoPose(Node):
         h, w = frame.shape[:2]
         if self.K is None:
             self.K = self._intrinsics(w, h)
+
+        # After the rotation, so the second detector's flip_lr / cam_yaw dials
+        # mean the same thing as this node's do.
+        if self.frame_pub is not None:
+            header = Header()
+            header.stamp = self.get_clock().now().to_msg()
+            header.frame_id = 'down_camera'
+            self.frame_pub.publish(array_to_imgmsg(frame, 'bgr8', header))
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = self._detect(gray)

@@ -80,8 +80,8 @@ import time
 
 import numpy as np
 import rclpy
-from geometry_msgs.msg import PointStamped
-from std_msgs.msg import Bool, String
+from geometry_msgs.msg import PointStamped, Vector3Stamped
+from std_msgs.msg import Bool, Float32, String
 from px4_msgs.msg import VehicleStatus
 
 from drone_testing.offboard_sequence import spin_node, wrap_pi
@@ -260,6 +260,62 @@ class ThermalFSM(ThermalDrop):
                                     # marker. A bad pose cannot throw the
                                     # aircraft further than this.
     PAD_LOST_SECONDS = 2.0          # s a pose stays usable after it arrives
+    # ------------------------------------------------ following the floor line
+    #
+    # The arena floor carries a high-contrast pattern in a straight line from
+    # the takeoff marker to the one 8.7-8.8 m away. It was laid to give the
+    # optical flow something to see; it is also, and more usefully, a corridor
+    # drawn on the ground. line_detect reads it off the DOWNWARD camera and
+    # publishes the two numbers a straight leg wants: how far off the line the
+    # aircraft is, and which way the line runs relative to the nose.
+    #
+    # It does not replace the latched NED leg -- it CORRECTS it. The leg is
+    # still begun from a measured point on a latched bearing, still terminated
+    # on distance along that leg, and still protected by the flow-stall guard.
+    # When the line is in view the carrot is put on the LINE instead of on the
+    # latched bearing; when it is lost the leg carries on exactly as it does
+    # today. That is what makes this safe to turn on: the failure mode of the
+    # new thing is the old thing.
+    LINE_FOLLOW = False         # opt-in. The fixed-bearing leg is the default
+                                # and is what has been flown.
+    LINE_GAIN = 1.0             # how much of the measured cross-track is taken
+                                # out per carrot placement. 1.0 aims the carrot
+                                # at the line itself; the leash and the ramp
+                                # are what stop that being a lurch.
+    LINE_MAX_NUDGE = 0.60       # m. The largest sideways correction a single
+                                # frame may ask for. A misdetected line -- a
+                                # floor seam, a cable, the edge of a mat --
+                                # cannot throw the aircraft further than this.
+    LINE_START_AFTER = 2.0      # m of a leg that must be flown before the
+                                # strip detector is believed at all. Straight
+                                # after takeoff the down camera sees mostly
+                                # ArUco MARKER, not floor: a big black-and-
+                                # white square whose white cells segment as
+                                # "bright thing on dark floor" exactly like the
+                                # strip does, and whose axis is whatever the
+                                # marker's rotation happens to be. The same
+                                # applies leaving the datum marker on the way
+                                # home. So the detector is ignored until the
+                                # aircraft has flown clear of the pad.
+    LINE_LOST_SECONDS = 1.0     # s a line fix stays usable after it arrives.
+    LINE_MIN_QUALITY = 0.35     # below this the detector is guessing.
+    LINE_MAX_HEADING_DEG = 35.0 # deg. A line further off the nose than this is
+                                # not the corridor -- it is a wall join or a
+                                # shadow -- and is ignored rather than chased.
+
+    # --------------------------------------------- the end of the corridor
+    #
+    # The outbound leg has always ended on the marker or on running out of
+    # distance. There is a third, better ending: the obstacle at the end of the
+    # corridor, seen by the ZED. wall_watch turns its depth image into one
+    # number and this is the distance at which that number ends the leg.
+    WALL_STOP = False           # opt-in, like the line.
+    WALL_STOP_DISTANCE = 1.50   # m. Also enforced by wall_watch itself; this
+                                # is the flight node's own copy so that a
+                                # mis-parameterised detector cannot fly the
+                                # aircraft closer than the mission intends.
+    WALL_LOST_SECONDS = 1.0     # s a clearance reading stays usable.
+
     LEG_STALL_SECONDS = 4.0     # s of unhealthy flow, on a leg, before the
                                 # leg is abandoned. See _leg_flow_stalled():
                                 # a leg cannot make progress the estimator
@@ -326,6 +382,24 @@ class ThermalFSM(ThermalDrop):
                 "commanded direction would stop tracking the line. Raising "
                 f"leg_lookahead to {self.MOVE_LEASH * 1.5:.2f} m.")
             self.LEG_LOOKAHEAD = self.MOVE_LEASH * 1.5
+        self.LINE_FOLLOW = bool(self.declare_parameter(
+            'line_follow', self.LINE_FOLLOW).value)
+        self.LINE_GAIN = float(n('line_gain', self.LINE_GAIN))
+        self.LINE_MAX_NUDGE = float(n('line_max_nudge', self.LINE_MAX_NUDGE))
+        self.LINE_START_AFTER = float(n('line_start_after',
+                                        self.LINE_START_AFTER))
+        self.LINE_LOST_SECONDS = float(n('line_lost_seconds',
+                                         self.LINE_LOST_SECONDS))
+        self.LINE_MIN_QUALITY = float(n('line_min_quality',
+                                        self.LINE_MIN_QUALITY))
+        self.LINE_MAX_HEADING = math.radians(float(
+            n('line_max_heading_deg', self.LINE_MAX_HEADING_DEG)))
+        self.WALL_STOP = bool(self.declare_parameter(
+            'wall_stop', self.WALL_STOP).value)
+        self.WALL_STOP_DISTANCE = float(n('wall_stop_distance',
+                                          self.WALL_STOP_DISTANCE))
+        self.WALL_LOST_SECONDS = float(n('wall_lost_seconds',
+                                         self.WALL_LOST_SECONDS))
         self.LEG_STALL_SECONDS = float(n('leg_stall_seconds',
                                          self.LEG_STALL_SECONDS))
         self.MARK_STAGE_TIMEOUT = float(n('mark_stage_timeout',
@@ -387,6 +461,32 @@ class ThermalFSM(ThermalDrop):
 
         self.leg_stall_since = None     # when flow last went unhealthy on a leg
         self.leg_stall_reported = False
+
+        # The floor line, from line_detect. None until one arrives.
+        self.line_heading = None        # rad, the line's bearing off the nose
+        self.line_cross = None          # m, aircraft to the RIGHT of the line
+        self.line_quality = 0.0
+        self.line_time = None
+        self.line_detected = False
+        self.line_using = False         # was the LAST carrot put on the line?
+        self.line_had_it = False        # have we EVER had it on this leg?
+        # The corridor's end, from wall_watch.
+        self.wall_clearance = None      # m, or inf for "clear"
+        self.wall_time = None
+        self.wall_close = False
+        self.outcome_datum = 'marker'   # or 'wall', if the corridor's end won
+        self.create_subscription(Vector3Stamped, '/line/track',
+                                 self.line_track_callback, 10,
+                                 callback_group=self.sensor_cbg)
+        self.create_subscription(Bool, '/line/detected',
+                                 self.line_detected_callback, 10,
+                                 callback_group=self.sensor_cbg)
+        self.create_subscription(Float32, '/wall/clearance',
+                                 self.wall_clearance_callback, 10,
+                                 callback_group=self.sensor_cbg)
+        self.create_subscription(Bool, '/wall/close',
+                                 self.wall_close_callback, 10,
+                                 callback_group=self.sensor_cbg)
 
         self.mark_hover_since = None
         self.mark_xy = None             # the marker the boxes are measured off
@@ -715,10 +815,19 @@ class ThermalFSM(ThermalDrop):
         self.leg_worst_cross = 0.0
         self.leg_stall_since = None
         self.leg_stall_reported = False
+        self.line_using = False
+        self.line_had_it = False
         self.MOVE_SPEED = speed
 
-    def _follow_leg(self):
+    def _follow_leg(self, allow_line=False):
         """Put the carrot ON the line, a lookahead ahead of us, every tick.
+
+        With allow_line and a usable fix from line_detect, the carrot goes on
+        the line PAINTED ON THE FLOOR instead of the one latched in NED at the
+        start of the leg. The returned (along, cross) are still measured
+        against the latched leg either way, so the distance accounting, the
+        timeout and the cross-track report do not change meaning depending on
+        what the camera can see -- only the steering does.
 
         Returns (along, cross): how far down the line we have come, and how
         far off it we are -- signed, positive to the RIGHT of the direction
@@ -742,6 +851,45 @@ class ThermalFSM(ThermalDrop):
             self.leg_worst_cross = cross
         carrot = self.leg_start + u * min(along + self.LEG_LOOKAHEAD,
                                           self.leg_length)
+
+        # The painted line wins over the latched bearing whenever it is
+        # trustworthy -- it is the corridor itself, where the latched bearing
+        # is only ever a measurement of where the corridor was thought to be.
+        using_line = False
+        if allow_line and along < self.LINE_START_AFTER:
+            # Still over the pad we left. See LINE_START_AFTER.
+            self.get_logger().info(
+                f"LINE: held off for the first {self.LINE_START_AFTER:.2f} m "
+                f"({along:.2f} m so far) -- the camera is still over the "
+                "marker we took off from, not the strip.",
+                throttle_duration_sec=2.0)
+        elif allow_line and self._line_is_usable():
+            line_carrot = self._line_carrot()
+            if line_carrot is not None:
+                # Never let the line push the carrot PAST the end of the leg.
+                # The distance cap is the mission's, not the paint's.
+                overshoot = float((line_carrot - self.leg_start) @ u) - self.leg_length
+                if overshoot > 0.0:
+                    line_carrot = line_carrot - u * overshoot
+                carrot = line_carrot
+                using_line = True
+        if using_line != self.line_using:
+            if using_line:
+                self.line_had_it = True
+                self.get_logger().warning(
+                    f"LINE: steering on the floor pattern "
+                    f"({math.degrees(self.line_heading):+.1f} deg off the nose, "
+                    f"{self.line_cross:+.2f} m off it, quality "
+                    f"{self.line_quality:.2f}).")
+            else:
+                self.get_logger().warning(
+                    "LINE: lost it. Back on the latched bearing at "
+                    f"{math.degrees(self.leg_heading):+.2f} deg"
+                    + (" -- which is what this leg flew before line_follow "
+                       "existed, so this is a fallback and not a failure."
+                       if self.line_had_it else "."))
+            self.line_using = using_line
+
         self._move_to(carrot)
         # Hold the nose on the CORRIDOR -- leg_yaw -- and NOT on this leg's
         # own direction. BOX_OFFSET runs 90 deg across the corridor, and
@@ -756,6 +904,107 @@ class ThermalFSM(ThermalDrop):
         # 2.4 deg right over one run doing exactly that.
         self._aim_yaw_at(self.leg_yaw)
         return along, cross
+
+    # ------------------------------------------------------ the floor line
+
+    def line_track_callback(self, msg):
+        """x = heading error (rad), y = cross-track (m, NaN if unscaled)."""
+        self.line_heading = float(msg.vector.x)
+        cross = float(msg.vector.y)
+        # NaN means line_detect had no height and so could not put the
+        # cross-track in metres. The heading half is still good.
+        self.line_cross = None if math.isnan(cross) else cross
+        self.line_quality = float(msg.vector.z)
+        self.line_time = time.monotonic()
+
+    def line_detected_callback(self, msg):
+        self.line_detected = bool(msg.data)
+
+    def wall_clearance_callback(self, msg):
+        value = float(msg.data)
+        # NaN is "I cannot tell", which is NOT "clear". Drop it rather than
+        # let it read as a corridor that goes on for ever.
+        if math.isnan(value):
+            return
+        self.wall_clearance = value
+        self.wall_time = time.monotonic()
+
+    def wall_close_callback(self, msg):
+        self.wall_close = bool(msg.data)
+
+    def _line_is_usable(self):
+        """Is there a line fix good enough to steer on RIGHT NOW?
+
+        Every one of these is a way a floor pattern detector can be confidently
+        wrong, and a wrong line steers the aircraft into the wall it was meant
+        to avoid:
+
+          marker in view    THE IMPORTANT ONE. The strip detector segments
+                            "bright thing on dark floor", and an ArUco marker
+                            is a bright thing on a dark floor. Over the pad it
+                            will happily report the MARKER's axis as the
+                            corridor, which is whatever angle the marker was
+                            laid at. While /aruco/detected is true the down
+                            camera is looking at a marker, so the strip answer
+                            is not to be trusted -- and the mission does not
+                            need it then anyway, because a marker in view is
+                            about to end this leg.
+          not detected      the detector's own debounce has not settled
+          stale             the frames stopped; the last answer is not news
+          low quality       few segments voted for the winning orientation
+          far off the nose  a line more than line_max_heading_deg off the nose
+                            is a wall join, a shadow or the edge of a mat --
+                            the corridor is, by construction, roughly ahead
+          no cross-track    no rangefinder, so the offset has no scale
+        """
+        if not (self.LINE_FOLLOW and self.line_detected):
+            return False
+        if self._marker_is_under_us():
+            return False
+        if self.line_time is None:
+            return False
+        if time.monotonic() - self.line_time > self.LINE_LOST_SECONDS:
+            return False
+        if self.line_quality < self.LINE_MIN_QUALITY:
+            return False
+        if self.line_heading is None or self.line_cross is None:
+            return False
+        return abs(self.line_heading) <= self.LINE_MAX_HEADING
+
+    def _line_carrot(self):
+        """Where to fly to, put on the LINE rather than on the latched bearing.
+
+        The line's bearing in NED is the aircraft's heading plus the detector's
+        heading error, so this needs no survey of the hall and no leg_bearing
+        argument -- the corridor is wherever the paint says it is.
+
+        The carrot goes LEG_LOOKAHEAD along that bearing and LINE_GAIN of the
+        measured cross-track back towards the line, clamped to LINE_MAX_NUDGE.
+        The clamp is the whole safety argument: one bad frame can bend the
+        course by at most that much, and the next good frame undoes it.
+
+        WHICH WAY ALONG THE LINE is not the camera's to say. A painted line is
+        undirected -- line_detect reports its bearing mod pi -- and LAND_RETURN
+        flies this same corridor BACKWARDS, nose still pointing the way it came
+        from. So the sense is taken from the LEG, not from the nose: of the two
+        opposite directions the paint allows, take the one that goes the way
+        this leg is travelling. Get this wrong and the return leg drives
+        forwards up the corridor it has just come down.
+        """
+        lp = self.local_position
+        if lp is None:
+            return None
+        bearing = wrap_pi(lp.heading + self.line_heading)
+        u = np.array([math.cos(bearing), math.sin(bearing)])
+        if u @ self.leg_unit < 0.0:
+            u = -u
+        right = np.array([-u[1], u[0]])
+        nudge = max(-self.LINE_MAX_NUDGE,
+                    min(self.LINE_MAX_NUDGE, self.line_cross * self.LINE_GAIN))
+        here = np.array([lp.x, lp.y])
+        # cross is positive when the aircraft is RIGHT of the line, so the
+        # correction goes LEFT, which is minus the right-hand unit vector.
+        return here + u * self.LEG_LOOKAHEAD - right * nudge
 
     def _leg_flow_stalled(self):
         """True once a leg has been unable to make progress long enough to give up.
@@ -921,13 +1170,18 @@ class ThermalFSM(ThermalDrop):
             "do not count -- that is the pad we armed on.")
 
     def _handle_mark_search(self):
-        along, cross = self._follow_leg()
+        along, cross = self._follow_leg(allow_line=True)
         # Before anything is concluded from `along`: is `along` still moving?
         if self._leg_flow_stalled():
             self._abandon_leg_for_flow(along)
             return
         if self._marker_is_under_us() and along >= self.MARK_MIN_TRAVEL:
             self._begin_mark_hover(along)
+            return
+        # The corridor ends at the obstacle whether or not a marker was ever
+        # seen. Checked AFTER the marker, so a marker sitting at the end of the
+        # run still wins and the boxes are still measured off it.
+        if self._wall_is_close(along):
             return
         timed_out = self._in_stage_for() > self.MARK_STAGE_TIMEOUT
         if along >= self.MARK_SEARCH_DISTANCE - self.MOVE_TOLERANCE or timed_out:
@@ -939,6 +1193,52 @@ class ThermalFSM(ThermalDrop):
             f"marker {'YES' if self.aruco_flag else 'no'} "
             f"({self.aruco_seen} poses seen).",
             throttle_duration_sec=1.0)
+
+    def _wall_is_close(self, along):
+        """Has the corridor ended in front of us? If so, end the leg HERE.
+
+        Treated as ARRIVAL, not as failure. The obstacle at the end of the run
+        is at a known place relative to the boxes, so stopping wall_stop_distance
+        short of it is a survey point in the same way the marker is -- and the
+        sidestep that follows is measured from wherever the aircraft stopped.
+
+        THAT IS THE ASSUMPTION, AND IT IS WORTH SAYING OUT LOUD: box_offset_right
+        was MEASURED from the marker, not from the wall. Ending here substitutes
+        one datum for the other and inherits whatever the difference between
+        them is. It is the right ending when the marker was missed and the run
+        would otherwise be flown into the obstacle; it is not as good as the
+        marker, and the log says which one the mission got.
+
+        Checked only while the clearance is FRESH. A dead depth topic must not
+        read as a corridor with no end -- but neither may it stop the mission,
+        so a stale reading simply does not fire this.
+        """
+        if not self.WALL_STOP:
+            return False
+        if self.wall_time is None:
+            return False
+        if time.monotonic() - self.wall_time > self.WALL_LOST_SECONDS:
+            self.get_logger().error(
+                "WALL: /wall/clearance has gone stale. Not stopping on it -- "
+                "the distance cap and the timeout are the only things left "
+                "ending this leg. Is wall_watch running?",
+                throttle_duration_sec=5.0)
+            return False
+        clearance = self.wall_clearance
+        if clearance is None or not (self.wall_close
+                                     or clearance <= self.WALL_STOP_DISTANCE):
+            return False
+        self.outcome_datum = 'wall'
+        self.get_logger().warning(
+            f"MARK_SEARCH: obstacle {clearance:.2f} m ahead, at or inside the "
+            f"{self.WALL_STOP_DISTANCE:.2f} m stop distance, after {along:.2f} m. "
+            "That is the end of the corridor. Treating it as ARRIVAL and "
+            "stepping across to the boxes from HERE -- note the sidestep is "
+            "now measured off the WALL and not off the marker, which is a "
+            "different datum. " + self._leg_report("track") + ".")
+        self.moving = False
+        self._begin_box_offset()
+        return True
 
     def _no_marker(self, gone, timed_out):
         """The creep finished with nothing under the camera.
@@ -1095,7 +1395,14 @@ class ThermalFSM(ThermalDrop):
             "marker is under us.")
 
     def _handle_land_search(self):
-        gone, cross = self._follow_leg()
+        # NO line following on this leg, deliberately. It runs from the
+        # RETREAT point -- two sidesteps off the corridor, over the boxes --
+        # and is hunting the datum marker, so the strip is not reliably
+        # underneath and the marker it is looking for is exactly the thing the
+        # strip detector mistakes for a strip. Line following resumes on
+        # LAND_RETURN, once that marker has been found and squared up on,
+        # which is where the aircraft is back on the corridor.
+        gone, cross = self._follow_leg(allow_line=False)
         if self._leg_flow_stalled():
             self._abandon_leg_for_flow(gone)
             return
@@ -1214,7 +1521,13 @@ class ThermalFSM(ThermalDrop):
             "do not count -- that is the datum we just left.")
 
     def _handle_land_return(self):
-        along, cross = self._follow_leg()
+        # The line is followed here too, and this leg is flown BACKWARDS down
+        # the same corridor. A nadir detector does not care: the painted line
+        # is under the aircraft either way, and _line_carrot() takes its
+        # bearing from the CURRENT heading, which _follow_leg holds on
+        # leg_yaw throughout. So no 180 deg turn is needed to use the line on
+        # the way home -- see the note in the module docstring.
+        along, cross = self._follow_leg(allow_line=True)
         if self._leg_flow_stalled():
             self._abandon_leg_for_flow(along)
             return

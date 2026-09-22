@@ -450,6 +450,109 @@ def generate_launch_description():
          'do not share a north, and in the scaled arena that offset was a '
          'steady 5.95 deg -- 2.40 m of sideways error over a 23 m leg flown '
          'perfectly straight.'),
+        # ---- following the painted floor line, and the end of the corridor ----
+        ('line_follow', 'false',
+         'true = correct the corridor legs off the high-contrast line painted '
+         'on the arena floor, seen by the DOWNWARD camera. OFF BY DEFAULT: '
+         'the fixed-bearing leg is what has been flown, and this is the thing '
+         'being added. When the line is in view the carrot is put on it '
+         'instead of on the bearing latched at the start of the leg; when it '
+         'is lost the leg carries on exactly as it does today, so the failure '
+         'mode of the new behaviour is the old behaviour. Needs the line node '
+         '(line:=true), which needs aruco_publish_frames because one v4l2 '
+         'device cannot be opened twice.'),
+        ('line', 'false', 'Run line_detect. Implied by nothing -- set it.'),
+        ('line_gain', '1.0',
+         'How much of the measured cross-track is taken out per carrot.'),
+        ('line_max_nudge', '0.60',
+         'm. The largest sideways correction ONE frame may ask for. This is '
+         'the safety argument for line following: a floor seam, a cable or '
+         'the edge of a mat mistaken for the corridor cannot bend the course '
+         'further than this, and the next good frame undoes it.'),
+        ('line_start_after', '2.0',
+         'm of a leg that must be flown before the strip detector is believed '
+         'at all. THE PAD IS THE PROBLEM: straight after takeoff the down '
+         'camera sees mostly ArUco MARKER, and a marker is a bright thing on '
+         'a dark floor, which is exactly what the strip detector segments. It '
+         'would report the marker\'s own axis as the corridor. The same '
+         'applies leaving the datum marker on the way home, so the same gate '
+         'covers both. Line following is ALSO suppressed outright whenever '
+         '/aruco/detected is true, which is the belt to this braces.'),
+        ('line_lost_seconds', '1.0', 's a line fix stays usable.'),
+        ('line_min_quality', '0.35',
+         '0..1. The fraction of detected line-segment length that had to vote '
+         'for the winning orientation. Below this the detector is guessing.'),
+        ('line_max_heading_deg', '35.0',
+         'deg. A line further off the nose than this is not the corridor -- '
+         'it is a wall join or a shadow -- and is ignored rather than chased.'),
+        ('line_stream_port', '8084',
+         'Browser view of the line detection. 0 = off. USE IT before flying: '
+         'walking the aircraft left must make the cross-track go POSITIVE.'),
+        ('line_cam_yaw_deg', '0.0',
+         'Image-top rotation of the DOWN camera from the nose, about the down '
+         'axis. NOT cam_yaw_deg, which is the THERMAL camera on its own mount.'),
+        ('line_flip_lr', 'false',
+         'Set if the line detector reports LEFT and RIGHT swapped.'),
+        ('line_flip_ud', 'false', 'Set if FORWARD and BACK come out swapped.'),
+        ('line_blur', '7', 'Gaussian kernel, odd.'),
+        ('line_close_ksize', '15',
+         'Morphological CLOSE, pixels. Must be big enough to swallow the '
+         'largest dark leaf in the print, so the strip becomes ONE blob '
+         'instead of a constellation of white gaps between leaves.'),
+        ('line_open_ksize', '9',
+         'Morphological OPEN, pixels. Removes the speckle the granite throws.'),
+        ('line_strip_is_bright', 'true',
+         'The strip is BRIGHTER than the floor. True for printed material on '
+         'dark granite; set false if you ever lay a dark strip on a pale '
+         'floor, or the detector will lock onto the floor instead.'),
+        ('line_min_area_frac', '0.05',
+         'Smallest fraction of the frame the strip may occupy and still count.'),
+        ('line_max_area_frac', '0.85',
+         'Largest. Above this the "strip" is the whole frame, which means the '
+         'threshold split something other than strip-from-floor.'),
+        ('line_min_elongation', '1.6',
+         'How long-and-thin the blob must be. A corridor strip crossing the '
+         'frame is elongated; a sunlit patch, a mat or the takeoff pad is '
+         'round-ish, and this is what rejects them.'),
+        ('line_downscale', '0.5',
+         'Shrink each frame before detecting. Halving the side quarters the '
+         'work, and a painted corridor line does not need full resolution.'),
+
+        ('wall_stop', 'false',
+         'true = MARK_SEARCH also ends when the ZED sees the end of the '
+         'corridor within wall_stop_distance. Treated as ARRIVAL: the '
+         'sidestep to the boxes is then measured from where the aircraft '
+         'stopped. NOTE that box_offset_right was measured from the MARKER, '
+         'so this substitutes one datum for another and inherits the '
+         'difference. It is the right ending when the marker was missed; it '
+         'is not as good as the marker, and the log says which one was used.'),
+        ('wall', 'false', 'Run wall_watch (and so require the ZED).'),
+        ('wall_stop_distance', '1.50',
+         'm. The closest the aircraft may come to the thing in front.'),
+        ('wall_lost_seconds', '1.0',
+         's a clearance reading stays usable. A dead depth topic must not '
+         'read as a corridor with no end -- but it must not stop the mission '
+         'either, so a stale reading simply does not fire the stop.'),
+        ('wall_depth_topic', '/zed/zed_node/depth/depth_registered', ''),
+        ('wall_camera_info_topic', '/zed/zed_node/depth/camera_info', ''),
+        ('wall_min_pixels', '300',
+         'How many non-floor pixels must agree before anything is called an '
+         'obstacle. The thing at the end of the run is a BOX and does not '
+         'fill the frame, so this counts rather than taking a minimum.'),
+        ('wall_floor_margin', '0.35',
+         'm above the floor below which a depth point IS the floor and is '
+         'thrown away. THE IMPORTANT ONE: the aircraft pitches ~10 deg to '
+         'hold 0.8 m/s, which swings the floor into the bottom of the ZED\'s '
+         'frame a couple of metres ahead, and without this rejection the '
+         'mission stops in mid-arena -- and does it MORE the faster it flies.'),
+        ('wall_camera_pitch_deg', '0.0',
+         'deg the ZED is tilted DOWN on the airframe, if it is.'),
+
+        ('aruco_publish_frames', '',
+         'Topic for aruco_pose to re-publish its frames on, so line_detect '
+         'can see the same pixels. Empty = publish nothing. Set '
+         'automatically when line:=true.'),
+
         ('leg_stall_seconds', '4.0',
          's of unhealthy optical flow, on a straight leg, before the leg is '
          'abandoned and the aircraft lands. Every leg ends on the ESTIMATED '
@@ -624,6 +727,14 @@ def generate_launch_description():
         condition=IfCondition(L('thermal_sim')),
     )
 
+    # line_detect needs the frames aruco_pose captures. Rather than make the
+    # operator remember to set two arguments that must agree, line:=true
+    # implies the topic -- and an explicit aruco_publish_frames still wins, for
+    # the case where the frames are wanted without the line node.
+    frames_topic = PythonExpression(
+        ["'", L('aruco_publish_frames'), "' or ('/aruco/image' if '",
+         L('line'), "'.lower() not in ('false', '0') else '')"])
+
     # The downward ArUco detector. thermal_fsm's MARK_* and LAND_* stages fly
     # on /aruco/detected and /aruco/point and on nothing else, so with
     # aruco:=false those stages find nothing, creep their full distance and
@@ -639,8 +750,57 @@ def generate_launch_description():
                      'aruco_dict': L('aruco_dict'),
                      'min_marker_distance_rate':
                          L('aruco_min_marker_distance_rate'),
-                     'stream_port': L('aruco_stream_port')}],
+                     'stream_port': L('aruco_stream_port'),
+                     # One v4l2 device, two detectors: the owner shares the
+                     # frames rather than the other one prising the device
+                     # open. Empty unless line:=true.
+                     'publish_frames': frames_topic}],
         condition=IfCondition(L('aruco')),
+    )
+
+    # The floor-line detector. It does NOT open the camera -- it takes the
+    # frames aruco_pose re-publishes, so both detectors see the same pixels,
+    # which is also what you want when deciding whether the marker or the line
+    # was the thing that lied.
+    line_node = Node(
+        package='drone_testing', executable='line_detect', name='line_detect',
+        output='screen', emulate_tty=True,
+        parameters=[{'image_topic': frames_topic,
+                     'hfov_deg': L('aruco_hfov_deg'),
+                     # ITS OWN dials, NOT cam_yaw_deg/flip_lr/flip_ud --
+                     # those describe how the THERMAL camera is mounted, and
+                     # this node is reading the DOWN camera. The two are
+                     # different cameras on different mounts, and sharing the
+                     # numbers would silently rotate the line geometry by
+                     # whatever the thermal camera happens to need.
+                     'cam_yaw_deg': L('line_cam_yaw_deg'),
+                     'flip_lr': L('line_flip_lr'),
+                     'flip_ud': L('line_flip_ud'),
+                     'blur_ksize': L('line_blur'),
+                     'close_ksize': L('line_close_ksize'),
+                     'open_ksize': L('line_open_ksize'),
+                     'strip_is_bright': L('line_strip_is_bright'),
+                     'min_area_frac': L('line_min_area_frac'),
+                     'max_area_frac': L('line_max_area_frac'),
+                     'min_elongation': L('line_min_elongation'),
+                     'downscale': L('line_downscale'),
+                     'min_quality': L('line_min_quality'),
+                     'stream_port': L('line_stream_port')}],
+        condition=IfCondition(L('line')),
+    )
+
+    # The end of the corridor, off the ZED's depth image. Needs the ZED
+    # wrapper running -- this launch file does not start it.
+    wall_node = Node(
+        package='drone_testing', executable='wall_watch', name='wall_watch',
+        output='screen', emulate_tty=True,
+        parameters=[{'depth_topic': L('wall_depth_topic'),
+                     'camera_info_topic': L('wall_camera_info_topic'),
+                     'stop_distance': L('wall_stop_distance'),
+                     'min_pixels': L('wall_min_pixels'),
+                     'floor_margin': L('wall_floor_margin'),
+                     'camera_pitch_deg': L('wall_camera_pitch_deg')}],
+        condition=IfCondition(L('wall')),
     )
 
     led_node = Node(
@@ -662,6 +822,13 @@ def generate_launch_description():
         'aruco_marker_ids', 'aruco_marker_size', 'aruco_hfov_deg',
         'aruco_dict', 'aruco_stream_port', 'aruco_min_marker_distance_rate',
         'servo_node', 'servo_close_on_start',
+        'line', 'line_stream_port', 'line_blur', 'line_downscale',
+        'line_cam_yaw_deg', 'line_flip_lr', 'line_flip_ud',
+        'line_close_ksize', 'line_open_ksize', 'line_strip_is_bright',
+        'line_min_area_frac', 'line_max_area_frac', 'line_min_elongation',
+        'aruco_publish_frames',
+        'wall', 'wall_depth_topic', 'wall_camera_info_topic',
+        'wall_min_pixels', 'wall_floor_margin', 'wall_camera_pitch_deg',
     }
     # ...and the ones only thermal_fsm declares. Passed to thermal_drop they
     # would be rejected outright, so the two nodes get two parameter sets.
@@ -677,6 +844,10 @@ def generate_launch_description():
         'pad_centre_seconds', 'pad_descent_rate', 'pad_handoff_height',
         'pad_gain', 'pad_max_nudge', 'pad_lost_seconds', 'pad_stage_timeout',
         'marker_anchor_gain', 'marker_anchor_max_age', 'ground_effect_height',
+        'line_follow', 'line_gain', 'line_max_nudge', 'line_lost_seconds',
+        'line_start_after',
+        'line_min_quality', 'line_max_heading_deg',
+        'wall_stop', 'wall_stop_distance', 'wall_lost_seconds',
     }
 
     common = {n: L(n) for n, _, _ in args if n not in not_flight | fsm_only}
@@ -707,5 +878,5 @@ def generate_launch_description():
     )
 
     return LaunchDescription(declared + [microxrce, sensor, sensor_sim,
-                                         aruco_node, led_node, servo_node,
-                                         flight])
+                                         aruco_node, line_node, wall_node,
+                                         led_node, servo_node, flight])

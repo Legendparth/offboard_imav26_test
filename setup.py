@@ -51,6 +51,8 @@ setup(
             'tube_detect = drone_testing.tube_detect:main',
             'tube_cross = drone_testing.tube_cross:main',
             'aruco_pose = drone_testing.aruco_pose:main',
+            'line_detect = drone_testing.line_detect:main',
+            'wall_watch = drone_testing.wall_watch:main',
             'precision_land = drone_testing.precision_land:main',
             'led_status = drone_testing.led_status:main',
             'servo_test = drone_testing.servo_test:main',
