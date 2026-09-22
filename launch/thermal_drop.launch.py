@@ -36,21 +36,33 @@ WHAT TO RUN, IN THIS ORDER
 
        ros2 launch drone_testing thermal_drop.launch.py agent_only:=false
 
-THE WHOLE MISSION, NOT JUST THE DROP
+THE WHOLE MISSION, NOT JUST THE DROP -- AND IT IS THE DEFAULT
 
-    fsm:=true swaps the flight node for thermal_fsm, which flies
+    fsm defaults to TRUE, so the flight node is thermal_fsm and step 4
+    above flies the whole competition run:
 
         takeoff -> forward to an ArUco marker -> hover 1 s on it
         -> one step RIGHT onto the boxes -> the survey, the drop and the
         retreat below -> forward to the LANDING marker -> precision landing
 
-    Everything in this file still applies: thermal_fsm IS a thermal_drop
-    with two ends bolted on, and reads every parameter here. It needs a
-    downward camera and the ArUco detector, so:
+    It needs the downward camera, so aruco defaults to true as well and
+    aruco_min_marker_distance_rate to 0.02 (see that argument for why the
+    OpenCV default detects nothing over a marker on a pad). Nothing has to
+    be passed:
 
-        ros2 launch drone_testing thermal_drop.launch.py fsm:=true \\
-            aruco:=true aruco_image_topic:=/camera/down/image_raw \\
-            aruco_min_marker_distance_rate:=0.02
+        ros2 launch drone_testing thermal_drop.launch.py agent_only:=false
+
+    aruco_image_topic stays EMPTY on the aircraft, so aruco_pose opens
+    /dev/video<aruco_camera_index> itself. /camera/down/image_raw is a
+    Gazebo topic and exists only in the simulator.
+
+    Everything in this file still applies: thermal_fsm IS a thermal_drop
+    with two ends bolted on, and reads every parameter here.
+
+    The drop ALONE -- survey from wherever you took off, no markers:
+
+        ros2 launch drone_testing thermal_drop.launch.py fsm:=false \\
+            aruco:=false agent_only:=false
 
     In the simulator all of that is set for you:
 
@@ -217,7 +229,7 @@ def generate_launch_description():
          'Dry run only: open and close the servo once at startup.'),
         ('sim_descend_speed', '0.25', 'm/s the SIMULATED vehicle descends at.'),
         ('retreat_altitude', '1.2', 'm climbed back to after the drop.'),
-        ('retreat_right', '0.5', 'm stepped to the RIGHT before landing.'),
+        ('retreat_right', '1.5', 'm stepped to the RIGHT before landing.'),
         ('land_after_drop', 'true', 'false = hold clear of the box instead.'),
         ('track_gate', '0.40', ''),
         ('flight_seconds', '150.0', ''),
@@ -263,9 +275,10 @@ def generate_launch_description():
         # right onto the boxes, then the same survey/drop/retreat, then a
         # precision landing on the next marker. Everything above still
         # applies; thermal_fsm IS a thermal_drop with two ends bolted on.
-        ('fsm', 'false',
-         'true runs thermal_fsm (marker -> boxes -> drop -> marker -> land) '
-         'instead of thermal_drop (survey here -> drop -> land).'),
+        ('fsm', 'true',
+         'true (THE DEFAULT) runs thermal_fsm: marker -> boxes -> drop -> '
+         'marker -> land, the whole competition run. false drops back to '
+         'thermal_drop, which surveys from wherever it took off.'),
 
         # ---- the legs thermal_fsm adds. REAL course metres. ----
         ('mark_search', 'true',
@@ -282,7 +295,7 @@ def generate_launch_description():
          'a marked pad and must not "find" the one it is standing on.'),
         ('mark_hover_seconds', '1.0',
          's stationary over the marker. A TIME, not a length: never scaled.'),
-        ('box_offset_right', '1.50',
+        ('box_offset_right', '2.20',
          'm RIGHT of the marker, which is where the boxes are.'),
         ('mark_stage_timeout', '60.0', ''),
         ('leg_lookahead', '0.70',
@@ -342,9 +355,10 @@ def generate_launch_description():
          'arena is 2.2x further away.'),
 
         # ---- the downward ArUco detector the marker stages fly on ----
-        ('aruco', 'false',
-         'Start aruco_pose on the downward camera. Required by fsm:=true '
-         'unless something else is already publishing /aruco/point.'),
+        ('aruco', 'true',
+         'Start aruco_pose on the downward camera. Required by fsm:=true -- '
+         'which is now the default -- unless something else is already '
+         'publishing /aruco/point. Its view is http://<jetson>:8083/.'),
         ('aruco_camera_index', '0', 'v4l2 device. Ignored if aruco_image_topic is set.'),
         ('aruco_image_topic', '',
          'Take frames from a ROS topic instead of a camera device. This is '
@@ -359,13 +373,14 @@ def generate_launch_description():
         ('aruco_dict', 'DICT_5X5_50', ''),
         ('aruco_stream_port', '8083',
          'Browser view of the downward camera. 8082 is the thermal one.'),
-        ('aruco_min_marker_distance_rate', '0.05',
+        ('aruco_min_marker_distance_rate', '0.02',
          'cv2.aruco merges two candidate quads whose corners are within this '
          'fraction of the image and keeps the LARGER. A marker lying on a '
          'square PAD has the pad\'s outline as a second, concentric '
-         'candidate, and at the default 0.05 it swallows the marker and '
-         'NOTHING is ever detected. The simulator passes 0.02. 0 is not '
-         '"off" -- it detects nothing either.'),
+         'candidate, and at cv2.aruco\'s own default of 0.05 it swallows the '
+         'marker and NOTHING is ever detected. 0.02 is what the simulator '
+         'flies and what is defaulted here. 0 is not "off" -- it detects '
+         'nothing either.'),
 
         # ---- the simulator's thermal source ----
         ('thermal_sim', 'false',
