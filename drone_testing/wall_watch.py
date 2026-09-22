@@ -113,14 +113,23 @@ class WallWatch(Node):
         px4_qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                              durability=DurabilityPolicy.VOLATILE,
                              history=HistoryPolicy.KEEP_LAST, depth=5)
-        self.create_subscription(VehicleLocalPosition,
-                                 '/fmu/out/vehicle_local_position',
-                                 self._on_position, px4_qos)
+        # BOTH NAMES, and this is not belt-and-braces. PX4 renamed its
+        # published topics with message versioning: on the aircraft's firmware
+        # the position arrives on ..._v1 and a subscriber to the bare name is
+        # matched with NOTHING. It does not error, it does not warn, it simply
+        # never receives -- which cost a bench session already, and is why
+        # every flight node in this package subscribes to the pair.
+        for topic in ('/fmu/out/vehicle_local_position',
+                      '/fmu/out/vehicle_local_position_v1'):
+            self.create_subscription(VehicleLocalPosition, topic,
+                                     self._on_position, px4_qos)
         self.create_subscription(EstimatorStatusFlags,
                                  px4_height.RANGEFINDER_TOPIC,
                                  self._on_flags, px4_qos)
-        self.create_subscription(VehicleAttitude, '/fmu/out/vehicle_attitude',
-                                 self._on_attitude, px4_qos)
+        for topic in ('/fmu/out/vehicle_attitude',
+                      '/fmu/out/vehicle_attitude_v1'):
+            self.create_subscription(VehicleAttitude, topic,
+                                     self._on_attitude, px4_qos)
         self.create_subscription(Image, self.depth_topic, self._on_depth,
                                  qos_profile_sensor_data)
         self.create_subscription(CameraInfo, self.info_topic, self._on_info,

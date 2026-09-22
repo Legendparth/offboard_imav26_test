@@ -140,7 +140,7 @@ class ThermalBench(Node):
         self.drops = 0
         self.led_mode = None
         self.last_log = 0.0
-        self.best = None        # (peak_C, err_m or None, agl or None)
+        self.best = None        # (peak, err, agl, count, ambient, fwd, right)
 
         self.create_timer(0.25, self.tick)
         self._set_led('off')
@@ -236,8 +236,18 @@ class ThermalBench(Node):
         ray = self.pixel_ray_body(hot['row'], hot['col'])
         alt = self.agl()
         h = alt if alt is not None else 1.0
-        err = h * float(np.hypot(ray[0], ray[1]))
-        self.best = (float(hot['peak']), err, alt, len(blobs), ambient)
+        # ray is (forward, right, down) in the AIRFRAME, pointing from the
+        # camera at the blob, so multiplying the horizontal part by the height
+        # gives WHERE THE BOX IS relative to the aircraft -- which is also,
+        # unchanged, HOW FAR THE AIRCRAFT MUST MOVE to be over it. Keeping the
+        # two components signed rather than collapsing them to a magnitude is
+        # the whole difference between "26 cm off" and "26 cm off, go forward
+        # and right", and only one of those is an instruction.
+        forward = h * float(ray[0])
+        right = h * float(ray[1])
+        err = float(np.hypot(forward, right))
+        self.best = (float(hot['peak']), err, alt, len(blobs), ambient,
+                     forward, right)
         self.last_seen = time.monotonic()
 
     # -------------------------------------------------------------- the logic
@@ -280,7 +290,7 @@ class ThermalBench(Node):
             self._say("SEARCH: nothing hot in frame.")
             return
 
-        peak, err, alt, count, ambient = self.best
+        peak, err, alt, count, ambient, fwd, right = self.best
         centred = err <= self.CENTRE_TOLERANCE
         at_height = (alt is not None
                      and abs(alt - self.DROP_ALTITUDE) <= self.ALTITUDE_TOLERANCE)
@@ -295,8 +305,9 @@ class ThermalBench(Node):
             self.in_band_since = None
             self._enter(self.CENTRE)
             self._set_led('blink_blue')
-            self._say(f"CENTRE: hot box {peak:.1f} C, {err * 100:.0f} cm to one "
-                      f"side (need {self.CENTRE_TOLERANCE * 100:.0f}), at "
+            self._say(f"CENTRE: hot box {peak:.1f} C, {err * 100:.0f} cm off "
+                      f"(need {self.CENTRE_TOLERANCE * 100:.0f}) -- "
+                      f"{self._move_hint(fwd, right, alt)}. At "
                       f"{height_txt}, {count} blob(s), ambient "
                       f"{ambient:.1f} C. LED blue.")
             return
@@ -312,8 +323,13 @@ class ThermalBench(Node):
 
         if not at_height:
             self.in_band_since = None
+            direction = ("LOWER IT" if alt is None or alt > self.DROP_ALTITUDE
+                         else "RAISE IT")
             self._say(f"DESCEND: over the box, {err * 100:.0f} cm off, at "
-                      f"{height_txt}, want {self.DROP_ALTITUDE:.2f} m.")
+                      f"{height_txt} -- {direction} to "
+                      f"{self.DROP_ALTITUDE:.2f} m"
+                      + (f" ({abs(alt - self.DROP_ALTITUDE) * 100:.0f} cm to go)"
+                         if alt is not None else "") + ".")
             return
 
         if self.in_band_since is None:
@@ -333,6 +349,33 @@ class ThermalBench(Node):
             f"DROP #{self.drops}: {peak:.1f} C box, {err * 100:.0f} cm off "
             f"centre at {height_txt}. True published on {self.TOPIC}, LED "
             f"solid green, servo open for {self.SERVO_HOLD_SECONDS:.1f} s.")
+
+    def _move_hint(self, fwd, right, alt):
+        """WHICH WAY AND HOW FAR, in words, to put the drop point on the box.
+
+        The bench is flown by hand, and a hand cannot act on "0.26 m of error".
+        It can act on "forward 23 cm, right 11 cm". Components under a
+        centimetre are dropped rather than printed as noise -- "right 0 cm" is
+        an instruction to do nothing, and reads as one.
+
+        WITHOUT A RANGEFINDER THESE ARE NOT METRES. The pixel-to-ground
+        conversion is a multiplication by height, so with no height the node
+        falls back to 1.0 m and the numbers become metres-per-metre-of-height.
+        Said plainly here rather than silently: a number that is only right at
+        one altitude, presented as though it were right at any, is worse than
+        no number.
+        """
+        parts = []
+        if abs(fwd) >= 0.01:
+            parts.append(f"{'FORWARD' if fwd > 0 else 'BACK'} {abs(fwd) * 100:.0f} cm")
+        if abs(right) >= 0.01:
+            parts.append(f"{'RIGHT' if right > 0 else 'LEFT'} {abs(right) * 100:.0f} cm")
+        if not parts:
+            return "hold it there -- you are over the box"
+        move = "move " + " and ".join(parts)
+        if alt is None:
+            move += " (PER METRE OF HEIGHT -- no rangefinder, so these are not cm)"
+        return move
 
     def _no_height_reason(self):
         """Say WHICH link in the height chain is broken, not just that one is.

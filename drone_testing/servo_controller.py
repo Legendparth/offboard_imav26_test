@@ -75,8 +75,14 @@ class ServoController(Node):
                                  self.ack_callback, px4_qos)
         self.create_subscription(Bool, self.TOPIC, self.trigger_callback, 10)
 
-        self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status',
-                                 self.status_callback, px4_qos)
+        # BOTH NAMES -- see the note in thermal_bench.py. On a firmware that
+        # publishes vehicle_status_v1, a subscriber to the bare name receives
+        # NOTHING, silently. Here that would mean close_on_arm never fires and
+        # the bay is never asserted closed, which is the exact failure this
+        # subscription exists to prevent.
+        for topic in ('/fmu/out/vehicle_status', '/fmu/out/vehicle_status_v1'):
+            self.create_subscription(VehicleStatus, topic,
+                                     self.status_callback, px4_qos)
 
         self.open_until = None      # monotonic deadline, or None when closed
         self.drops = 0
