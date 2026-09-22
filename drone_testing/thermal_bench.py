@@ -122,7 +122,7 @@ class ThermalBench(Node):
         px4_qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                              durability=DurabilityPolicy.VOLATILE,
                              history=HistoryPolicy.KEEP_LAST, depth=5)
-        self.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position',
+        self.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1',
                                  self.position_callback, px4_qos)
         # The ONLY topic that says whether EKF2 is really fusing the
         # rangefinder. dist_bottom_valid does not -- see agl().
