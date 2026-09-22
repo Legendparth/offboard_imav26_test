@@ -46,6 +46,13 @@ HEIGHT
     centring and the servo: require_altitude:=false and it fires on centring
     alone.
 
+    Whether that height is TRUSTED is decided by estimator_status_flags and
+    NOT by dist_bottom_valid -- see rangefinder_is_healthy().  On an aircraft
+    with EKF2_HGT_REF = 2 (Range), which is what the ARK Flow setup wants,
+    dist_bottom_valid is false for ever no matter how well the sensor works,
+    and reading it is why this node once said "no rangefinder" on an aircraft
+    whose flight nodes could see the rangefinder perfectly.
+
 THE ONE PX4 GOTCHA
 
     PX4 IGNORES MAV_CMD_DO_SET_ACTUATOR WHILE DISARMED.  On the bench, run
@@ -67,7 +74,7 @@ from rclpy.node import Node
 from rclpy.qos import (DurabilityPolicy, HistoryPolicy, QoSProfile,
                        ReliabilityPolicy)
 
-from px4_msgs.msg import VehicleLocalPosition
+from px4_msgs.msg import EstimatorStatusFlags, VehicleLocalPosition
 from sensor_msgs.msg import Image
 from std_msgs.msg import Bool, String
 
@@ -117,9 +124,14 @@ class ThermalBench(Node):
                              history=HistoryPolicy.KEEP_LAST, depth=5)
         self.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position',
                                  self.position_callback, px4_qos)
+        # The ONLY topic that says whether EKF2 is really fusing the
+        # rangefinder. dist_bottom_valid does not -- see agl().
+        self.create_subscription(EstimatorStatusFlags, '/fmu/out/estimator_status_flags',
+                                 self.estimator_flags_callback, px4_qos)
         self.create_subscription(Image, 'thermal/image', self.image_callback, 10)
 
         self.local_position = None
+        self.estimator_flags = None
         self.stage = self.SEARCH
         self.stage_since = time.monotonic()
         self.in_band_since = None
@@ -146,9 +158,45 @@ class ThermalBench(Node):
     def position_callback(self, msg):
         self.local_position = msg
 
+    def estimator_flags_callback(self, msg):
+        self.estimator_flags = msg
+
+    def rangefinder_is_healthy(self):
+        """Is EKF2 actually fusing the downward rangefinder?
+
+        THE SAME QUESTION, AND THE SAME ANSWER, AS
+        OffboardSequence.rangefinder_is_healthy(). This node does not inherit
+        from it -- it is deliberately not a flight node -- so the logic is
+        repeated here rather than approximated, because the approximation is
+        what was wrong.
+
+        This used to read VehicleLocalPosition.dist_bottom_valid, and on a
+        correctly configured ARK Flow aircraft that flag is ALWAYS FALSE. It
+        is not a rangefinder health flag at all:
+
+            EKF2.cpp:1622   lpos.dist_bottom_valid = _ekf.isTerrainEstimateValid();
+
+        With EKF2_HGT_REF = 2 (Range) -- which is what the ARK Flow setup
+        wants, because the ground IS the height datum -- the terrain state is
+        not estimated at all, so that flag can never become true however
+        perfectly the sensor is working. The bench therefore reported "no
+        rangefinder" for ever while every flight node on the same aircraft,
+        reading the flags below, saw the rangefinder perfectly.
+
+        EstimatorStatusFlags answers the real question. dist_bottom_valid
+        survives only as the fallback for a firmware that does not publish
+        the flags at all.
+        """
+        f = self.estimator_flags
+        if f is None:
+            lp = self.local_position
+            return lp is not None and lp.dist_bottom_valid
+        return (f.cs_rng_hgt or f.cs_rng_terrain) and not f.cs_rng_fault \
+            and not f.cs_rng_stuck and f.cs_rng_kin_consistent
+
     def agl(self):
         lp = self.local_position
-        if lp is None or not lp.dist_bottom_valid:
+        if lp is None or not self.rangefinder_is_healthy():
             return None
         return float(lp.dist_bottom)
 
@@ -240,7 +288,8 @@ class ThermalBench(Node):
             at_height = True
 
         height_txt = (f"{alt:.2f} m" if alt is not None else
-                      "no rangefinder" if self.REQUIRE_ALTITUDE else "height ignored")
+                      self._no_height_reason() if self.REQUIRE_ALTITUDE
+                      else "height ignored")
 
         if not centred:
             self.in_band_since = None
@@ -284,6 +333,36 @@ class ThermalBench(Node):
             f"DROP #{self.drops}: {peak:.1f} C box, {err * 100:.0f} cm off "
             f"centre at {height_txt}. True published on {self.TOPIC}, LED "
             f"solid green, servo open for {self.SERVO_HOLD_SECONDS:.1f} s.")
+
+    def _no_height_reason(self):
+        """Say WHICH link in the height chain is broken, not just that one is.
+
+        "no rangefinder" sent someone looking at the sensor when the answer
+        was a QoS mismatch, a dead agent, or EKF2 declining to fuse a sensor
+        that was working fine. Each of those has a different fix, so each of
+        them gets its own words.
+        """
+        if self.local_position is None:
+            return ("NO /fmu/out/vehicle_local_position AT ALL -- the "
+                    "uXRCE-DDS agent is not connected to PX4 (agent:=false, "
+                    "or the wrong serial port/baud)")
+        f = self.estimator_flags
+        if f is None:
+            return ("no estimator_status_flags, and dist_bottom_valid is "
+                    "false -- with EKF2_HGT_REF=Range that flag is always "
+                    "false, so this may be a rangefinder that is working")
+        if f.cs_rng_fault:
+            return "rangefinder FAULT flagged by EKF2"
+        if f.cs_rng_stuck:
+            return "rangefinder STUCK (same reading repeatedly)"
+        if not f.cs_rng_kin_consistent:
+            return ("rangefinder not kinematically consistent -- EKF2 is "
+                    "refusing to fuse it; re-earned only at |vz| > 0.5 m/s, "
+                    "so move it briskly up and down, or reboot PX4")
+        if not (f.cs_rng_hgt or f.cs_rng_terrain):
+            return ("EKF2 is not using the rangefinder for height "
+                    "(check EKF2_HGT_REF and EKF2_RNG_CTRL)")
+        return "rangefinder unhealthy"
 
     # --------------------------------------------------------------- plumbing
 
