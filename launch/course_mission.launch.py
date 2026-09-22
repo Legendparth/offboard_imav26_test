@@ -348,6 +348,10 @@ def generate_launch_description():
                         'align_yaw_tolerance_deg'),
                     'align_settle_seconds': LaunchConfiguration('align_settle_seconds'),
                     'align_timeout': LaunchConfiguration('align_timeout'),
+                    'align_band_grace': LaunchConfiguration('align_band_grace'),
+                    'align_relax_after': LaunchConfiguration('align_relax_after'),
+                    'align_relax_factor': LaunchConfiguration('align_relax_factor'),
+                    'align_relax_settle': LaunchConfiguration('align_relax_settle'),
                     'traverse_timeout': LaunchConfiguration('traverse_timeout'),
                     'clear_seconds': LaunchConfiguration('clear_seconds'),
                     'blind_traverse_seconds': LaunchConfiguration(
@@ -444,6 +448,8 @@ def generate_launch_description():
                     'pad_guide_timeout': LaunchConfiguration('pad_guide_timeout'),
                     'pad_back_distance': LaunchConfiguration('pad_back_distance'),
                     'pad_back_speed': LaunchConfiguration('pad_back_speed'),
+                    'offset_speed': LaunchConfiguration('offset_speed'),
+                    'fast_leg_leash': LaunchConfiguration('fast_leg_leash'),
                     'pad_blind_height': LaunchConfiguration('pad_blind_height'),
                     'tube_cross_tolerance': LaunchConfiguration('tube_cross_tolerance'),
                     'tube_search_timeout': LaunchConfiguration('tube_search_timeout'),
@@ -844,7 +850,18 @@ def generate_launch_description():
             'align_settle_seconds', default_value='1.5',
             description='How long position, altitude and heading must ALL be in '
                         'tolerance together before the traverse commits.'),
-        DeclareLaunchArgument('align_timeout', default_value='60.0'),
+        DeclareLaunchArgument('align_timeout', default_value='30.0'),
+        DeclareLaunchArgument(
+            'align_band_grace', default_value='0.4',
+            description='s a settle may drop out of the ALIGN gates (VO noise) '
+                        'without restarting the settle clock.'),
+        DeclareLaunchArgument(
+            'align_relax_after', default_value='8.0',
+            description='s of ALIGN after which every gate is widened by '
+                        'align_relax_factor, so it cannot hang on noise. The '
+                        'aperture clearance check at commit still applies.'),
+        DeclareLaunchArgument('align_relax_factor', default_value='1.7'),
+        DeclareLaunchArgument('align_relax_settle', default_value='0.6'),
         DeclareLaunchArgument('traverse_timeout', default_value='25.0'),
         DeclareLaunchArgument(
             'clear_seconds', default_value='4.0',
@@ -1254,7 +1271,16 @@ def generate_launch_description():
             'pad_back_distance', default_value='11.0',
             description='m of straight backward flight from the guide marker '
                         'before giving up on the landing marker and landing.'),
-        DeclareLaunchArgument('pad_back_speed', default_value='0.30'),
+        DeclareLaunchArgument('pad_back_speed', default_value='0.65'),
+        DeclareLaunchArgument(
+            'offset_speed', default_value='0.80',
+            description='m/s of the step right off the takeoff pad and the step '
+                        'right after the last window.'),
+        DeclareLaunchArgument(
+            'fast_leg_leash', default_value='1.00',
+            description='m move_leash used on the two right steps and the '
+                        'backward pad leg. Flown speed is ~MPC_XY_P * leash, '
+                        'so this is what actually lets those legs go faster.'),
         DeclareLaunchArgument(
             'pad_blind_height', default_value='0.80',
             description='m above the landing pad below which losing the marker '

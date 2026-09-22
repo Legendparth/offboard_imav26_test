@@ -244,7 +244,7 @@ def generate_launch_description():
          'deg C another blob must beat the target by, consistently, to steal it.'),
 
         # ---- flight ----
-        ('cruise_altitude', '1.2',
+        ('cruise_altitude', '1.8',
          'm the aircraft takes off to and flies the WHOLE outbound mission '
          'at: the marker creep, the hover on the marker and the sidestep '
          'onto the boxes. Low on purpose -- all three are looking for a '
@@ -271,7 +271,7 @@ def generate_launch_description():
          'survey_step > 0.'),
         ('approach_tolerance', '0.15', ''),
         ('descend_tolerance', '0.12', 'm; descent pauses while further off than this.'),
-        ('descend_speed', '0.12', ''),
+        ('descend_speed', '0.82', ''),
         ('align_tolerance', '0.08', 'm at drop height to confirm the drop.'),
         ('align_settle_seconds', '2.0', ''),
         ('hover_seconds', '2.0', 's of settling after the release, before climbing.'),
@@ -306,7 +306,7 @@ def generate_launch_description():
          'servo_controller only: send neutral once at startup so the bay is '
          'known-closed. Off by default -- on a loaded, armed vehicle an '
          'unasked-for servo command is not a courtesy.'),
-        ('sim_descend_speed', '0.25', 'm/s the SIMULATED vehicle descends at.'),
+        ('sim_descend_speed', '0.95', 'm/s the SIMULATED vehicle descends at.'),
         ('retreat_altitude', '1.2', 'm climbed back to after the drop.'),
         ('retreat_right', '2.2',
          'm stepped to the RIGHT after the drop, off the centre of the boxes '
@@ -322,7 +322,11 @@ def generate_launch_description():
         ('ground_wait_seconds', '5.0', ''),
         ('climb_speed', '0.35', ''),
         ('land_speed', '0.15', ''),
-        ('move_speed', '0.25', ''),
+        ('move_speed', '0.80',
+         'm/s the carrot is walked at. Binds only while it is below '
+         'MPC_XY_P * move_leash -- see move_leash.'),
+        ('request_offboard_from_ros', 'true',
+         'false = you flip the Offboard switch on the TX.'),
 
         ('led', 'true', 'Run the WS2812B status light node.'),
         ('num_pixels', '5', ''),
@@ -336,7 +340,24 @@ def generate_launch_description():
         # x/y and PX4 flies that capped error, so the ground speed is roughly
         # MPC_XY_P * move_leash whatever the speed arguments say. It is a
         # world distance, so a scaled arena scales it.
-        ('move_leash', '0.40', 'm the commanded x/y may lead the measured x/y.'),
+        ('move_leash', '2.00',
+         'm the commanded x/y may lead the measured x/y. THE HORIZONTAL '
+         'SPEED CEILING, and it is set by the flight controller: PX4 flies '
+         'the capped position error at roughly MPC_XY_P * move_leash, so no '
+         'speed argument in this file can beat that product. THIS AIRCRAFT '
+         'RUNS MPC_XY_P = 0.5, which the ARK Flow documentation asks for -- '
+         'so the original 0.40 m leash capped every leg at 0.5 * 0.40 = '
+         '0.20 m/s whatever move_speed said, and a 9 m creep took 45 s of a '
+         '60 s stage timeout. 2.00 m lifts the ceiling to 1.00 m/s, which '
+         'leaves move_speed (0.80) as the binding limit instead -- and that '
+         'is the RIGHT way round: while the ramp is the slower of the two the '
+         'position error stays well inside the leash, so there is no standing '
+         'error for PX4 to wind up on and pay back as overshoot. Re-derive it '
+         'if MPC_XY_P changes: leash > wanted_speed / MPC_XY_P. NOTE it is '
+         'also how far a vehicle whose ESTIMATE has frozen may be dragged '
+         'before anything notices, and at 2.00 m that is no longer a small '
+         'number -- leg_stall_seconds is what now catches that case, and it '
+         'is the reason this leash may safely be this long.'),
         ('min_altitude', '0.4', ''),
         ('max_altitude', '3.0', ''),
         ('takeoff_accept_tolerance', '0.30', ''),
@@ -379,16 +400,41 @@ def generate_launch_description():
          'actually left the pad. It is a CAP, not a leg -- a marker seen at '
          '8.2 m stops the creep there. Reaching it means the marker is not '
          'there, and mark_required says what to do about that.'),
-        ('mark_search_speed', '0.30', ''),
-        ('mark_min_travel', '1.00',
+        ('mark_search_speed', '0.70',
+         'm/s of forward creep. Held BELOW move_speed on purpose: this leg is '
+         'the one looking for a marker, and the limits on it are the camera '
+         'and the flow, not the position controller. At cruise_altitude '
+         '1.80 m the down camera footprint is about 2 m, so 0.70 m/s crosses '
+         'it in under 3 s -- CHECK THE DETECTOR RATE against that. aruco_pose '
+         'must publish at 10 Hz or better for a marker to be seen in enough '
+         'frames to be believed; if it runs at 5 Hz this leg gets about 14 '
+         'looks and at 2 Hz it gets 6, and a marker flown over between two '
+         'ticks was never there as far as the mission is concerned.'),
+        ('mark_min_travel', '2.00',
          'm that must be flown before a marker counts -- the aircraft arms ON '
-         'a marked pad and must not "find" the one it is standing on.'),
+         'a marked pad and must not "find" the one it is standing on. Raised '
+         'from 1.00 m with cruise_altitude: the down camera footprint is '
+         'about 2 m across at 1.80 m, so the pad marker stays in frame for '
+         'roughly 1 m past it and 1.00 m of travel left no margin at all -- '
+         'a little drift, or an `along` that under-read, and the aircraft '
+         '"found" the pad it had just left and stopped 1 m into a 9 m leg.'),
         ('mark_hover_seconds', '1.0',
          's stationary over the marker. A TIME, not a length: never scaled.'),
         ('box_offset_right', '2.20',
          'm RIGHT of the marker, which is where the boxes are.'),
-        ('mark_stage_timeout', '60.0', ''),
-        ('leg_lookahead', '0.70',
+        ('mark_stage_timeout', '90.0',
+         's. Generous on purpose. It is meant to catch a leg that ran out of '
+         'arena, and a leg that merely ran SLOW must not trip it: at the old '
+         '0.20 m/s effective speed a 9 m creep needed 45 s of the old 60 s, '
+         'and any headwind or reacquisition spent the rest. Flow stalls no '
+         'longer spend it at all -- see leg_stall_seconds.'),
+        # NOTE leg_lookahead (3.20 m) is now LONGER than the box_offset and
+        # retreat_right legs (2.20 m). On those the carrot clamps to the far
+        # end immediately and the leg degenerates to point-to-point, which is
+        # what it always was before the line-following rewrite and is fine
+        # over 2 m -- the cross-track argument in LEG_LOOKAHEAD is about the
+        # 9 m corridor legs, where the carrot still sits on the line.
+        ('leg_lookahead', '3.20',
          'm ahead ALONG the line the carrot is placed. Every straight leg is '
          'flown by holding a LINE, not by aiming at a point at the far end: '
          'a far-end target corrects a cross-track error e with d to run by '
@@ -404,6 +450,15 @@ def generate_launch_description():
          'do not share a north, and in the scaled arena that offset was a '
          'steady 5.95 deg -- 2.40 m of sideways error over a 23 m leg flown '
          'perfectly straight.'),
+        ('leg_stall_seconds', '4.0',
+         's of unhealthy optical flow, on a straight leg, before the leg is '
+         'abandoned and the aircraft lands. Every leg ends on the ESTIMATED '
+         'distance along the line, and the carrot is leashed to the estimate '
+         'too, so when flow stops correcting the aircraft stops dead and the '
+         'leg stops counting -- while the stage clock keeps running and '
+         'eventually lands it, blaming a marker it never reached. The stage '
+         'clock is now HELD for the whole stall, so a stall that clears costs '
+         'nothing; this is how long one may last before it is called.'),
         ('leg_trim_deg', '0.0',
          'deg added to every leg heading, +ve to the RIGHT. For a KNOWN, '
          'repeatable aim bias only. Leave at 0 until a leg has been flown '
@@ -416,7 +471,7 @@ def generate_launch_description():
          'm of forward creep after the retreat, looking for the DATUM marker. '
          'Short on purpose: retreat_right is supposed to have landed on it, '
          'so this is an acquisition allowance, not a search.'),
-        ('land_search_speed', '0.30', ''),
+        ('land_search_speed', '0.70', ''),
         ('land_return', 'true',
          'true = the marker found after the sidestep is a DATUM, not the pad: '
          'align on it, then fly the corridor BACKWARDS to the landing marker '
@@ -427,7 +482,7 @@ def generate_launch_description():
          '8.7-8.8 m plus slack as mark_search_distance, because it is the '
          'same pair of markers. Reaching it is NOT a failure -- the cone is '
          'already in the box -- so the aircraft simply lands where it is.'),
-        ('land_return_speed', '0.30',
+        ('land_return_speed', '0.70',
          'm/s backwards. As slow as the outbound creep: a marker that crosses '
          'the frame between two detector ticks was never seen.'),
         ('land_return_min_travel', '1.00',
@@ -614,7 +669,8 @@ def generate_launch_description():
         'mark_search', 'mark_required', 'mark_search_distance',
         'mark_search_speed', 'mark_min_travel', 'mark_hover_seconds',
         'box_offset_right', 'mark_stage_timeout', 'leg_lookahead',
-        'leg_trim_deg', 'leg_bearing_deg', 'precision_land',
+        'leg_stall_seconds', 'leg_trim_deg', 'leg_bearing_deg',
+        'precision_land',
         'land_search_distance', 'land_search_speed', 'land_return',
         'land_return_distance', 'land_return_speed', 'land_return_min_travel',
         'pad_centre_tolerance',

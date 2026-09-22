@@ -510,7 +510,14 @@ class CourseFSM(WindowTraverse):
     PAD_GUIDE_TIMEOUT = 20.0    # s looking for the guide before going back
                                 # from wherever the step right ended
     PAD_BACK_DISTANCE = 11.0    # m of backward flight before giving up
-    PAD_BACK_SPEED = 0.30       # m/s
+    PAD_BACK_SPEED = 0.65       # m/s
+    # The two sideways steps (off the takeoff pad, and off the course line
+    # after the last window) fly at their own speed rather than
+    # approach_speed. These legs, and PAD_BACK, also get a longer leash: the
+    # speed actually flown is ~MPC_XY_P * leash, so the default 0.5 m leash
+    # caps them at ~0.5 m/s whatever the speed argument says.
+    OFFSET_SPEED = 0.80         # m/s
+    FAST_LEG_LEASH = 1.00       # m
     PAD_MARKER_CONFIRM = 3      # fresh fixes of a marker before acting on it
     # Below this height ABOVE THE PAD, losing the marker is expected -- the
     # camera is too close to see all of it -- so the descent carries on to
@@ -689,6 +696,8 @@ class CourseFSM(WindowTraverse):
         self.PAD_GUIDE_TIMEOUT = float(n('pad_guide_timeout', self.PAD_GUIDE_TIMEOUT))
         self.PAD_BACK_DISTANCE = float(n('pad_back_distance', self.PAD_BACK_DISTANCE))
         self.PAD_BACK_SPEED = float(n('pad_back_speed', self.PAD_BACK_SPEED))
+        self.OFFSET_SPEED = float(n('offset_speed', self.OFFSET_SPEED))
+        self.FAST_LEG_LEASH = float(n('fast_leg_leash', self.FAST_LEG_LEASH))
         self.PAD_BLIND_HEIGHT = float(n('pad_blind_height', self.PAD_BLIND_HEIGHT))
         self.TUBE_EXIT_DISTANCE = float(n('tube_exit_distance', self.TUBE_EXIT_DISTANCE))
         self.TUBE_LATERAL_MARGIN = float(n('tube_lateral_margin', self.TUBE_LATERAL_MARGIN))
@@ -1854,6 +1863,12 @@ class CourseFSM(WindowTraverse):
         self.tube_settle_since = None
         return False
 
+    def _move_leash(self):
+        if self.current_stage in (self.START_OFFSET, self.PAD_OFFSET,
+                                  self.PAD_BACK):
+            return max(self.MOVE_LEASH, self.FAST_LEG_LEASH)
+        return self.MOVE_LEASH
+
     def _enter_tube_stage(self, stage):
         self._enter_stage(stage)
         self.tube_settle_since = None
@@ -2966,7 +2981,7 @@ class CourseFSM(WindowTraverse):
         right = np.array([-math.sin(h), math.cos(h)])
         lp = self.local_position
         target = np.array([lp.x, lp.y]) + right * self.START_OFFSET_RIGHT
-        self.MOVE_SPEED = self.APPROACH_SPEED
+        self.MOVE_SPEED = self.OFFSET_SPEED
         self._enter_stage(self.START_OFFSET)
         self._set_target(float(target[0]), float(target[1]),
                          self.commanded_altitude)
@@ -3008,7 +3023,7 @@ class CourseFSM(WindowTraverse):
         right = np.array([-math.sin(h), math.cos(h)])
         lp = self.local_position
         target = np.array([lp.x, lp.y]) + right * self.PAD_RIGHT
-        self.MOVE_SPEED = self.APPROACH_SPEED
+        self.MOVE_SPEED = self.OFFSET_SPEED
         self._enter_tube_stage(self.PAD_OFFSET)
         # At the altitude we are at: after the second window that is the
         # window's, and dropping to the tube crossing height here is a descent

@@ -2195,9 +2195,15 @@ class OffboardSequence(Node):
             ex = self.hold_x - lp.x
             ey = self.hold_y - lp.y
             error = math.hypot(ex, ey)
-            if error > self.MOVE_LEASH:
-                self.hold_x = lp.x + ex / error * self.MOVE_LEASH
-                self.hold_y = lp.y + ey / error * self.MOVE_LEASH
+            leash = self._move_leash()
+            if error > leash:
+                self.hold_x = lp.x + ex / error * leash
+                self.hold_y = lp.y + ey / error * leash
+
+    def _move_leash(self):
+        """The xy leash for the current move. Subclasses lengthen it on legs
+        that should fly faster than MPC_XY_P * MOVE_LEASH."""
+        return self.MOVE_LEASH
 
     def publish_vehicle_command(self, command, param1=0.0, param2=0.0, force=False):
         """Send a VehicleCommand, at most once every COMMAND_INTERVAL.

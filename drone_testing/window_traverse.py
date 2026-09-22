@@ -637,6 +637,15 @@ class WindowTraverse(WindowScan):
                                 # between the landing gear and the sill.
     ALIGN_YAW_TOLERANCE = math.radians(8.0)
     ALIGN_SETTLE_SECONDS = 1.5  # all three held simultaneously for this long
+    # Anti-stall. VO noise on a 6 cm cross gate used to keep ALIGN bouncing in
+    # and out of band for tens of seconds. A single noisy tick out of band no
+    # longer restarts the settle clock (grace), and once ALIGN has run for
+    # relax_after seconds every gate is widened by relax_factor. The commit
+    # still goes through _aperture_is_flyable, which checks the ACTUAL offset.
+    ALIGN_BAND_GRACE = 0.4      # s out of band tolerated inside a settle
+    ALIGN_RELAX_AFTER = 8.0     # s of ALIGN before the gates are widened
+    ALIGN_RELAX_FACTOR = 1.7    # multiplier on cross/along/alt/yaw tolerances
+    ALIGN_RELAX_SETTLE = 0.6    # s settle once relaxed
     AIM_YAW_TOLERANCE = math.radians(12.0)
 
     # ---- re-centring on a truncated window --------------------------------
@@ -699,7 +708,7 @@ class WindowTraverse(WindowScan):
     YAW_CONE_DEG = 50.0
 
     AIM_TIMEOUT = 25.0
-    ALIGN_TIMEOUT = 60.0
+    ALIGN_TIMEOUT = 30.0
     TRAVERSE_TIMEOUT = 25.0
     CLEAR_SECONDS = 4.0
 
@@ -812,6 +821,14 @@ class WindowTraverse(WindowScan):
             'align_yaw_tolerance_deg', math.degrees(self.ALIGN_YAW_TOLERANCE))))
         self.ALIGN_TIMEOUT = float(self._declare_number(
             'align_timeout', self.ALIGN_TIMEOUT))
+        self.ALIGN_BAND_GRACE = float(self._declare_number(
+            'align_band_grace', self.ALIGN_BAND_GRACE))
+        self.ALIGN_RELAX_AFTER = float(self._declare_number(
+            'align_relax_after', self.ALIGN_RELAX_AFTER))
+        self.ALIGN_RELAX_FACTOR = float(self._declare_number(
+            'align_relax_factor', self.ALIGN_RELAX_FACTOR))
+        self.ALIGN_RELAX_SETTLE = float(self._declare_number(
+            'align_relax_settle', self.ALIGN_RELAX_SETTLE))
         self.TRAVERSE_TIMEOUT = float(self._declare_number(
             'traverse_timeout', self.TRAVERSE_TIMEOUT))
         self.CLEAR_SECONDS = float(self._declare_number(
@@ -1960,13 +1977,30 @@ class WindowTraverse(WindowScan):
                 self._abandon("vision never recovered during the approach")
             return
 
+        now = time.monotonic()
+        relaxed = self._in_stage_for() > self.ALIGN_RELAX_AFTER
+        settle = self.ALIGN_RELAX_SETTLE if relaxed else self.ALIGN_SETTLE_SECONDS
         if self._aligned():
+            self.align_out_since = None
             if self.align_in_band_since is None:
-                self.align_in_band_since = time.monotonic()
-            elif time.monotonic() - self.align_in_band_since >= self.ALIGN_SETTLE_SECONDS:
+                self.align_in_band_since = now
+            elif now - self.align_in_band_since >= settle:
+                if relaxed:
+                    self.get_logger().warning(
+                        f"ALIGN: committing on RELAXED gates (x"
+                        f"{self.ALIGN_RELAX_FACTOR:.1f}) after "
+                        f"{self._in_stage_for():.1f} s.")
                 self._begin_traverse()
             return
 
+        # Out of band. Inside a settle, a short excursion (VO noise) is
+        # forgiven; only a sustained one restarts the clock.
+        if self.align_in_band_since is not None:
+            if getattr(self, 'align_out_since', None) is None:
+                self.align_out_since = now
+            if now - self.align_out_since <= self.ALIGN_BAND_GRACE:
+                return
+        self.align_out_since = None
         self.align_in_band_since = None
 
         # Not aligned and no live pose: now the stale clock is allowed to end
@@ -2032,14 +2066,16 @@ class WindowTraverse(WindowScan):
         along, cross = self._approach_errors()
         if along is None:
             return False
-        if abs(cross) > self.ALIGN_CROSS_TOLERANCE:
+        k = (self.ALIGN_RELAX_FACTOR
+             if self._in_stage_for() > self.ALIGN_RELAX_AFTER else 1.0)
+        if abs(cross) > k * self.ALIGN_CROSS_TOLERANCE:
             return False
-        if abs(along) > self.ALIGN_ALONG_TOLERANCE:
+        if abs(along) > k * self.ALIGN_ALONG_TOLERANCE:
             return False
         alt = self.relative_altitude()
-        if alt is None or abs(alt - self.commanded_altitude) > self.ALIGN_ALT_TOLERANCE:
+        if alt is None or abs(alt - self.commanded_altitude) > k * self.ALIGN_ALT_TOLERANCE:
             return False
-        return self._heading_error(self._target_heading()) <= self.ALIGN_YAW_TOLERANCE
+        return self._heading_error(self._target_heading()) <= k * self.ALIGN_YAW_TOLERANCE
 
     # ----------------------------------------------------------- TRAVERSE
 

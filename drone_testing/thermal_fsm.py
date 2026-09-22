@@ -260,6 +260,11 @@ class ThermalFSM(ThermalDrop):
                                     # marker. A bad pose cannot throw the
                                     # aircraft further than this.
     PAD_LOST_SECONDS = 2.0          # s a pose stays usable after it arrives
+    LEG_STALL_SECONDS = 4.0     # s of unhealthy flow, on a leg, before the
+                                # leg is abandoned. See _leg_flow_stalled():
+                                # a leg cannot make progress the estimator
+                                # is not reporting, and the stage timeout
+                                # must not be spent on a stall.
     MARK_STAGE_TIMEOUT = 60.0
     PAD_STAGE_TIMEOUT = 45.0
     ANCHOR_GAIN = 0.35          # how much of each new marker fix goes into
@@ -321,6 +326,8 @@ class ThermalFSM(ThermalDrop):
                 "commanded direction would stop tracking the line. Raising "
                 f"leg_lookahead to {self.MOVE_LEASH * 1.5:.2f} m.")
             self.LEG_LOOKAHEAD = self.MOVE_LEASH * 1.5
+        self.LEG_STALL_SECONDS = float(n('leg_stall_seconds',
+                                         self.LEG_STALL_SECONDS))
         self.MARK_STAGE_TIMEOUT = float(n('mark_stage_timeout',
                                           self.MARK_STAGE_TIMEOUT))
         self.PAD_STAGE_TIMEOUT = float(n('pad_stage_timeout',
@@ -377,6 +384,9 @@ class ThermalFSM(ThermalDrop):
         self.aruco_point_time = None
         self.aruco_id = None
         self.aruco_seen = 0
+
+        self.leg_stall_since = None     # when flow last went unhealthy on a leg
+        self.leg_stall_reported = False
 
         self.mark_hover_since = None
         self.mark_xy = None             # the marker the boxes are measured off
@@ -703,6 +713,8 @@ class ThermalFSM(ThermalDrop):
         self.leg_length = float(length)
         self.leg_cross = 0.0
         self.leg_worst_cross = 0.0
+        self.leg_stall_since = None
+        self.leg_stall_reported = False
         self.MOVE_SPEED = speed
 
     def _follow_leg(self):
@@ -744,6 +756,87 @@ class ThermalFSM(ThermalDrop):
         # 2.4 deg right over one run doing exactly that.
         self._aim_yaw_at(self.leg_yaw)
         return along, cross
+
+    def _leg_flow_stalled(self):
+        """True once a leg has been unable to make progress long enough to give up.
+
+        Every leg ends on `along`, which is the ESTIMATE projected onto the
+        line -- and the carrot is leashed to the estimate as well, in
+        _step_xy_ramp(). So when the flow stops correcting, both halves fail
+        at the same instant and in the same direction: the commanded point is
+        pinned to a position that is no longer advancing, PX4 sees no error,
+        the aircraft stops dead in mid-leg, and `along` freezes with it. The
+        one thing that keeps moving is the stage clock, which then lands the
+        aircraft where it stopped and reports "no marker found" -- a leg that
+        was never flown, blamed on a marker that was never passed.
+
+        Measured on the real aircraft: the creep halted around 4 m of a 9 m
+        leg and sat there until the 60 s timeout put it down.
+
+        So while the estimate is stalled the stage clock is HELD. A stall that
+        clears costs the leg nothing but the seconds it lasted; one that does
+        not clear is reported as a lost estimate rather than as a missing
+        marker, because those two have opposite fixes.
+
+        Deliberately uses flow_is_healthy() and not xy_valid: EKF2 keeps
+        xy_valid true while it coasts on the IMU, which is exactly the case
+        this has to catch.
+        """
+        now = time.monotonic()
+        if self.flow_is_healthy():
+            if self.leg_stall_since is not None:
+                if self.leg_stall_reported:
+                    self.get_logger().warning(
+                        f"LEG: flow healthy again after "
+                        f"{now - self.leg_stall_since:.1f} s. Carrying on; the "
+                        "stage clock was held for the whole stall.")
+                self.leg_stall_since = None
+                self.leg_stall_reported = False
+            return False
+
+        if self.leg_stall_since is None:
+            self.leg_stall_since = now
+        stalled_for = now - self.leg_stall_since
+        # The timeout exists to catch a leg that ran out of arena, not one
+        # that ran out of estimator. Hold it while we are not moving.
+        self._restart_stage_clock()
+        lp = self.local_position
+        self.get_logger().error(
+            f"LEG STALLED {stalled_for:.1f}/{self.LEG_STALL_SECONDS:.1f} s: "
+            "optical flow is not correcting, so the commanded point is "
+            "leashed to a position that is not advancing and the aircraft is "
+            "not going anywhere. "
+            + (f"xy_valid={lp.xy_valid} v_xy_valid={lp.v_xy_valid} "
+               f"dist_bottom={lp.dist_bottom:.2f} m "
+               f"(need > {self.FLOW_MIN_AGL:.2f} m) "
+               f"rng_ok={self.rangefinder_is_healthy()}"
+               if lp is not None else "no local position at all")
+            + ". Stage clock HELD.",
+            throttle_duration_sec=1.0)
+        if stalled_for > self.LEG_STALL_SECONDS:
+            self.leg_stall_reported = True
+            return True
+        self.leg_stall_reported = True
+        return False
+
+    def _abandon_leg_for_flow(self, along):
+        """End the mission on a lost estimate, saying so.
+
+        Landing is the only honest ending: without a lateral estimate there
+        is no flying the rest of the leg and no knowing where the aircraft
+        would be flying to. It goes down where it is, which is where it has
+        been sitting anyway.
+        """
+        why = (f"optical flow unhealthy for more than "
+               f"{self.LEG_STALL_SECONDS:.1f} s at {along:.2f} m along the leg")
+        self.outcome = f"ENDED: {why}; the leg could not be flown."
+        self.get_logger().error(
+            f"{self.current_stage}: {why}. This is NOT a missing marker -- the "
+            "aircraft never covered the ground. Landing here. Check the ARK "
+            "Flow: surface texture and lighting under the corridor, "
+            f"dist_bottom against flow_min_agl ({self.FLOW_MIN_AGL:.2f} m), "
+            "and optical_flow.quality in the PX4 log.")
+        self._finish(why, land=True)
 
     def _aim_yaw_at(self, heading):
         """Walk the commanded yaw towards an absolute heading.
@@ -829,6 +922,10 @@ class ThermalFSM(ThermalDrop):
 
     def _handle_mark_search(self):
         along, cross = self._follow_leg()
+        # Before anything is concluded from `along`: is `along` still moving?
+        if self._leg_flow_stalled():
+            self._abandon_leg_for_flow(along)
+            return
         if self._marker_is_under_us() and along >= self.MARK_MIN_TRAVEL:
             self._begin_mark_hover(along)
             return
@@ -955,6 +1052,12 @@ class ThermalFSM(ThermalDrop):
 
     def _handle_box_offset(self):
         along, cross = self._follow_leg()
+        # A stall here is worse than it looks: the timeout below would survey
+        # "over the boxes" from wherever the sidestep died, which on a 2.20 m
+        # step is bare floor beside them.
+        if self._leg_flow_stalled():
+            self._abandon_leg_for_flow(along)
+            return
         left = self.leg_length - along
         timed_out = self._in_stage_for() > self.MARK_STAGE_TIMEOUT
         if left <= self.MOVE_TOLERANCE or timed_out:
@@ -993,6 +1096,9 @@ class ThermalFSM(ThermalDrop):
 
     def _handle_land_search(self):
         gone, cross = self._follow_leg()
+        if self._leg_flow_stalled():
+            self._abandon_leg_for_flow(gone)
+            return
         if self._marker_is_under_us():
             if self.LAND_RETURN_ON:
                 self._begin_land_align()
@@ -1109,6 +1215,9 @@ class ThermalFSM(ThermalDrop):
 
     def _handle_land_return(self):
         along, cross = self._follow_leg()
+        if self._leg_flow_stalled():
+            self._abandon_leg_for_flow(along)
+            return
         if self._marker_is_under_us() and along >= self.LAND_RETURN_MIN_TRAVEL:
             self.get_logger().warning(
                 f"LAND_RETURN: landing marker after {along:.2f} m, "
