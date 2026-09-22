@@ -510,6 +510,10 @@ def generate_launch_description():
                 'pad': LaunchConfiguration('pad'),
                 'pad_detector': 'true',
                 'pad_image_topic': '/camera/down/image_raw',
+                'bars_measured': LaunchConfiguration('bars_measured'),
+                'bar_down_image_topic': '/camera/down/image_raw',
+                'bar_height_gate': s(0.30),
+                'bar_along_gate': s(0.40),
                 'pad_hfov_deg': '90.0',          # down_cam.xacro, 1.5708 rad
                 'pad_marker_size': '0.88',       # world file, already scaled
                 'pad_guide_id': '3',
@@ -613,6 +617,10 @@ def generate_launch_description():
                         '(the range stays the height REFERENCE). 0 restores '
                         'the range-only configuration, where a dropout leaves '
                         'no height source at all.'),
+        DeclareLaunchArgument(
+            'bars_measured', default_value='false',
+            description='true = measure the red/blue bars with the camera '
+                        'and correct the blind plan from them. false = blind.'),
         DeclareLaunchArgument(
             'rng_dropout', default_value='true',
             description='ON BY DEFAULT, because the point of this simulation '

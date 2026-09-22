@@ -50,7 +50,8 @@ from launch.actions import (DeclareLaunchArgument, GroupAction,
                             IncludeLaunchDescription, TimerAction)
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import (LaunchConfiguration, PathJoinSubstitution,
+                                  PythonExpression)
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -132,6 +133,58 @@ def generate_launch_description():
             )
         ],
         condition=IfCondition(LaunchConfiguration('detect')),
+    )
+
+    # Measured bars (bars_measured:=true): the ZED looks for the red bar on
+    # the climb and the blue bar on the descent, and the DOWN camera confirms
+    # the red bar passing underneath. Not started at all when it is off.
+    def bar_detect_node(colour, port, min_elevation):
+        return Node(
+            package='drone_testing',
+            executable='bar_detect',
+            name=f'{colour}_bar_detect',
+            namespace=f'{colour}_bar',
+            output='screen',
+            emulate_tty=True,
+            parameters=[{
+                'image_topic': LaunchConfiguration('image_topic'),
+                'depth_topic': LaunchConfiguration('depth_topic'),
+                'camera_info_topic': LaunchConfiguration('camera_info_topic'),
+                'fallback_hfov_deg': LaunchConfiguration('fallback_hfov_deg'),
+                'max_fps': LaunchConfiguration('max_fps'),
+                'color': colour,
+                'min_elevation_deg': min_elevation,
+                'publish_image': LaunchConfiguration('publish_image'),
+                'publish_compressed': LaunchConfiguration('publish_compressed'),
+                'stream_port': port,
+                'stream_scale': LaunchConfiguration('stream_scale'),
+                'jpeg_quality': LaunchConfiguration('jpeg_quality'),
+            }],
+        )
+
+    bar_nodes = TimerAction(
+        period=5.0,
+        actions=[
+            # The red bar is at or above the camera on the climb; the blue one
+            # starts far BELOW it on the descent, so its elevation filter is
+            # opened right up -- the flight node's height gate does the work.
+            bar_detect_node('red', 8083, -20.0),
+            bar_detect_node('blue', 8084, -89.0),
+            Node(
+                package='drone_testing',
+                executable='bar_down_check',
+                name='bar_down_check',
+                output='screen',
+                emulate_tty=True,
+                parameters=[{
+                    'image_topic': LaunchConfiguration('bar_down_image_topic'),
+                    'color': 'red',
+                }],
+                condition=IfCondition(PythonExpression(
+                    ["'", LaunchConfiguration('bar_down_image_topic'), "' != ''"])),
+            ),
+        ],
+        condition=IfCondition(LaunchConfiguration('bars_measured')),
     )
 
     tube_detect_node = TimerAction(
@@ -318,6 +371,12 @@ def generate_launch_description():
                     'course_vertical_timeout': LaunchConfiguration('course_vertical_timeout'),
                     'course_cross_timeout': LaunchConfiguration('course_cross_timeout'),
                     'course_flow_timeout': LaunchConfiguration('course_flow_timeout'),
+                    # ---- measured bars (off = blind, the default) ----
+                    'bars_measured': LaunchConfiguration('bars_measured'),
+                    'bar_measure_timeout': LaunchConfiguration('bar_measure_timeout'),
+                    'bar_min_samples': LaunchConfiguration('bar_min_samples'),
+                    'bar_height_gate': LaunchConfiguration('bar_height_gate'),
+                    'bar_along_gate': LaunchConfiguration('bar_along_gate'),
                     # ---- the tubes ----
                     'tubes': LaunchConfiguration('tubes'),
                     'blue_bar_gap': LaunchConfiguration('blue_bar_gap'),
@@ -914,6 +973,34 @@ def generate_launch_description():
         DeclareLaunchArgument('course_vertical_timeout', default_value='25.0'),
         DeclareLaunchArgument('course_cross_timeout', default_value='15.0'),
         DeclareLaunchArgument(
+            'bars_measured', default_value='false',
+            description='false = fly the red and blue bars BLIND on the known '
+                        'geometry (the default). true = the ZED measures the red '
+                        'bar on the climb and the blue bar on the descent and '
+                        'corrects the crossing altitude and distance from them, '
+                        'and the down camera confirms passing over the red bar. '
+                        'Falls back to blind if nothing is measured in time.'),
+        DeclareLaunchArgument(
+            'bar_measure_timeout', default_value='6.0',
+            description='s to wait, settled, for enough bar samples before '
+                        'flying that bar blind.'),
+        DeclareLaunchArgument(
+            'bar_min_samples', default_value='5',
+            description='accepted bar_detect frames before a bar counts as measured.'),
+        DeclareLaunchArgument(
+            'bar_height_gate', default_value='0.30',
+            description='m. A bar sample further than this from red_bar_height / '
+                        'blue_bar_height is not the bar and is ignored.'),
+        DeclareLaunchArgument(
+            'bar_along_gate', default_value='0.40',
+            description='m. Same, along the course, from where the bar should be.'),
+        DeclareLaunchArgument(
+            'bar_down_image_topic', default_value='',
+            description='down-camera Image topic for the red-bar-underneath check. '
+                        'Empty = no check. On hardware the down camera is opened '
+                        'by aruco_pose directly, so it has to be published on a '
+                        'topic before this can be used.'),
+        DeclareLaunchArgument(
             'course_flow_timeout', default_value='8.0',
             description='s without optical flow during a rise or drop before '
                         'landing on the midpoint.'),
@@ -1208,5 +1295,6 @@ def generate_launch_description():
         zed_wrapper,
         detect_node,
         tube_detect_node,
+        bar_nodes,
         aruco_node,
     ])

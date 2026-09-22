@@ -93,6 +93,28 @@ WHY THE BARS ARE FLOWN ON KNOWN GEOMETRY, NOT MEASURED
     those numbers. bar_cross.py keeps its measured mode for standalone testing
     at a distance where it can actually see.
 
+MEASURED BARS (bars_measured:=true, OFF by default)
+    The blind flight above stays the default. With bars_measured the known
+    geometry is still the plan, but the ZED is allowed to CORRECT it:
+
+      RED_RISE    while climbing on P0, bar_detect (red) samples the bar.
+                  Once the climb settles the aircraft waits up to
+                  bar_measure_timeout for bar_min_samples; the median height
+                  re-solves the red altitude (re-climbing if it moved) and the
+                  median along-track position moves P1 so it stays
+                  red_to_blue/2 past the bar as measured.
+      RED_CROSS   the DOWNWARD camera (bar_down_check) must see the red bar
+                  pass underneath. It is a confirmation, logged, not a gate.
+      BLUE_DROP   bar_detect (blue) samples the first blue bar as the
+                  aircraft descends. Same wait, same correction: height ->
+                  blue altitude, along -> blue crossing distance.
+
+    Every measurement is gated against the known geometry (bar_height_gate,
+    bar_along_gate): a sample further off than that is not the bar and is
+    ignored, so a bad detection can only ever cost the correction, never
+    fly the aircraft somewhere the blind plan would not. No samples in time
+    means the blind plan is flown, with a warning.
+
 WHY IT DOES NOT GO BACK TO 1.2 m BETWEEN OBSTACLES
     Every obstacle dictates its own altitude, so a "home" height between them
     is only somewhere to pass through. Returning to 1.2 m after the red bar
@@ -169,7 +191,7 @@ from drone_testing.offboard_sequence import nav_state_name, spin_node, wrap_pi
 from drone_testing.tube_cross import (TubeEstimator, front_plane,
                                       solve_from_hole, solve_gap)
 from drone_testing.tube_detect import HOLE_STRIDE, STRIDE
-from drone_testing.window_traverse import WindowTraverse
+from drone_testing.window_traverse import WindowTraverse, quat_rotate
 
 
 class CourseFSM(WindowTraverse):
@@ -798,6 +820,35 @@ class CourseFSM(WindowTraverse):
         self.course_settle_since = None
         self.course_flow_lost_since = None
         self.bar_push_since = None
+
+        # ---- measured bars (bars_measured:=true). OFF: the blind plan. ----
+        self.BARS_MEASURED = bool(self.declare_parameter(
+            'bars_measured', False).value)
+        self.BAR_MEASURE_TIMEOUT = float(n('bar_measure_timeout', 6.0))
+        self.BAR_MIN_SAMPLES = int(n('bar_min_samples', 5))
+        self.BAR_HEIGHT_GATE = float(n('bar_height_gate', 0.30))
+        self.BAR_ALONG_GATE = float(n('bar_along_gate', 0.40))
+        self.bar_samples = {'red': [], 'blue': []}
+        self.bar_applied = {'red': False, 'blue': False}
+        self.bar_wait_since = None
+        self.red_bar_along = None       # measured, from P0, along the course
+        self.blue_bar_along = None
+        self.red_down_seen = False
+        if self.BARS_MEASURED:
+            self.create_subscription(
+                Float32MultiArray, str(self.declare_parameter(
+                    'red_bar_geometry_topic', '/red_bar/bar_geometry').value),
+                lambda m: self._bar_geometry_callback('red', m), 10,
+                callback_group=self.sensor_cbg)
+            self.create_subscription(
+                Float32MultiArray, str(self.declare_parameter(
+                    'blue_bar_geometry_topic', '/blue_bar/bar_geometry').value),
+                lambda m: self._bar_geometry_callback('blue', m), 10,
+                callback_group=self.sensor_cbg)
+            self.create_subscription(
+                Bool, str(self.declare_parameter(
+                    'red_bar_down_topic', '/bar_down/detected').value),
+                self._bar_down_callback, 10, callback_group=self.sensor_cbg)
         self.bar_push_seconds = 0.0
         self.window_blind_capped = False
 
@@ -963,6 +1014,11 @@ class CourseFSM(WindowTraverse):
 
     def _begin_red_cross(self):
         distance = 0.5 * self.WINDOW_TO_RED + 0.5 * self.RED_TO_BLUE
+        here = self._here_along()
+        if self.red_bar_along is not None and here is not None:
+            # P1 stays red_to_blue/2 past the bar AS MEASURED.
+            distance = self.red_bar_along + 0.5 * self.RED_TO_BLUE - here
+        self.red_down_seen = False
         x, y = self._ahead(distance)
         self.MOVE_SPEED = self.BAR_CROSS_SPEED
         self._set_target(x, y, self.red_altitude)
@@ -991,6 +1047,9 @@ class CourseFSM(WindowTraverse):
         # Both blue bars in one run: the second is invisible from under the
         # first, and there is no room to stop between them.
         distance = 0.5 * self.RED_TO_BLUE + self.BLUE_BAR_GAP + self.BLUE_EXIT
+        here = self._here_along()
+        if self.blue_bar_along is not None and here is not None:
+            distance = self.blue_bar_along + self.BLUE_BAR_GAP + self.BLUE_EXIT - here
         x, y = self._ahead(distance)
         self.MOVE_SPEED = self.BAR_CROSS_SPEED
         self._set_target(x, y, self.blue_altitude)
@@ -998,6 +1057,152 @@ class CourseFSM(WindowTraverse):
         self.get_logger().warning(
             f"BLUE_CROSS: under BOTH blue bars, {distance:.2f} m at "
             f"{self.BAR_CROSS_SPEED:.2f} m/s, altitude {self.blue_altitude:.2f} m.")
+
+    # ------------------------------------------------ measured bars
+
+    def _course_origin(self):
+        """P0: the along-track zero every bar distance is measured from."""
+        if self.traverse_exit is not None:
+            return float(self.traverse_exit[0]), float(self.traverse_exit[1])
+        return None
+
+    def _bar_geometry_callback(self, which, msg):
+        """One bar_detect frame -> (height, along) of the bar centre, gated."""
+        stage = self.current_stage
+        wanted = {'red': (self.RED_RISE,), 'blue': (self.RED_CROSS, self.BLUE_DROP)}
+        if stage not in wanted[which] or self.bar_applied[which]:
+            return
+        data = np.asarray(msg.data, dtype=float)
+        if data.size < 9:
+            return
+        depth, az_deg, el_deg = data[6:9]      # row 2: the centre
+        lp = self.local_position
+        origin = self._course_origin()
+        if (not np.isfinite(depth) or depth <= 0.0 or lp is None
+                or not lp.xy_valid or not lp.z_valid or self.home_z is None
+                or self.attitude is None or origin is None):
+            return
+        az, el = math.radians(float(az_deg)), math.radians(float(el_deg))
+        p_cam = np.array([depth, depth * math.tan(az), -depth * math.tan(el)])
+        p_body = self.r_cam @ p_cam + self.t_cam
+        p_ned = quat_rotate(np.asarray(self.attitude.q, dtype=float), p_body) \
+            + np.array([lp.x, lp.y, lp.z])
+        height = self.home_z - float(p_ned[2])
+        h = self._course_heading()
+        along = ((p_ned[0] - origin[0]) * math.cos(h)
+                 + (p_ned[1] - origin[1]) * math.sin(h))
+        if which == 'red':
+            nominal_h, nominal_a = self.RED_BAR_HEIGHT, 0.5 * self.WINDOW_TO_RED
+        else:
+            nominal_h = self.BLUE_BAR_HEIGHT
+            nominal_a = 0.5 * self.WINDOW_TO_RED + self.RED_TO_BLUE
+        if (abs(height - nominal_h) > self.BAR_HEIGHT_GATE
+                or abs(along - nominal_a) > self.BAR_ALONG_GATE):
+            self.get_logger().info(
+                f"{which} bar sample ignored: {height:.2f} m high, {along:.2f} m "
+                f"along (expected {nominal_h:.2f} / {nominal_a:.2f} "
+                f"+/- {self.BAR_HEIGHT_GATE:.2f} / {self.BAR_ALONG_GATE:.2f}).",
+                throttle_duration_sec=1.0)
+            return
+        self.bar_samples[which].append((height, float(along)))
+
+    def _bar_down_callback(self, msg):
+        if msg.data and self.current_stage == self.RED_CROSS and not self.red_down_seen:
+            self.red_down_seen = True
+            self.get_logger().warning(
+                "RED_CROSS: the down camera sees the red bar underneath.")
+
+    def _measured_bar(self, which):
+        """(height, along) median, or None before bar_min_samples."""
+        samples = self.bar_samples[which]
+        if len(samples) < self.BAR_MIN_SAMPLES:
+            return None
+        arr = np.array(samples)
+        return float(np.median(arr[:, 0])), float(np.median(arr[:, 1]))
+
+    def _apply_measured_bar(self, which):
+        """At the end of a settled climb/descent: apply the measurement.
+
+        True = done, go on to the crossing. False = keep waiting (for samples,
+        or for a corrected altitude to settle).
+        """
+        if not self.BARS_MEASURED or self.bar_applied[which]:
+            return True
+        now = time.monotonic()
+        if self.bar_wait_since is None:
+            self.bar_wait_since = now
+        meas = self._measured_bar(which)
+        if meas is None:
+            if now - self.bar_wait_since < self.BAR_MEASURE_TIMEOUT:
+                self.get_logger().info(
+                    f"{self.current_stage}: measuring the {which} bar "
+                    f"({len(self.bar_samples[which])}/{self.BAR_MIN_SAMPLES} "
+                    "samples).", throttle_duration_sec=1.0)
+                return False
+            self.bar_applied[which] = True
+            self.bar_wait_since = None
+            self.get_logger().error(
+                f"{self.current_stage}: the {which} bar was not measured in "
+                f"{self.BAR_MEASURE_TIMEOUT:.0f} s "
+                f"({len(self.bar_samples[which])} samples). Flying it BLIND "
+                "on the known geometry.")
+            return True
+
+        self.bar_applied[which] = True
+        self.bar_wait_since = None
+        height, along = meas
+        if which == 'red':
+            self.red_bar_along = along
+            alt = (height + self.BAR_RADIUS + self.RED_CLEARANCE
+                   + self.body_below)
+            ok = alt <= self.MAX_ALTITUDE
+            old = self.red_altitude
+        else:
+            self.blue_bar_along = along
+            alt = (height - self.BAR_RADIUS - self.BLUE_CLEARANCE
+                   - self.body_above)
+            ok = (alt >= self.MIN_ALTITUDE
+                  and alt >= self.FLOW_MIN_AGL + self.FLOW_FLOOR_MARGIN)
+            old = self.blue_altitude
+        self.get_logger().warning(
+            f"{self.current_stage}: {which} bar MEASURED at {height:.2f} m high, "
+            f"{along:.2f} m past P0 ({len(self.bar_samples[which])} samples). "
+            f"Crossing altitude {old:.2f} -> "
+            f"{alt if ok else old:.2f} m"
+            + ("" if ok else " (measured one is outside the flight envelope; "
+                             "keeping the planned one)") + ".")
+        if not ok:
+            return True
+        if which == 'red':
+            self.red_altitude = alt
+        else:
+            self.blue_altitude = alt
+        if abs(alt - self.commanded_altitude) > self.COURSE_ALT_TOLERANCE:
+            # Correct the height on the spot and let the vertical handler
+            # settle it again before the crossing starts.
+            self._set_target(self.move_target_x, self.move_target_y, alt)
+            self.course_settle_since = None
+            self._restart_stage_clock()   # the vertical timeout starts again
+            return False
+        return True
+
+    def _red_rise_done(self):
+        if self._apply_measured_bar('red'):
+            self._begin_red_cross()
+
+    def _blue_drop_done(self):
+        if self._apply_measured_bar('blue'):
+            self._begin_blue_cross()
+
+    def _here_along(self):
+        """The aircraft's current along-track distance from P0, or None."""
+        lp = self.local_position
+        origin = self._course_origin()
+        if lp is None or origin is None:
+            return None
+        h = self._course_heading()
+        return ((lp.x - origin[0]) * math.cos(h)
+                + (lp.y - origin[1]) * math.sin(h))
 
     def _restore_land_speed(self):
         if self.course_saved_land_speed is not None:
@@ -1069,10 +1274,10 @@ class CourseFSM(WindowTraverse):
             throttle_duration_sec=1.0)
 
     def _handle_red_rise(self):
-        self._handle_vertical(self._begin_red_cross, "the red rise")
+        self._handle_vertical(self._red_rise_done, "the red rise")
 
     def _handle_blue_drop(self):
-        self._handle_vertical(self._begin_blue_cross, "the blue drop")
+        self._handle_vertical(self._blue_drop_done, "the blue drop")
 
     def _handle_red_cross(self):
         if not self._still_flyable():
@@ -1104,7 +1309,14 @@ class CourseFSM(WindowTraverse):
             self.get_logger().warning("RED_CROSS: flow is back; resuming the crossing.")
             self.bar_push_since = None
 
-        self._handle_crossing(self._begin_blue_drop, "the red crossing")
+        self._handle_crossing(self._red_cross_done, "the red crossing")
+
+    def _red_cross_done(self):
+        if self.BARS_MEASURED and not self.red_down_seen:
+            self.get_logger().error(
+                "RED_CROSS: the down camera never saw the red bar underneath. "
+                "Carrying on (confirmation only) -- check bar_down_check.")
+        self._begin_blue_drop()
 
     def _handle_blue_cross(self):
         if not self._still_flyable():

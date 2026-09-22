@@ -44,6 +44,7 @@ setup(
             'window_scan = drone_testing.window_scan:main',
             'window_traverse = drone_testing.window_traverse:main',
             'bar_detect = drone_testing.bar_detect:main',
+            'bar_down_check = drone_testing.bar_down_check:main',
             'bar_cross = drone_testing.bar_cross:main',
             'course_fsm = drone_testing.course_fsm:main',
             'rng_dropout = drone_testing.rng_dropout:main',
