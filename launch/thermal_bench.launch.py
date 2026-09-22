@@ -148,6 +148,11 @@ def generate_launch_description():
         ('servo_drop_value', '1.0', 'Actuator value that opens it, -1..1.'),
         ('servo_neutral_value', '-1.0', 'Actuator value it returns to.'),
         ('servo_hold_seconds', '2.0', 's the servo is held open.'),
+        ('servo_close_on_arm', 'false',
+         'Assert the bay closed when the vehicle arms. FALSE here: this bench '
+         'arms nothing and uses actuator_test, which PX4 denies while armed '
+         'anyway. It is the FLIGHT launch file that wants it on.'),
+        ('servo_close_on_arm_seconds', '2.0', ''),
         ('servo_close_on_start', 'false',
          'Send neutral once at startup so the bay is known-closed. Safe here, '
          'unlike in flight -- but off by default so nothing moves unasked.'),
@@ -216,7 +221,9 @@ def generate_launch_description():
                      'servo_hold_seconds': L('servo_hold_seconds'),
                      'servo_command': L('servo_command'),
                      'servo_function': L('servo_function'),
-                     'close_on_start': L('servo_close_on_start')}],
+                     'close_on_start': L('servo_close_on_start'),
+                     'close_on_arm': L('servo_close_on_arm'),
+                     'close_on_arm_seconds': L('servo_close_on_arm_seconds')}],
         condition=IfCondition(servo_armed),
     )
 

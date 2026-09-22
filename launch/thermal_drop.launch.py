@@ -302,6 +302,28 @@ def generate_launch_description():
          'std_msgs/Bool. True the instant the drop commits, False once the '
          'payload has had servo_hold_seconds to clear. Bench-testable on its '
          'own:  ros2 topic pub --once /servo/drop std_msgs/Bool "data: true"'),
+        ('servo_close_on_arm', 'true',
+         'servo_controller only: assert the bay CLOSED for a couple of '
+         'seconds the moment the vehicle ARMS. THIS IS NOT THE SAME AS '
+         'servo_close_on_start, and covers what that one cannot. While '
+         'disarmed PX4 drives the output to the Actuators tab\'s Disarmed '
+         'value (2000 us here = the -1.0 end = closed) with nothing being '
+         'sent at all. At the instant of arming PX4 stops using that value '
+         'and uses the actuator set\'s control value -- which, until the '
+         'first drop, NOTHING HAS EVER SENT. If PX4 defaults it to 0.0 then '
+         'with Min 1000 / Max 2000 that is 1500 us, i.e. HALF OPEN, on the '
+         'pad, with the cone loaded. servo_close_on_start cannot help: it '
+         'fires while the vehicle is still disarmed, and PX4 IGNORES '
+         'DO_SET_ACTUATOR while disarmed, so the command is discarded. A '
+         'BURST and not a stream -- see close_on_arm_seconds.'),
+        ('servo_close_on_arm_seconds', '2.0',
+         's the neutral value is re-sent after arming, then it stops. PX4 '
+         'latches the last DO_SET_ACTUATOR, so this only has to land once; a '
+         'permanent stream would put a vehicle_command into PX4\'s queue '
+         'several times a second for the whole flight, and that queue '
+         'overruns -- which is why OffboardSequence throttles its own '
+         'commands. A dropped arm or offboard-mode command is a worse '
+         'failure than the one this prevents.'),
         ('servo_close_on_start', 'false',
          'servo_controller only: send neutral once at startup so the bay is '
          'known-closed. Off by default -- on a loaded, armed vehicle an '
@@ -707,7 +729,9 @@ def generate_launch_description():
                      'servo_hold_seconds': L('servo_hold_seconds'),
                      'servo_command': L('servo_command'),
                      'servo_function': L('servo_function'),
-                     'close_on_start': L('servo_close_on_start')}],
+                     'close_on_start': L('servo_close_on_start'),
+                     'close_on_arm': L('servo_close_on_arm'),
+                     'close_on_arm_seconds': L('servo_close_on_arm_seconds')}],
         condition=IfCondition(servo_owns_output),
     )
 
@@ -822,6 +846,7 @@ def generate_launch_description():
         'aruco_marker_ids', 'aruco_marker_size', 'aruco_hfov_deg',
         'aruco_dict', 'aruco_stream_port', 'aruco_min_marker_distance_rate',
         'servo_node', 'servo_close_on_start',
+        'servo_close_on_arm', 'servo_close_on_arm_seconds',
         'line', 'line_stream_port', 'line_blur', 'line_downscale',
         'line_cam_yaw_deg', 'line_flip_lr', 'line_flip_ud',
         'line_close_ksize', 'line_open_ksize', 'line_strip_is_bright',

@@ -30,7 +30,7 @@ from rclpy.node import Node
 from rclpy.qos import (DurabilityPolicy, HistoryPolicy, QoSProfile,
                        ReliabilityPolicy)
 
-from px4_msgs.msg import VehicleCommand, VehicleCommandAck
+from px4_msgs.msg import VehicleCommand, VehicleCommandAck, VehicleStatus
 from std_msgs.msg import Bool
 
 
@@ -53,6 +53,9 @@ class ServoController(Node):
         self.COMMAND = str(p('servo_command', 'set_actuator')).lower()
         self.FUNCTION = int(p('servo_function', 0))
         self.CLOSE_ON_START = bool(p('close_on_start', False))
+        # THE GAP close_on_start CANNOT COVER. See _on_status().
+        self.CLOSE_ON_ARM = bool(p('close_on_arm', True))
+        self.CLOSE_ON_ARM_SECONDS = float(p('close_on_arm_seconds', 2.0))
 
         if self.REPEAT_RATE <= 0.0:
             self.REPEAT_RATE = 10.0
@@ -72,10 +75,15 @@ class ServoController(Node):
                                  self.ack_callback, px4_qos)
         self.create_subscription(Bool, self.TOPIC, self.trigger_callback, 10)
 
+        self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status',
+                                 self.status_callback, px4_qos)
+
         self.open_until = None      # monotonic deadline, or None when closed
         self.drops = 0
         self.awaiting_ack = False
         self.acked = False
+        self.armed = False
+        self.close_until = None     # monotonic deadline of the arming burst
 
         self.timer = self.create_timer(1.0 / self.REPEAT_RATE, self.tick)
 
@@ -93,6 +101,72 @@ class ServoController(Node):
             f"Servo release ready on {self.TOPIC}. "
             f"open={self.DROP_VALUE:+.2f} neutral={self.NEUTRAL_VALUE:+.2f} "
             f"hold={self.HOLD_SECONDS:.1f}s via {how}.")
+
+    # ------------------------------------------------------------- arming
+
+    def status_callback(self, msg):
+        """Assert the bay CLOSED the moment the vehicle arms.
+
+        THE HOLE THIS FILLS, which close_on_start does not and cannot:
+
+        While the vehicle is DISARMED, PX4 drives the output to its "Disarmed"
+        value from the Actuators tab -- 2000 us on this aircraft, which with
+        Rev Range checked is the -1.0 end, i.e. closed. Nothing has to be sent
+        for that; it is what the output does when nothing is commanding it.
+
+        The instant the vehicle ARMS, PX4 stops using the Disarmed value and
+        starts using the actuator set's control value instead. And until this
+        node's first drop, NOTHING HAS EVER SENT ONE -- tick() returns
+        immediately while closed, deliberately, so it does not flood the
+        command queue. Whatever PX4 defaults that control value to is what the
+        servo goes to at arming, with the cone loaded, on the pad. If that
+        default is 0.0 then with Min 1000 / Max 2000 it is 1500 us, which is
+        half open.
+
+        close_on_start cannot cover this: it fires once when this NODE starts,
+        which is while the vehicle is still disarmed, and PX4 IGNORES
+        MAV_CMD_DO_SET_ACTUATOR while disarmed. The command is discarded and
+        the bay is not established as anything.
+
+        So the neutral value is asserted on the disarmed -> armed EDGE, which
+        is the first moment PX4 will act on it.
+
+        A BURST, NOT A STREAM. It is sent at the repeat rate for
+        close_on_arm_seconds and then stops. PX4 latches the last
+        DO_SET_ACTUATOR it received, so a couple of seconds is enough to set
+        it; a permanent stream would put a vehicle_command into PX4's queue
+        several times a second for the whole flight, and that queue overruns
+        -- which is exactly why OffboardSequence throttles its own commands to
+        COMMAND_INTERVAL. A dropped arm or offboard-mode command is a worse
+        failure than the one this is preventing.
+
+        Only for set_actuator: PX4 DENIES actuator_test while armed, so the
+        burst would be a stream of refusals in the log and nothing else.
+        """
+        was_armed = self.armed
+        self.armed = (msg.arming_state == VehicleStatus.ARMING_STATE_ARMED)
+        if self.armed and not was_armed:
+            if not self.CLOSE_ON_ARM:
+                self.get_logger().warning(
+                    "ARMED. close_on_arm is false, so nothing is commanding "
+                    "the bay -- it holds whatever PX4 defaults this actuator "
+                    "set to. WATCH THE SERVO.")
+                return
+            if self.COMMAND == 'actuator_test':
+                self.get_logger().info(
+                    "ARMED. Not asserting the bay closed: PX4 denies "
+                    "actuator_test while armed. This is the bench "
+                    "configuration, not the flight one.")
+                return
+            self.close_until = time.monotonic() + self.CLOSE_ON_ARM_SECONDS
+            self.get_logger().warning(
+                f"ARMED. Asserting the bay CLOSED at "
+                f"{self.NEUTRAL_VALUE:+.2f} for "
+                f"{self.CLOSE_ON_ARM_SECONDS:.1f} s -- until now nothing had "
+                "ever commanded this actuator set, and arming is where PX4 "
+                "stops using the Disarmed value.")
+        elif was_armed and not self.armed:
+            self.close_until = None
 
     # ---------------------------------------------------------------- trigger
 
@@ -122,9 +196,21 @@ class ServoController(Node):
     # ------------------------------------------------------------------- loop
 
     def tick(self):
+        now = time.monotonic()
         if self.open_until is None:
+            # Not dropping. The only thing that may go out here is the short
+            # burst that follows arming -- see status_callback(). The rest of
+            # the time this node is deliberately silent.
+            if self.close_until is not None:
+                if now >= self.close_until:
+                    self.close_until = None
+                    self.get_logger().info(
+                        f"Bay asserted closed at {self.NEUTRAL_VALUE:+.2f}. "
+                        "Going quiet until the drop.")
+                else:
+                    self.send(self.NEUTRAL_VALUE)
             return
-        if time.monotonic() >= self.open_until:
+        if now >= self.open_until:
             self.close(f"held {self.HOLD_SECONDS:.1f} s")
             return
         self.send(self.DROP_VALUE)
