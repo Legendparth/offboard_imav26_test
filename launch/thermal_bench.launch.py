@@ -135,8 +135,12 @@ def generate_launch_description():
         ('drop_trigger_topic', '/servo/drop', 'std_msgs/Bool.'),
         ('servo_index', '1', 'PX4 "Offboard Actuator Set N", for set_actuator.'),
         ('servo_function', '0',
-         'PX4 output FUNCTION number. REQUIRED on the bench -- see the header. '
-         'Find it with:  ros2 run drone_testing servo_test -p command:=sweep'),
+         'What goes in MAV_CMD_ACTUATOR_TEST param5. REQUIRED on the bench. '
+         'NOT the "Servo 4" you read off QGC\'s Actuators tab: param5 is a '
+         'MAVLink ACTUATOR_OUTPUT_FUNCTION, so Servo 1-8 is 33-40, or '
+         '1201-1208 for PX4\'s own numbering. Do not work it out -- run '
+         '`ros2 run drone_testing servo_test --ros-args -p command:=sweep` '
+         'and use the number it prints for the step that moved the servo.'),
         ('servo_command', 'actuator_test',
          'actuator_test = what QGC uses, and the ONLY one that works while '
          'disarmed, so it is the bench default. set_actuator = what the '

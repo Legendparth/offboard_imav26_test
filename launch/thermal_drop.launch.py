@@ -101,9 +101,12 @@ THE SERVO
 
         ros2 run drone_testing servo_test --ros-args -p command:=sweep
 
-    That sends MAV_CMD_ACTUATOR_TEST across Servo 1-8 (functions 201-208),
-    one a second, and prints PX4's ack for each. Watch the servo, note the
-    function that moves it, then:
+    That sends MAV_CMD_ACTUATOR_TEST across Servo 1-8, one a second, and
+    prints PX4's ack for each. Watch the servo, note the number printed for
+    the step that moved it -- pass that number as-is, it is already in the
+    encoding PX4 wants, and it is NOT the "Servo 4" from QGC's Actuators tab
+    (param5 is a MAVLink ACTUATOR_OUTPUT_FUNCTION: Servo 1-8 is 33-40, or
+    1201-1208 in PX4's own numbering). Then:
 
         mode:=dryrun servo_command:=actuator_test servo_function:=<n>
 
@@ -117,7 +120,10 @@ THE SERVO
                               it can be accepted and still move nothing.
       actuator_test           What the QGC Actuator sliders send, and the one
                               that works DISARMED. Addressed by FUNCTION
-                              number, so set servo_function too.
+                              number, so set servo_function too -- and PX4
+                              DENIES it outright if the vehicle is armed, if a
+                              safety button is fitted and unpressed, or if
+                              COM_MOT_TEST_EN is not 1.
 
     First flight: release_enabled:=false. The whole mission runs and the drop
     is logged but the servo never moves.

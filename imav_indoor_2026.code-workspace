@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "../imav_indoor_2026"
+		},
+		{
+			"path": "../drone_controller"
+		},
+		{
+			"path": "../../../codes"
+		},
+		{
+			"path": "../intelsense"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../imav26_dark_room_object_detection_autonomous"
+		}
+	],
+	"settings": {}
+}

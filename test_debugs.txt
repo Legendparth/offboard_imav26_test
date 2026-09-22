@@ -1,28 +1,16 @@
 ark-jetson-orin@localhost:~/imav26_ws$ ros2 run drone_testing servo_test --ros-args -p command:=sweep
-Traceback (most recent call last):
-  File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/drone_testing/servo_test", line 33, in <module>
-    sys.exit(load_entry_point('drone_testing==0.0.0', 'console_scripts', 'servo_test')())
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/servo_test.py", line 44, in main
-    rclpy.spin(node)
-  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/__init__.py", line 247, in spin
-    executor.spin_once()
-  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 926, in spin_once
-    self._spin_once_impl(timeout_sec)
-  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 918, in _spin_once_impl
-    raise handler.exception()
-  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/task.py", line 286, in _execute_coroutine_step
-    result = coro.send(None)
-             ^^^^^^^^^^^^^^^
-  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 592, in handler
-    await call_coroutine()
-  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 454, in _execute
-    await await_or_execute(tmr.callback)
-  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 115, in await_or_execute
-    return callback(*args)
-           ^^^^^^^^^^^^^^^
-  File "/home/ark-jetson-orin/imav26_ws/install/drone_testing/lib/python3.12/site-packages/drone_testing/servo_test.py", line 37, in timer_callback
-    self.get_logger().info(f'Commanding MAIN 5 Servo to: {servo_position:.2f}')
-                                                          ^^^^^^^^^^^^^^
-NameError: name 'servo_position' is not defined
-[ros2run]: Process exited with failure 1
+[WARN] [1790057008.736938252] [servo_test_node]: SWEEP: MAV_CMD_ACTUATOR_TEST at +1.00 across functions 201-208 (Servo 1-8), 1.0 s each. WATCH THE SERVO and note which function moves it.
+[INFO] [1790057009.697171086] [servo_test_node]:   function 201  (Servo 1)  ->  +1.00
+[INFO] [1790057010.697321955] [servo_test_node]:   function 202  (Servo 2)  ->  +1.00
+[INFO] [1790057011.697461438] [servo_test_node]:   function 203  (Servo 3)  ->  +1.00
+[ERROR] [1790057011.710063095] [servo_test_node]:     PX4 REFUSED function 203, result 2.
+[INFO] [1790057012.697461661] [servo_test_node]:   function 204  (Servo 4)  ->  +1.00
+[ERROR] [1790057012.711195057] [servo_test_node]:     PX4 REFUSED function 204, result 2.
+[INFO] [1790057013.697789485] [servo_test_node]:   function 205  (Servo 5)  ->  +1.00
+[ERROR] [1790057013.711295449] [servo_test_node]:     PX4 REFUSED function 205, result 2.
+[INFO] [1790057014.697733372] [servo_test_node]:   function 206  (Servo 6)  ->  +1.00
+[ERROR] [1790057014.712757612] [servo_test_node]:     PX4 REFUSED function 206, result 2.
+[INFO] [1790057015.697520018] [servo_test_node]:   function 207  (Servo 7)  ->  +1.00
+[ERROR] [1790057015.718470064] [servo_test_node]:     PX4 REFUSED function 207, result 2.
+[INFO] [1790057016.697761789] [servo_test_node]:   function 208  (Servo 8)  ->  +1.00
+[WARN] [1790057017.696951163] [servo_test_node]: Sweep finished. 6 ack(s) from PX4. If NOTHING moved: the servo may not be on Servo 1-8, or the FMU is not powering the rail, or the uXRCE-DDS agent is not connected (no acks at all means nothing arrived). If something moved, use that function number for servo_function.

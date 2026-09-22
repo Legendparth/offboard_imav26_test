@@ -144,8 +144,12 @@ class ServoController(Node):
                        "with `ros2 run drone_testing servo_test --ros-args "
                        "-p command:=sweep`."
                        if self.FUNCTION == 0 else
-                       f"servo_function {self.FUNCTION} is not the servo's "
-                       "output FUNCTION. Confirm it on QGC's Actuators tab.")
+                       f"PX4 refused servo_function {self.FUNCTION}. DENIED "
+                       "means armed, or a safety button not pressed, or "
+                       "COM_MOT_TEST_EN != 1. UNSUPPORTED means the number "
+                       "is in the wrong encoding: param5 wants 33-40 for "
+                       "Servo 1-8, or 1201-1208, not the tab's \"Servo 4\". "
+                       "The sweep prints the number to use.")
             else:
                 why = (f"the output must be assigned to \"Offboard Actuator "
                        f"Set {self.INDEX}\" in QGC, and the vehicle must be "

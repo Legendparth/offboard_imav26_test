@@ -6,10 +6,14 @@ and tells you which PX4 output it is on, which is the number everything else
 then needs.
 
     command:=sweep      (the default) MAV_CMD_ACTUATOR_TEST across Servo 1-8,
-                        which are output FUNCTIONS 201-208, one per second,
-                        printing PX4's ack for each. WATCH THE SERVO. The
-                        function that is being tested when it moves is the
-                        number to give servo_function everywhere else.
+                        one per second, printing PX4's ack for each. WATCH THE
+                        SERVO. The number printed for the step that moves it
+                        is what servo_function wants, exactly as printed.
+
+                        It sweeps param5 1201-1208 first and falls back to
+                        33-40 by itself if PX4 says UNSUPPORTED -- see the
+                        numbering note further down, which is not obvious and
+                        has cost a bench session already.
 
     command:=set        One output, over and over, so you can watch it and
                         adjust the horn:
@@ -37,6 +41,20 @@ WHY sweep AND toggle ARE NOT THE SAME TEST
     So: use sweep on the bench to find the output, then toggle (armed, props
     OFF) to prove the flight path itself works end to end.
 
+IF PX4 REFUSES EVERYTHING WITH "DENIED"
+
+    That is not the servo and not the wiring. Commander denies an actuator
+    test outright, before it ever looks at the function number, for exactly
+    three reasons:
+
+        the vehicle is ARMED;
+        a SAFETY BUTTON is fitted and has not been pressed -- the usual
+            cause. Press it until the LED stops blinking;
+        COM_MOT_TEST_EN is not 1 -- `param set COM_MOT_TEST_EN 1` in the
+            PX4 console, or find it in QGC's parameter list.
+
+    Nothing in this node can work around any of the three.
+
 Run:
     ros2 run drone_testing servo_test --ros-args -p command:=sweep
 """
@@ -53,9 +71,35 @@ from px4_msgs.msg import VehicleCommand, VehicleCommandAck
 ACTUATOR_TEST = 310         # MAV_CMD_ACTUATOR_TEST
 DO_SET_ACTUATOR = 187       # MAV_CMD_DO_SET_ACTUATOR
 
-# PX4 output functions. Servo 1-8 are 201-208; these are what a payload servo
-# is realistically wired to.
-SERVO_FUNCTIONS = list(range(201, 209))
+# WHAT GOES IN param5, AND THE TRAP IN IT.
+#
+# param5 is a MAVLink ACTUATOR_OUTPUT_FUNCTION, which is NOT the same numbering
+# as PX4's internal output functions, even though both call the outputs
+# "Servo 1-8". Commander.cpp::handleCommandActuatorTest reads it as:
+#
+#     1 .. 12     motors 1-12      (MAVLink numbering)
+#     33 .. 40    servos 1-8       (MAVLink numbering)
+#     >= 1000     PX4's own internal function, minus 1000
+#
+# PX4's internal FUNCTION_SERVO1 is 201, so Servo 1-8 internally are 201-208 --
+# and sending those RAW lands in neither range above and is answered
+# UNSUPPORTED. They have to be sent as 1201-1208. Both encodings reach the same
+# physical output; the 1000+ form is the one QGC's Actuators tab uses, so it is
+# the default here and the alternate is the fallback.
+PX4_SERVO_FUNCTIONS = list(range(1201, 1209))       # 1000 + FUNCTION_SERVO1..8
+MAVLINK_SERVO_FUNCTIONS = list(range(33, 41))       # ACTUATOR_OUTPUT_FUNCTION
+
+# MAV_RESULT, so a refusal says what it means rather than a bare number.
+RESULTS = {0: 'ACCEPTED', 1: 'TEMPORARILY REJECTED', 2: 'DENIED',
+           3: 'UNSUPPORTED', 4: 'FAILED', 5: 'IN PROGRESS', 6: 'CANCELLED'}
+
+DENIED_HELP = (
+    "DENIED is PX4 refusing before it even looks at the function number. "
+    "handleCommandActuatorTest denies for exactly three reasons: the vehicle "
+    "is ARMED; a SAFETY BUTTON is fitted and has not been pressed (this is "
+    "the usual one -- press it until the LED stops blinking); or "
+    "COM_MOT_TEST_EN is not 1 (`param set COM_MOT_TEST_EN 1`, or set it in "
+    "QGC). Nothing in this node can work around any of the three.")
 
 
 class ServoTestNode(Node):
@@ -72,7 +116,7 @@ class ServoTestNode(Node):
         self.FUNCTION = int(p('function', 0))
         self.INDEX = int(p('index', 1))
         self.STEP_SECONDS = float(p('step_seconds', 1.0))
-        self.FUNCTIONS = [int(f) for f in p('functions', SERVO_FUNCTIONS)]
+        self.FUNCTIONS = [int(f) for f in p('functions', PX4_SERVO_FUNCTIONS)]
 
         self.publisher = self.create_publisher(
             VehicleCommand, '/fmu/in/vehicle_command', 10)
@@ -90,6 +134,8 @@ class ServoTestNode(Node):
         self.step = 0
         self.acks = 0
         self.testing = None     # the function currently under test, for acks
+        self.results = {}       # function -> MAV_RESULT, or None if unanswered
+        self.tried_alternate = False
 
         if self.COMMAND == 'sweep':
             self.timer = self.create_timer(self.STEP_SECONDS, self.sweep_callback)
@@ -123,22 +169,77 @@ class ServoTestNode(Node):
 
     def sweep_callback(self):
         if self.step >= len(self.FUNCTIONS):
-            self.get_logger().warning(
-                f"Sweep finished. {self.acks} ack(s) from PX4. If NOTHING "
-                "moved: the servo may not be on Servo 1-8, or the FMU is not "
-                "powering the rail, or the uXRCE-DDS agent is not connected "
-                "(no acks at all means nothing arrived). If something moved, "
-                "use that function number for servo_function.")
-            self.timer.cancel()
+            self.finish_pass()
             return
         fn = self.FUNCTIONS[self.step]
         self.step += 1
         self.testing = fn
-        # param2 is the test timeout: PX4 returns the output to its default
-        # when it expires, so each step tidies up after itself.
+        self.results[fn] = None
+        # param2 is the test timeout: PX4 releases the output when it expires,
+        # so each step tidies up after itself. PX4 caps it at 3 s.
         self.send_actuator_test(fn, self.VALUE, self.STEP_SECONDS)
         self.get_logger().info(
-            f"  function {fn}  (Servo {fn - 200})  ->  {self.VALUE:+.2f}")
+            f"  {self.label(fn)}  ->  {self.VALUE:+.2f}")
+
+    def label(self, fn):
+        if fn >= 1000:
+            return f"param5 {fn}  (PX4 function {fn - 1000} = Servo {fn - 1200})"
+        if 33 <= fn <= 40:
+            return f"param5 {fn}  (MAVLink Servo {fn - 32})"
+        return f"param5 {fn}"
+
+    def finish_pass(self):
+        """End of one encoding's pass. Decide whether to try the other."""
+        self.timer.cancel()
+        seen = [r for r in self.results.values() if r is not None]
+        unsupported = [r for r in seen if r == 3]
+        denied = [r for r in seen if r == 2]
+
+        if not seen:
+            self.get_logger().error(
+                f"Not one ack from PX4 across {len(self.results)} outputs. The "
+                "commands are not arriving at all: check that the uXRCE-DDS "
+                "agent is running and connected (`ros2 topic hz "
+                "/fmu/out/vehicle_status`). Nothing here was refused, because "
+                "nothing here was heard.")
+            return
+
+        if denied:
+            self.get_logger().error(
+                f"PX4 DENIED {len(denied)} of {len(seen)} outputs. " + DENIED_HELP)
+            return
+
+        if unsupported and len(unsupported) == len(seen) and not self.tried_alternate:
+            # Right idea, wrong numbering scheme. Try the other one rather
+            # than making someone read the MAVLink spec on a bench.
+            self.tried_alternate = True
+            self.FUNCTIONS = (MAVLINK_SERVO_FUNCTIONS
+                              if self.FUNCTIONS[0] >= 1000 else PX4_SERVO_FUNCTIONS)
+            self.step = 0
+            self.results = {}
+            self.get_logger().warning(
+                "Every output came back UNSUPPORTED, which means the numbering "
+                "was wrong rather than the servo. Retrying with the other "
+                f"encoding: param5 {self.FUNCTIONS[0]}-{self.FUNCTIONS[-1]}.")
+            self.timer = self.create_timer(self.STEP_SECONDS, self.sweep_callback)
+            return
+
+        accepted = [fn for fn, r in self.results.items() if r == 0]
+        if accepted:
+            self.get_logger().warning(
+                f"Sweep finished. PX4 ACCEPTED {len(accepted)} output(s): "
+                + ', '.join(str(f) for f in accepted) + ". "
+                "Whichever one MOVED the servo is the number to pass as "
+                "servo_function -- pass it exactly as printed above, it is "
+                "already in the encoding PX4 wants. If PX4 accepted them all "
+                "and NOTHING moved, the servo is not on Servo 1-8, or the "
+                "servo rail is not powered (a Pixhawk does not power it from "
+                "the FMU -- it needs BEC voltage on the rail).")
+        else:
+            self.get_logger().error(
+                "Sweep finished with no output accepted. Results: "
+                + ', '.join(f"{fn}={RESULTS.get(r, r)}"
+                            for fn, r in self.results.items() if r is not None))
 
     def set_callback(self):
         self.testing = self.FUNCTION
@@ -187,15 +288,28 @@ class ServoTestNode(Node):
         if msg.command not in (ACTUATOR_TEST, DO_SET_ACTUATOR):
             return
         self.acks += 1
+        name = RESULTS.get(msg.result, f"result {msg.result}")
+        if self.COMMAND == 'sweep':
+            # No throttling here. One ack per step, and a suppressed one reads
+            # as an output that never answered, which is a different fault.
+            if self.testing is not None:
+                self.results[self.testing] = msg.result
+            # Two call sites on purpose: rclpy keys its logger cache on the
+            # source location, and one line that alternates between .info and
+            # .error raises "Logger severity cannot be changed between calls".
+            if msg.result == 0:
+                self.get_logger().info(f"    PX4 {name}")
+            else:
+                self.get_logger().error(f"    PX4 {name}")
+            return
         where = (f"function {self.testing}" if self.testing
                  else f"actuator set {self.INDEX}")
         if msg.result == 0:
-            self.get_logger().info(f"    PX4 accepted {where}.",
-                                   throttle_duration_sec=1.0)
+            self.get_logger().info(f"    PX4 {name}: {where}",
+                                   throttle_duration_sec=2.0)
         else:
-            self.get_logger().error(
-                f"    PX4 REFUSED {where}, result {msg.result}.",
-                throttle_duration_sec=1.0)
+            self.get_logger().error(f"    PX4 {name}: {where}",
+                                    throttle_duration_sec=2.0)
 
 
 def main(args=None):
