@@ -4,7 +4,10 @@ WS2812B (NeoPixel over SPI) status light. Same wiring as led_lighting/led_test.p
 
 Subscribes:  led/command   std_msgs/String
 
-    off | blink_red | solid_red | blink_green | solid_green | blink_blue
+    off | solid_red | blink_red_slow | blink_red | blink_red_fast
+
+Red only; the state is told apart by blink rate. blink_red runs at blink_hz,
+_slow at a quarter of it and _fast at four times it.
 
 Own node, own process, for the same reason thermal_sensor is: blinking means
 sleeping between writes, and nothing that sleeps may ever share a thread with
@@ -16,11 +19,14 @@ Bench:
     ros2 topic pub -1 /led/command std_msgs/String "{data: blink_red}"
 """
 
+import time
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
-COLORS = {'red': (255, 0, 0), 'green': (0, 255, 0), 'blue': (0, 0, 255)}
+RED = (255, 0, 0)
+RATE_SCALE = {'blink_red_slow': 0.25, 'blink_red': 1.0, 'blink_red_fast': 4.0}
 
 
 class LedStatus(Node):
@@ -47,10 +53,12 @@ class LedStatus(Node):
 
         self.mode = 'off'
         self.phase = False
+        self.last_toggle = 0.0
         self._write((0, 0, 0))
 
         self.create_subscription(String, 'led/command', self.command_callback, 10)
-        self.create_timer(max(0.02, 0.5 / max(self.blink_hz, 0.1)), self.tick)
+        # Fixed fast tick; each blink mode toggles on its own half-period.
+        self.create_timer(0.02, self.tick)
 
     def command_callback(self, msg):
         mode = msg.data.strip().lower()
@@ -58,23 +66,28 @@ class LedStatus(Node):
             return
         self.mode = mode
         self.phase = True
+        self.last_toggle = time.monotonic()
         self.get_logger().info(f"LED -> {mode}")
-        self.tick()
+        self._show()
 
     def tick(self):
-        if self.mode == 'off':
-            self._write((0, 0, 0))
+        scale = RATE_SCALE.get(self.mode)
+        if scale is None:
             return
-        parts = self.mode.split('_')
-        color = COLORS.get(parts[-1])
-        if color is None:
-            self._write((0, 0, 0))
-            return
-        if parts[0] == 'blink':
+        half_period = 0.5 / max(self.blink_hz * scale, 0.1)
+        now = time.monotonic()
+        if now - self.last_toggle >= half_period:
+            self.last_toggle = now
             self.phase = not self.phase
-            self._write(color if self.phase else (0, 0, 0))
+            self._show()
+
+    def _show(self):
+        if self.mode == 'solid_red':
+            self._write(RED)
+        elif self.mode in RATE_SCALE:
+            self._write(RED if self.phase else (0, 0, 0))
         else:
-            self._write(color)
+            self._write((0, 0, 0))
 
     def _write(self, color):
         if self.pixels is None:

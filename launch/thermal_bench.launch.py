@@ -32,10 +32,10 @@ HOW TO RUN IT
   4. Hold the aircraft above the hot box and lower it slowly.  Watch:
 
          nothing hot ............... LED off
-         hot box, off to a side .... LED BLINK BLUE   -- move it over the box
-         box under the camera ...... LED BLINK RED    -- the mission's own
+         hot box, off to a side .... LED SLOW RED BLINK-- move it over the box
+         box under the camera ...... LED RED BLINK    -- the mission's own
                                                          DESCEND signal
-         at drop_altitude .......... LED SOLID GREEN, SERVO OPENS
+         at drop_altitude .......... LED SOLID RED, SERVO OPENS
 
      The servo goes back to neutral and the LED off servo_hold_seconds later.
 

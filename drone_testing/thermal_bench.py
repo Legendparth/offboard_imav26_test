@@ -11,10 +11,10 @@ it is safe to run with the props off and the aircraft on the table.
 WHAT IT DOES, IN ORDER
 
     nothing hot in frame ................. LED off,        "searching"
-    hot blob found, off to one side ...... LED blink_blue,  "centre me"
+    hot blob found, off to one side ...... LED blink_red_slow, "centre me"
     hot blob under the camera ............ LED blink_red,   "descending"
         (the same blink_red the real DESCEND stage uses)
-    under it AND at drop_altitude ........ LED solid_green, servo OPEN
+    under it AND at drop_altitude ........ LED solid_red, servo OPEN
     servo_hold_seconds later ............. LED off,         servo neutral
 
 It does not move the servo itself.  It publishes True on drop_trigger_topic
@@ -304,12 +304,12 @@ class ThermalBench(Node):
         if not centred:
             self.in_band_since = None
             self._enter(self.CENTRE)
-            self._set_led('blink_blue')
+            self._set_led('blink_red_slow')
             self._say(f"CENTRE: hot box {peak:.1f} C, {err * 100:.0f} cm off "
                       f"(need {self.CENTRE_TOLERANCE * 100:.0f}) -- "
                       f"{self._move_hint(fwd, right, alt)}. At "
                       f"{height_txt}, {count} blob(s), ambient "
-                      f"{ambient:.1f} C. LED blue.")
+                      f"{ambient:.1f} C. LED slow red blink.")
             return
 
         # Centred. This is the point the mission calls DESCEND.
@@ -343,12 +343,12 @@ class ThermalBench(Node):
         self.dropped_at = now
         self.in_band_since = None
         self._enter(self.DROPPED)
-        self._set_led('solid_green')
+        self._set_led('solid_red')
         self.drop_pub.publish(Bool(data=True))
         self.get_logger().warning(
             f"DROP #{self.drops}: {peak:.1f} C box, {err * 100:.0f} cm off "
             f"centre at {height_txt}. True published on {self.TOPIC}, LED "
-            f"solid green, servo open for {self.SERVO_HOLD_SECONDS:.1f} s.")
+            f"solid red, servo open for {self.SERVO_HOLD_SECONDS:.1f} s.")
 
     def _move_hint(self, fwd, right, alt):
         """WHICH WAY AND HOW FAR, in words, to put the drop point on the box.

@@ -8,7 +8,7 @@ over it, descend to drop height and hover there. ARK Flow localisation.
     -> pick the hottest -> APPROACH (fly the drop point over it, and confirm it
     is still the hottest thing in the frame) -> DESCEND (step down only while
     centred, LED BLINKING RED the whole way) -> HOVER (confirm alignment at
-    drop_altitude, RELEASE the servo, LED off) -> RETREAT (climb back to
+    drop_altitude, RELEASE the servo, LED solid red, then off) -> RETREAT (climb back to
     retreat_altitude, step retreat_right to the right) -> land.
 
     q -> abort into a controlled descent.   k -> force-disarm.
@@ -1220,6 +1220,7 @@ class ThermalDrop(OffboardSequence):
         self.servo_ack_seen = False
         self.drop_trigger_pub.publish(Bool(data=True))
         self._send_actuator(self.SERVO_DROP_VALUE, force=True)
+        self._set_led('solid_red')
         if self.RELEASE_VIA_NODE:
             self.get_logger().warning(
                 f"DROP: {self.outcome}. True published on "
