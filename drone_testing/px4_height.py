@@ -48,7 +48,7 @@ the bench, the detectors -- can ask the same question without inheriting a
 class that publishes setpoints.
 """
 
-RANGEFINDER_TOPIC = '/fmu/out/estimator_status_flags'
+RANGEFINDER_TOPIC = '/uav_1/fmu/out/estimator_status_flags'
 
 
 def rangefinder_is_healthy(flags, local_position=None):
@@ -86,7 +86,7 @@ def why_no_height(flags, local_position):
     of those has a different fix, so each gets its own sentence.
     """
     if local_position is None:
-        return ("NO /fmu/out/vehicle_local_position AT ALL -- the uXRCE-DDS "
+        return ("NO /uav_1/fmu/out/vehicle_local_position AT ALL -- the uXRCE-DDS "
                 "agent is not connected to PX4 (agent:=false, or the wrong "
                 "serial port/baud)")
     if flags is None:

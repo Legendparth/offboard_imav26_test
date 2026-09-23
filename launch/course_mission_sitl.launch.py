@@ -580,7 +580,7 @@ def generate_launch_description():
                         'multicast over every interface, so on a lab network '
                         'any other PX4 -- a teammate\'s SITL, or this team\'s '
                         'own aircraft powered up on the bench -- publishes '
-                        '/fmu/out/... into the same domain and every node '
+                        '/uav_1/fmu/out/... into the same domain and every node '
                         'here subscribes to BOTH vehicles. That presents as '
                         'an estimator gone mad rather than as a network '
                         'fault: thousands of alternating "EKF2 HEADING reset" '
@@ -588,7 +588,7 @@ def generate_launch_description():
                         'denied: Resolve system health failures first", while '
                         "PX4's own uORB is steady and healthy throughout. "
                         'Check for it with "ros2 topic info -v '
-                        '/fmu/out/vehicle_local_position_v1": more than one '
+                        '/uav_1/fmu/out/vehicle_local_position_v1": more than one '
                         'publisher means you are hearing someone else. NOTE: '
                         'a separate terminal needs ROS_DOMAIN_ID exported to '
                         'the same value to see this sim\'s topics.'),

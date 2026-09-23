@@ -787,7 +787,7 @@ class TubeCross(OffboardSequence):
         self.attitude = None
         self.attitude_time = None
         self._attitude_min_interval = 1.0 / self.ATTITUDE_MAX_HZ
-        self.create_subscription(VehicleAttitude, '/fmu/out/vehicle_attitude',
+        self.create_subscription(VehicleAttitude, '/uav_1/fmu/out/vehicle_attitude',
                                  self.attitude_callback, sensor_qos,
                                  callback_group=self.sensor_cbg)
 

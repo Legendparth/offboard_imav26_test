@@ -163,11 +163,11 @@ param set EKF2_MAG_TYPE 6
 # ROS 2 and uXRCE-DDS both default to domain 0, and DDS discovery is
 # multicast across every interface. On a lab network that means ANY other
 # PX4 -- a teammate's SITL, or this team's own aircraft sitting powered up on
-# the bench -- publishes /fmu/out/... into the same domain, and every ROS node
+# the bench -- publishes /uav_1/fmu/out/... into the same domain, and every ROS node
 # here subscribes to BOTH of them.
 #
 # It does not look like a network problem. It looks like the estimator has
-# gone mad: "ros2 topic info -v /fmu/out/vehicle_local_position_v1" reports
+# gone mad: "ros2 topic info -v /uav_1/fmu/out/vehicle_local_position_v1" reports
 # "Publisher count: 2", the flight node sees two interleaved streams with
 # different heading_reset_counters and logs thousands of alternating
 # "EKF2 HEADING reset" lines, local_position_invalid and local_velocity_invalid

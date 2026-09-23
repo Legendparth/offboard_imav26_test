@@ -222,6 +222,7 @@ class CourseFSM(WindowTraverse):
 
     PAD_OFFSET = "PAD_OFFSET"       # step right, clear of the tube line
     PAD_SEARCH = "PAD_SEARCH"       # creep forward until the marker is seen
+    PAD_LOOK = "PAD_LOOK"           # after the step right: up a bit, <=0.5 m on
     PAD_GUIDE = "PAD_GUIDE"         # find the GUIDE marker, centre over it
     PAD_BACK = "PAD_BACK"           # straight back until the LANDING marker
     PAD_CENTRE = "PAD_CENTRE"       # hold over it while the estimate settles
@@ -240,7 +241,7 @@ class CourseFSM(WindowTraverse):
 
     TUBE_STAGES = (TUBE_CLIMB, TUBE_APPROACH, TUBE_SCAN, TUBE_SEARCH,
                    TUBE_LOCK, TUBE_ALIGN, TUBE_PASS, TUBE_SHIFT, TUBE_EXIT)
-    PAD_STAGES = (PAD_OFFSET, PAD_SEARCH, PAD_GUIDE, PAD_BACK, PAD_CENTRE,
+    PAD_STAGES = (PAD_OFFSET, PAD_LOOK, PAD_SEARCH, PAD_GUIDE, PAD_BACK, PAD_CENTRE,
                   PAD_DESCEND)
     # The run-up to the second window. Not TUBE_STAGES (the tube detector is
     # off and there is no tube solution to update) and not the window
@@ -498,6 +499,15 @@ class CourseFSM(WindowTraverse):
     PAD_MAX_NUDGE = 0.30        # m the target may be moved in one correction
     PAD_LOST_SECONDS = 2.0      # of no marker before the descent stops
     PAD_STAGE_TIMEOUT = 60.0
+    # PAD_LOOK: the step right can leave the guide marker just outside the
+    # down camera's footprint. Rather than stare at bare floor for the whole
+    # guide timeout, climb a little (a bigger footprint) and edge forward --
+    # never more than PAD_LOOK_FORWARD_MAX -- stopping the moment it is seen.
+    PAD_LOOK_WAIT = 1.0         # s looking from where the step ended first
+    PAD_LOOK_CLIMB = 0.30       # m added to the altitude for the look
+    PAD_LOOK_FORWARD = 0.50     # m of forward creep while looking
+    PAD_LOOK_FORWARD_MAX = 0.50 # hard cap on the above
+    PAD_LOOK_SPEED = 0.15       # m/s; slow, so a marker in frame is caught
     # The landing is found in two markers, not one. After the last window and
     # the step right, the aircraft is over a GUIDE marker; centred on it, it
     # has a known point on the line the landing pad lies on. From there it
@@ -699,6 +709,11 @@ class CourseFSM(WindowTraverse):
         self.OFFSET_SPEED = float(n('offset_speed', self.OFFSET_SPEED))
         self.FAST_LEG_LEASH = float(n('fast_leg_leash', self.FAST_LEG_LEASH))
         self.PAD_BLIND_HEIGHT = float(n('pad_blind_height', self.PAD_BLIND_HEIGHT))
+        self.PAD_LOOK_WAIT = float(n('pad_look_wait', self.PAD_LOOK_WAIT))
+        self.PAD_LOOK_CLIMB = max(0.0, float(n('pad_look_climb', self.PAD_LOOK_CLIMB)))
+        self.PAD_LOOK_FORWARD = min(max(0.0, float(n('pad_look_forward',
+                                                     self.PAD_LOOK_FORWARD))),
+                                    self.PAD_LOOK_FORWARD_MAX)
         self.TUBE_EXIT_DISTANCE = float(n('tube_exit_distance', self.TUBE_EXIT_DISTANCE))
         self.TUBE_LATERAL_MARGIN = float(n('tube_lateral_margin', self.TUBE_LATERAL_MARGIN))
         self.TUBE_CROSS_DROP = float(n('tube_cross_drop', self.TUBE_CROSS_DROP))
@@ -793,6 +808,7 @@ class CourseFSM(WindowTraverse):
         self.start_offset_done = False
         self.pad_search_start = None
         self.pad_settle_since = None
+        self.pad_look_moving = False
         self.pad_lost_since = None
 
         self.tubes_flag = False
@@ -3044,7 +3060,7 @@ class CourseFSM(WindowTraverse):
         if (along is not None and abs(along) <= self.COURSE_XY_TOLERANCE
                 and abs(cross) <= self.COURSE_XY_TOLERANCE) or \
                 self._in_stage_for() > self.PAD_STAGE_TIMEOUT:
-            self._begin_pad_guide()
+            self._begin_pad_look()
             return
         self.get_logger().info(
             f"PAD_OFFSET: {0.0 if cross is None else cross:+.2f} m across to go.",
@@ -3059,6 +3075,76 @@ class CourseFSM(WindowTraverse):
 
     def _marker_confirmed(self):
         return self.pad_fixes >= self.PAD_MARKER_CONFIRM and self._aruco_fresh()
+
+    def _begin_pad_look(self):
+        """After the step right: is the guide marker in view? If not, look.
+
+        The step is dead reckoning on flow, and a couple of decimetres of
+        error is enough to leave the marker just off the edge of the down
+        camera's frame. So: look from here for PAD_LOOK_WAIT; if nothing,
+        go PAD_LOOK_CLIMB higher (the footprint grows with height) and edge
+        up to PAD_LOOK_FORWARD (<= 0.5 m) along the course line. Either
+        way PAD_GUIDE follows, which keeps its own timeout and fallback.
+        """
+        self._want_marker(self.PAD_GUIDE_ID)
+        self.moving = False
+        self.pad_look_moving = False
+        self._enter_tube_stage(self.PAD_LOOK)
+        self.get_logger().warning(
+            f"PAD_LOOK: looking for guide marker id {self.PAD_GUIDE_ID} from "
+            f"the end of the step; if it is not in view in "
+            f"{self.PAD_LOOK_WAIT:.1f} s, up {self.PAD_LOOK_CLIMB:.2f} m and "
+            f"up to {self.PAD_LOOK_FORWARD:.2f} m forward.")
+
+    def _handle_pad_look(self):
+        self._aim_yaw_at(self._course_heading())
+        if not self.hold_xy:
+            self._hold_and_wait(self.PAD_LOOK, "flow lost looking for the guide")
+            return
+        if self._marker_confirmed():
+            self.moving = False
+            self.get_logger().warning(
+                f"PAD_LOOK: guide marker id {self.PAD_GUIDE_ID} in view"
+                + (" after the climb/creep." if self.pad_look_moving else "."))
+            self._begin_pad_guide()
+            return
+        if not self.pad_look_moving:
+            if self._in_stage_for() < self.PAD_LOOK_WAIT:
+                return
+            if self.PAD_LOOK_CLIMB <= 0.0 and self.PAD_LOOK_FORWARD <= 0.0:
+                self._begin_pad_guide()
+                return
+            lp = self.local_position
+            h = self._course_heading()
+            alt = min(self.commanded_altitude + self.PAD_LOOK_CLIMB,
+                      self.MAX_ALTITUDE)
+            self.MOVE_SPEED = self.PAD_LOOK_SPEED
+            self._set_target(lp.x + self.PAD_LOOK_FORWARD * math.cos(h),
+                             lp.y + self.PAD_LOOK_FORWARD * math.sin(h), alt)
+            self.pad_look_moving = True
+            self._restart_stage_clock()
+            self.get_logger().warning(
+                f"PAD_LOOK: no guide marker. Up to {alt:.2f} m and "
+                f"{self.PAD_LOOK_FORWARD:.2f} m forward, watching the whole way.")
+            return
+        along, cross = self._target_errors()
+        alt = self.relative_altitude()
+        arrived = (along is not None and abs(along) <= self.COURSE_XY_TOLERANCE
+                   and abs(cross) <= self.COURSE_XY_TOLERANCE
+                   and alt is not None
+                   and abs(alt - self.commanded_altitude) <= 2.0 * self.ALTITUDE_TOLERANCE)
+        if arrived and self._in_stage_for() >= self.PAD_LOOK_WAIT \
+                or self._in_stage_for() > self.PAD_STAGE_TIMEOUT:
+            self.moving = False
+            self.get_logger().warning(
+                "PAD_LOOK: still no guide marker at the end of the creep. "
+                "Holding here for PAD_GUIDE's normal wait and fallback.")
+            self._begin_pad_guide()
+            return
+        self.get_logger().info(
+            f"PAD_LOOK: {0.0 if along is None else along:+.2f} m to go, "
+            f"alt {0.0 if alt is None else alt:.2f} m, no marker yet.",
+            throttle_duration_sec=1.0)
 
     def _begin_pad_guide(self):
         self._want_marker(self.PAD_GUIDE_ID)
@@ -3687,6 +3773,7 @@ class CourseFSM(WindowTraverse):
             self.WINDOW2_SKIP_CROSS: self._handle_window2_skip_cross,
             self.WINDOW2_SKIP_DROP: self._handle_window2_skip_drop,
             self.PAD_OFFSET: self._handle_pad_offset,
+            self.PAD_LOOK: self._handle_pad_look,
             self.PAD_SEARCH: self._handle_pad_search,
             self.PAD_GUIDE: self._handle_pad_guide,
             self.PAD_BACK: self._handle_pad_back,

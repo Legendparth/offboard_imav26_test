@@ -94,13 +94,14 @@ class ThermalFSM(ThermalDrop):
     MARK_SEARCH = "MARK_SEARCH"     # forward until a marker is underneath
     MARK_HOVER = "MARK_HOVER"       # centre on it, hold, then step across
     BOX_OFFSET = "BOX_OFFSET"       # the step that puts the boxes in frame
+    LAND_LOOK = "LAND_LOOK"         # after the retreat: up a bit, <=0.5 m on
     LAND_SEARCH = "LAND_SEARCH"     # after the retreat: find the FIRST marker
     LAND_ALIGN = "LAND_ALIGN"       # square up on it -- it is a datum, not a pad
     LAND_RETURN = "LAND_RETURN"     # back down the corridor to the landing pad
     LAND_CENTRE = "LAND_CENTRE"     # settle over it
     LAND_DESCEND = "LAND_DESCEND"   # down on the marker, then PX4 lands
 
-    FSM_STAGES = (MARK_SEARCH, MARK_HOVER, BOX_OFFSET, LAND_SEARCH,
+    FSM_STAGES = (MARK_SEARCH, MARK_HOVER, BOX_OFFSET, LAND_LOOK, LAND_SEARCH,
                   LAND_ALIGN, LAND_RETURN, LAND_CENTRE, LAND_DESCEND)
 
     # The inherited timer_callback, flight clock and status line all key off
@@ -154,6 +155,16 @@ class ThermalFSM(ThermalDrop):
                                     # have landed ON it, so this is an
                                     # acquisition allowance, not a search.
     LAND_SEARCH_SPEED = 0.30
+    # LAND_LOOK, before LAND_SEARCH: the step right after the drop can leave
+    # the marker just outside the down camera's frame. Look from there for
+    # land_look_wait; if nothing, climb land_look_climb (a bigger footprint)
+    # and edge forward land_look_forward -- capped at 0.5 m -- stopping the
+    # moment it is seen. Only then does LAND_SEARCH's longer creep run.
+    LAND_LOOK_WAIT = 1.0
+    LAND_LOOK_CLIMB = 0.30
+    LAND_LOOK_FORWARD = 0.50
+    LAND_LOOK_FORWARD_MAX = 0.50
+    LAND_LOOK_SPEED = 0.15
 
     # ---- the way home -----------------------------------------------------
     #
@@ -364,6 +375,13 @@ class ThermalFSM(ThermalDrop):
                                             self.LAND_SEARCH_DISTANCE))
         self.LAND_SEARCH_SPEED = float(n('land_search_speed',
                                          self.LAND_SEARCH_SPEED))
+        self.LAND_LOOK_WAIT = float(n('land_look_wait', self.LAND_LOOK_WAIT))
+        self.LAND_LOOK_CLIMB = max(0.0, float(n('land_look_climb',
+                                                self.LAND_LOOK_CLIMB)))
+        self.LAND_LOOK_FORWARD = min(max(0.0, float(n('land_look_forward',
+                                                      self.LAND_LOOK_FORWARD))),
+                                     self.LAND_LOOK_FORWARD_MAX)
+        self.land_look_moving = False
         self.LAND_RETURN_DISTANCE = float(n('land_return_distance',
                                             self.LAND_RETURN_DISTANCE))
         self.LAND_RETURN_SPEED = float(n('land_return_speed',
@@ -1110,6 +1128,7 @@ class ThermalFSM(ThermalDrop):
             self.MARK_SEARCH: self._handle_mark_search,
             self.MARK_HOVER: self._handle_mark_hover,
             self.BOX_OFFSET: self._handle_box_offset,
+            self.LAND_LOOK: self._handle_land_look,
             self.LAND_SEARCH: self._handle_land_search,
             self.LAND_ALIGN: self._handle_land_align,
             self.LAND_RETURN: self._handle_land_return,
@@ -1381,7 +1400,72 @@ class ThermalFSM(ThermalDrop):
         if not self.PRECISION_LAND:
             super()._after_retreat()
             return
-        self._begin_land_search()
+        self._begin_land_look()
+
+    def _begin_land_look(self):
+        if self.leg_yaw is None:
+            # mark_search:=false never latched a corridor heading; the
+            # landing legs would otherwise crash on it. Use the nose.
+            self.leg_yaw = float(self.local_position.heading)
+        self.moving = False
+        self.land_look_moving = False
+        self._enter_stage(self.LAND_LOOK)
+        self.get_logger().warning(
+            "LAND_LOOK: clear of the box. Looking for the marker from here; "
+            f"if it is not in view in {self.LAND_LOOK_WAIT:.1f} s, up "
+            f"{self.LAND_LOOK_CLIMB:.2f} m and up to "
+            f"{self.LAND_LOOK_FORWARD:.2f} m forward.")
+
+    def _land_marker_found(self):
+        self.moving = False
+        if self.LAND_RETURN_ON:
+            self._begin_land_align()
+        else:
+            self._begin_land_centre()
+
+    def _handle_land_look(self):
+        if self._marker_is_under_us():
+            self.get_logger().warning(
+                "LAND_LOOK: marker in view"
+                + (" after the climb/creep." if self.land_look_moving else "."))
+            self._land_marker_found()
+            return
+        if not self.land_look_moving:
+            if self._in_stage_for() < self.LAND_LOOK_WAIT:
+                return
+            if self.LAND_LOOK_CLIMB <= 0.0 and self.LAND_LOOK_FORWARD <= 0.0:
+                self._begin_land_search()
+                return
+            self._set_altitude(self.commanded_altitude + self.LAND_LOOK_CLIMB)
+            self._begin_leg(self.leg_yaw, self.LAND_LOOK_FORWARD,
+                            self.LAND_LOOK_SPEED)
+            self.land_look_moving = True
+            self._restart_stage_clock()
+            self.get_logger().warning(
+                f"LAND_LOOK: no marker. Up to {self.commanded_altitude:.2f} m "
+                f"and {self.LAND_LOOK_FORWARD:.2f} m forward, watching the "
+                "whole way.")
+            return
+        gone, _ = self._follow_leg(allow_line=False)
+        if self._leg_flow_stalled():
+            self._abandon_leg_for_flow(gone)
+            return
+        alt = self.relative_altitude()
+        arrived = (gone >= self.leg_length - self.MOVE_TOLERANCE
+                   and alt is not None
+                   and abs(alt - self.commanded_altitude) <= 2.0 * self.ALTITUDE_TOLERANCE)
+        if (arrived and self._in_stage_for() >= self.LAND_LOOK_WAIT) \
+                or self._in_stage_for() > self.PAD_STAGE_TIMEOUT:
+            self.get_logger().warning(
+                "LAND_LOOK: still no marker at the end of the creep. Handing "
+                "over to LAND_SEARCH from here, at this height.")
+            self.moving = False
+            self._begin_land_search()
+            return
+        self.get_logger().info(
+            f"LAND_LOOK: {gone:.2f}/{self.leg_length:.2f} m, alt "
+            f"{0.0 if alt is None else alt:.2f} m, no marker yet.",
+            throttle_duration_sec=1.0)
 
     def _begin_land_search(self):
         self._enter_stage(self.LAND_SEARCH)

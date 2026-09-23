@@ -87,7 +87,7 @@ BEFORE THE FIRST FLIGHT
    behaviour from sequence_test.launch.py and it is why the status line reads
    VEL-HOLD on the ground and POS-HOLD in the air.
 
-        ros2 topic echo /fmu/out/estimator_status_flags --once | grep cs_opt_flow
+        ros2 topic echo /uav_1/fmu/out/estimator_status_flags --once | grep cs_opt_flow
         python3 src/drone_testing/tools/ekf_reset_rate.py   # want ~0.00/s
 
    The magnetometer stays ON for this configuration (EKF2_MAG_TYPE=0): with

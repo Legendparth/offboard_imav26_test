@@ -472,11 +472,11 @@ class OffboardSequence(Node):
         )
 
         self.offboard_control_mode_pub = self.create_publisher(
-            OffboardControlMode, '/fmu/in/offboard_control_mode', 10)
+            OffboardControlMode, '/uav_1/fmu/in/offboard_control_mode', 10)
         self.vehicle_command_pub = self.create_publisher(
-            VehicleCommand, '/fmu/in/vehicle_command', 10)
+            VehicleCommand, '/uav_1/fmu/in/vehicle_command', 10)
         self.trajectory_setpoint_pub = self.create_publisher(
-            TrajectorySetpoint, '/fmu/in/trajectory_setpoint', 10)
+            TrajectorySetpoint, '/uav_1/fmu/in/trajectory_setpoint', 10)
 
         # Compact machine-readable status for the LCD node. Same pipe-separated
         # format as the takeoff/translate nodes, and the same topic, so the LCD
@@ -488,10 +488,10 @@ class OffboardSequence(Node):
         #
         # rclpy's default is ONE thread and ONE mutually-exclusive group for
         # everything, and its executor does not prioritise timers: it takes
-        # whatever work is ready. Every /fmu/out topic we subscribe to is
+        # whatever work is ready. Every /uav_1/fmu/out topic we subscribe to is
         # therefore competing with the 20 Hz setpoint timer for the same
         # thread, and PX4 hands the aircraft back if that timer is late by
-        # more than COM_OF_LOSS_T. /fmu/out/vehicle_attitude, which
+        # more than COM_OF_LOSS_T. /uav_1/fmu/out/vehicle_attitude, which
         # window_traverse needs and which PX4 publishes at the EKF rate
         # (100-250 Hz, an order of magnitude above everything else here), is
         # enough on its own to starve it -- that is the
@@ -507,11 +507,11 @@ class OffboardSequence(Node):
         self.sensor_cbg = MutuallyExclusiveCallbackGroup()
 
         self.vehicle_status_sub = self.create_subscription(
-            VehicleStatus, '/fmu/out/vehicle_status_v1',
+            VehicleStatus, '/uav_1/fmu/out/vehicle_status_v1',
             self.vehicle_status_callback, qos_profile=sensor_qos,
             callback_group=self.sensor_cbg)
         self.local_position_sub = self.create_subscription(
-            VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1',
+            VehicleLocalPosition, '/uav_1/fmu/out/vehicle_local_position_v1',
             self.local_position_callback, qos_profile=sensor_qos,
             callback_group=self.sensor_cbg)
 
@@ -519,13 +519,13 @@ class OffboardSequence(Node):
         # bridges it. This is the only place that tells us whether EKF2 is
         # actually fusing the rangefinder -- see rangefinder_is_healthy().
         self.estimator_flags_sub = self.create_subscription(
-            EstimatorStatusFlags, '/fmu/out/estimator_status_flags',
+            EstimatorStatusFlags, '/uav_1/fmu/out/estimator_status_flags',
             self.estimator_flags_callback, qos_profile=sensor_qos,
             callback_group=self.sensor_cbg)
 
         # PX4's own account of why it would take the aircraft away from us.
         self.failsafe_flags_sub = self.create_subscription(
-            FailsafeFlags, '/fmu/out/failsafe_flags',
+            FailsafeFlags, '/uav_1/fmu/out/failsafe_flags',
             self.failsafe_flags_callback, qos_profile=sensor_qos,
             callback_group=self.sensor_cbg)
 
@@ -535,8 +535,8 @@ class OffboardSequence(Node):
             self.create_subscription(
                 VehicleLandDetected, topic, self.land_detected_callback,
                 qos_profile=sensor_qos, callback_group=self.sensor_cbg)
-            for topic in ('/fmu/out/vehicle_land_detected',
-                          '/fmu/out/vehicle_land_detected_v1')
+            for topic in ('/uav_1/fmu/out/vehicle_land_detected',
+                          '/uav_1/fmu/out/vehicle_land_detected_v1')
         ]
 
         self.nav_state = VehicleStatus.NAVIGATION_STATE_MANUAL
@@ -789,7 +789,7 @@ class OffboardSequence(Node):
 
     def failsafe_summary(self):
         if self.failsafe_flags is None:
-            return "/fmu/out/failsafe_flags is not being published"
+            return "/uav_1/fmu/out/failsafe_flags is not being published"
         active = self.active_failsafes()
         return ", ".join(active) if active else "none active"
 
@@ -1059,7 +1059,7 @@ class OffboardSequence(Node):
                     f = self.estimator_flags
                     if f is None:
                         reason = ("rangefinder unusable: dist_bottom_valid is false "
-                                  "and /fmu/out/estimator_status_flags is not being "
+                                  "and /uav_1/fmu/out/estimator_status_flags is not being "
                                   "published, so there is no second opinion")
                     elif f.cs_rng_fault:
                         reason = "EKF2 has declared the rangefinder FAULTY (cs_rng_fault)"

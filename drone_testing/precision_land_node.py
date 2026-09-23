@@ -119,8 +119,8 @@ class PrecisionLandNode(Node):
         self.declare_parameter('log_csv', True)
         self.declare_parameter('log_dir', '/home/ark-jetson-orin/Downloads/cam/lend/logs')
         self.declare_parameter('report_period', 1.0)
-        self.declare_parameter('vehicle_status_topic', '/fmu/out/vehicle_status_v1')
-        self.declare_parameter('local_position_topic', '/fmu/out/vehicle_local_position_v1')
+        self.declare_parameter('vehicle_status_topic', '/uav_1/fmu/out/vehicle_status_v1')
+        self.declare_parameter('local_position_topic', '/uav_1/fmu/out/vehicle_local_position_v1')
 
         self.takeoff_alt = float(self.get_parameter('takeoff_altitude').value)
         self.settle_time = float(self.get_parameter('settle_time').value)
@@ -157,11 +157,11 @@ class PrecisionLandNode(Node):
         )
 
         self.offboard_pub = self.create_publisher(
-            OffboardControlMode, '/fmu/in/offboard_control_mode', px4_qos)
+            OffboardControlMode, '/uav_1/fmu/in/offboard_control_mode', px4_qos)
         self.setpoint_pub = self.create_publisher(
-            TrajectorySetpoint, '/fmu/in/trajectory_setpoint', px4_qos)
+            TrajectorySetpoint, '/uav_1/fmu/in/trajectory_setpoint', px4_qos)
         self.command_pub = self.create_publisher(
-            VehicleCommand, '/fmu/in/vehicle_command', px4_qos)
+            VehicleCommand, '/uav_1/fmu/in/vehicle_command', px4_qos)
 
         self.create_subscription(
             VehicleLocalPosition, position_topic, self.on_local_position, px4_qos)

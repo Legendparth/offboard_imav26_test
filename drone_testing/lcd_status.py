@@ -113,7 +113,7 @@ class LcdStatus(Node):
         # camera even when no flight node is running.
         self.create_subscription(Bool, 'window_detected',
                                  self.window_callback, 10)
-        self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status_v1',
+        self.create_subscription(VehicleStatus, '/uav_1/fmu/out/vehicle_status_v1',
                                  self.vehicle_status_callback,
                                  qos_profile=sensor_qos)
 

@@ -75,18 +75,18 @@ class Probe(Node):
         self.prev = {}
 
         self.create_subscription(EstimatorStatusFlags,
-                                 '/fmu/out/estimator_status_flags',
+                                 '/uav_1/fmu/out/estimator_status_flags',
                                  self.flags_cb, SENSOR_QOS)
-        self.create_subscription(FailsafeFlags, '/fmu/out/failsafe_flags',
+        self.create_subscription(FailsafeFlags, '/uav_1/fmu/out/failsafe_flags',
                                  self.failsafe_cb, SENSOR_QOS)
-        self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status_v1',
+        self.create_subscription(VehicleStatus, '/uav_1/fmu/out/vehicle_status_v1',
                                  self.status_cb, SENSOR_QOS)
         # What the bridge is offering PX4. Note this is the ROS side of the
         # link: a message counted here has NOT necessarily crossed the serial
         # line. That is the point -- if these keep coming while cs_ev_pos goes
         # false, the loss is downstream of here.
         self.create_subscription(VehicleOdometry,
-                                 '/fmu/in/vehicle_visual_odometry',
+                                 '/uav_1/fmu/in/vehicle_visual_odometry',
                                  self.vision_cb, SENSOR_QOS)
         self.create_timer(1.0, self.tick)
         print("t=0 is now. Arm when ready (PROPS OFF). Ctrl-C to stop.\n")

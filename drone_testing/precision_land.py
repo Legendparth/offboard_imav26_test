@@ -267,8 +267,8 @@ class PrecisionLand(OffboardSequence):
             self.create_subscription(VehicleAttitude, topic,
                                      self.attitude_callback,
                                      qos_profile=attitude_qos)
-            for topic in ('/fmu/out/vehicle_attitude',
-                          '/fmu/out/vehicle_attitude_v1')
+            for topic in ('/uav_1/fmu/out/vehicle_attitude',
+                          '/uav_1/fmu/out/vehicle_attitude_v1')
         ]
 
         self.align_in_band_since = None

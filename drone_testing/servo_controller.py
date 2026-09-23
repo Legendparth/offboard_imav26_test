@@ -2,7 +2,7 @@
 """The release node: one servo, one job.
 
 This grew out of the sine-wave sweep that proved how to talk to the servo at
-all -- MAV_CMD_DO_SET_ACTUATOR on /fmu/in/vehicle_command, with the output
+all -- MAV_CMD_DO_SET_ACTUATOR on /uav_1/fmu/in/vehicle_command, with the output
 assigned to "Offboard Actuator Set N" in QGC's Actuators tab.  That part is
 unchanged and still the thing to fall back on when the wiring is in doubt.
 What is new is the WHEN: instead of sweeping for ever, the node sits quiet
@@ -63,15 +63,15 @@ class ServoController(Node):
             self.HOLD_SECONDS = 0.5
 
         self.command_pub = self.create_publisher(
-            VehicleCommand, '/fmu/in/vehicle_command', 10)
+            VehicleCommand, '/uav_1/fmu/in/vehicle_command', 10)
 
-        # PX4's /fmu/out/... topics are published BEST_EFFORT.  A subscriber
+        # PX4's /uav_1/fmu/out/... topics are published BEST_EFFORT.  A subscriber
         # that asks for RELIABLE is silently never delivered anything, and
         # this node would then report "PX4 never acked" on every single drop.
         px4_qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                              durability=DurabilityPolicy.VOLATILE,
                              history=HistoryPolicy.KEEP_LAST, depth=5)
-        self.create_subscription(VehicleCommandAck, '/fmu/out/vehicle_command_ack',
+        self.create_subscription(VehicleCommandAck, '/uav_1/fmu/out/vehicle_command_ack',
                                  self.ack_callback, px4_qos)
         self.create_subscription(Bool, self.TOPIC, self.trigger_callback, 10)
 
@@ -80,7 +80,7 @@ class ServoController(Node):
         # NOTHING, silently. Here that would mean close_on_arm never fires and
         # the bay is never asserted closed, which is the exact failure this
         # subscription exists to prevent.
-        for topic in ('/fmu/out/vehicle_status', '/fmu/out/vehicle_status_v1'):
+        for topic in ('/uav_1/fmu/out/vehicle_status', '/uav_1/fmu/out/vehicle_status_v1'):
             self.create_subscription(VehicleStatus, topic,
                                      self.status_callback, px4_qos)
 

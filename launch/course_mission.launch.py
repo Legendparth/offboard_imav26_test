@@ -232,11 +232,23 @@ def generate_launch_description():
         actions=[
             Node(
                 package='drone_testing',
-                executable='aruco_pose',
+                # pad_nested:=true swaps in nested_aruco: same topics, but it
+                # knows the pad's big and small markers are ONE pad, publishes
+                # both under pad_land_id, and takes the offset from the lidar
+                # instead of from a single marker size.
+                executable=PythonExpression(
+                    ["'nested_aruco' if '", LaunchConfiguration('pad_nested'),
+                     "'.lower() in ('true', '1') else 'aruco_pose'"]),
                 name='aruco_pose',
                 output='screen',
                 emulate_tty=True,
                 parameters=[{
+                    # Read by nested_aruco only; aruco_pose ignores them.
+                    'big_marker_id': LaunchConfiguration('pad_big_id'),
+                    'small_marker_id': LaunchConfiguration('pad_small_id'),
+                    'big_marker_size': LaunchConfiguration('pad_big_size'),
+                    'small_marker_size': LaunchConfiguration('pad_small_size'),
+                    'pad_id': LaunchConfiguration('pad_land_id'),
                     'camera_index': LaunchConfiguration('pad_camera_index'),
                     'image_topic': LaunchConfiguration('pad_image_topic'),
                     'marker_id': LaunchConfiguration('pad_marker_id'),
@@ -274,7 +286,12 @@ def generate_launch_description():
         actions=[
             Node(
                 package='drone_testing',
-                executable='course_fsm',
+                # handoff:=true runs mission_course: the same course_fsm, but
+                # after the last window it hands the aircraft to
+                # mission_thermal instead of flying to the pad.
+                executable=PythonExpression(
+                    ["'mission_course' if '", LaunchConfiguration('handoff'),
+                     "'.lower() in ('true', '1') else 'course_fsm'"]),
                 name='course_fsm',
                 output='screen',
                 emulate_tty=True,
@@ -440,6 +457,9 @@ def generate_launch_description():
                     'offset_speed': LaunchConfiguration('offset_speed'),
                     'fast_leg_leash': LaunchConfiguration('fast_leg_leash'),
                     'pad_blind_height': LaunchConfiguration('pad_blind_height'),
+                    'pad_look_wait': LaunchConfiguration('pad_look_wait'),
+                    'pad_look_climb': LaunchConfiguration('pad_look_climb'),
+                    'pad_look_forward': LaunchConfiguration('pad_look_forward'),
                     'tube_cross_tolerance': LaunchConfiguration('tube_cross_tolerance'),
                     'tube_search_timeout': LaunchConfiguration('tube_search_timeout'),
                     'tube_min_matched': LaunchConfiguration('tube_min_matched'),
@@ -490,6 +510,11 @@ def generate_launch_description():
             description='Start the support stack but not the flight node, so you '
                         'can run that by hand and keep the q/k keyboard aborts. '
                         'false = fly the whole thing from this launch file.'),
+        DeclareLaunchArgument(
+            'handoff', default_value='false',
+            description='true = mission_course: hand the aircraft to the '
+                        'thermal mission after the last window. See '
+                        'course_thermal_mission.launch.py.'),
         DeclareLaunchArgument(
             'flight', default_value='true',
             description='false = camera side only: no flight '
@@ -1270,6 +1295,15 @@ def generate_launch_description():
                         'stopping. Set to where the marker stops fitting the '
                         'down camera frame.'),
         DeclareLaunchArgument(
+            'pad_look_wait', default_value='1.0',
+            description='s looking for the guide marker after the step right, '
+                        'before climbing and creeping forward.'),
+        DeclareLaunchArgument('pad_look_climb', default_value='0.30',
+                              description='m climbed for that look.'),
+        DeclareLaunchArgument(
+            'pad_look_forward', default_value='0.50',
+            description='m crept forward for that look. Capped at 0.5.'),
+        DeclareLaunchArgument(
             'pad_camera_index', default_value='0',
             description='V4L2 index of the DOWNWARD camera.'),
         DeclareLaunchArgument(
@@ -1282,6 +1316,17 @@ def generate_launch_description():
             description='m, the side of the printed marker. MEASURE IT.'),
         DeclareLaunchArgument('pad_hfov_deg', default_value='90.0'),
         DeclareLaunchArgument('pad_stream_port', default_value='8083'),
+        DeclareLaunchArgument(
+            'pad_nested', default_value='false',
+            description='true = the landing pad is a small marker inside a big '
+                        'one; run nested_aruco instead of aruco_pose. Fixes of '
+                        'either marker are published as pad_land_id.'),
+        DeclareLaunchArgument('pad_big_id', default_value='-1',
+                              description='Nested pad: the big marker id.'),
+        DeclareLaunchArgument('pad_small_id', default_value='-1',
+                              description='Nested pad: the small marker id.'),
+        DeclareLaunchArgument('pad_big_size', default_value='0.80'),
+        DeclareLaunchArgument('pad_small_size', default_value='0.20'),
 
         # ---- the rest ----
         DeclareLaunchArgument(

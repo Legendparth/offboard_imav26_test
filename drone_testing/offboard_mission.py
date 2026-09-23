@@ -59,21 +59,21 @@ class ArmDisarmTest(Node):
         )
 
         self.offboard_control_mode_pub = self.create_publisher(
-            OffboardControlMode, '/fmu/in/offboard_control_mode', 10)
+            OffboardControlMode, '/uav_1/fmu/in/offboard_control_mode', 10)
         self.vehicle_command_pub = self.create_publisher(
-            VehicleCommand, '/fmu/in/vehicle_command', 10)
+            VehicleCommand, '/uav_1/fmu/in/vehicle_command', 10)
         self.rates_setpoint_pub = self.create_publisher(
-            VehicleRatesSetpoint, '/fmu/in/vehicle_rates_setpoint', 10)
+            VehicleRatesSetpoint, '/uav_1/fmu/in/vehicle_rates_setpoint', 10)
 
         self.vehicle_status_sub = self.create_subscription(
-            VehicleStatus, '/fmu/out/vehicle_status_v1',
+            VehicleStatus, '/uav_1/fmu/out/vehicle_status_v1',
             self.vehicle_status_callback, qos_profile=sensor_qos)
 
         # Diagnostics only. Nothing in the state machine gates on this --
         # the test must run even with no position estimate at all.
         self.local_position = None
         self.local_position_sub = self.create_subscription(
-            VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1',
+            VehicleLocalPosition, '/uav_1/fmu/out/vehicle_local_position_v1',
             self.local_position_callback, qos_profile=sensor_qos)
 
         self.nav_state = VehicleStatus.NAVIGATION_STATE_MANUAL

@@ -67,7 +67,7 @@ class ResetRate(Node):
         self.last_z = None
         self.biggest = 0.0
         self.create_subscription(VehicleLocalPosition,
-                                 '/fmu/out/vehicle_local_position_v1',
+                                 '/uav_1/fmu/out/vehicle_local_position_v1',
                                  self.cb, SENSOR_QOS)
 
     def cb(self, msg):

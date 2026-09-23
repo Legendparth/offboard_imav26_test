@@ -165,7 +165,7 @@ class OffboardTakeoff(Node):
     DISARM_TIMEOUT = 5.0
     LANDED_CONFIRM_SECONDS = 1.0    # land-detector must agree this long
     COMMAND_INTERVAL = 0.25         # s between repeats of a vehicle command.
-                                    # /fmu/in/vehicle_command at the full 20 Hz
+                                    # /uav_1/fmu/in/vehicle_command at the full 20 Hz
                                     # floods PX4's command queue and gets
                                     # commands dropped rather than acted on.
     # ----------------------------------------------------------------------
@@ -199,28 +199,28 @@ class OffboardTakeoff(Node):
         )
 
         self.offboard_control_mode_pub = self.create_publisher(
-            OffboardControlMode, '/fmu/in/offboard_control_mode', 10)
+            OffboardControlMode, '/uav_1/fmu/in/offboard_control_mode', 10)
         self.vehicle_command_pub = self.create_publisher(
-            VehicleCommand, '/fmu/in/vehicle_command', 10)
+            VehicleCommand, '/uav_1/fmu/in/vehicle_command', 10)
         self.trajectory_setpoint_pub = self.create_publisher(
-            TrajectorySetpoint, '/fmu/in/trajectory_setpoint', 10)
+            TrajectorySetpoint, '/uav_1/fmu/in/trajectory_setpoint', 10)
 
         # Compact machine-readable status for the LCD node (and anything else
         # that wants to watch the state machine without parsing log text).
         self.status_pub = self.create_publisher(String, 'takeoff_status', 10)
 
         self.vehicle_status_sub = self.create_subscription(
-            VehicleStatus, '/fmu/out/vehicle_status_v1',
+            VehicleStatus, '/uav_1/fmu/out/vehicle_status_v1',
             self.vehicle_status_callback, qos_profile=sensor_qos)
         self.local_position_sub = self.create_subscription(
-            VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1',
+            VehicleLocalPosition, '/uav_1/fmu/out/vehicle_local_position_v1',
             self.local_position_callback, qos_profile=sensor_qos)
 
         # Unversioned topic, so the name is the same on every firmware that
         # bridges it. This is the only place that tells us whether EKF2 is
         # actually fusing the rangefinder -- see rangefinder_is_healthy().
         self.estimator_flags_sub = self.create_subscription(
-            EstimatorStatusFlags, '/fmu/out/estimator_status_flags',
+            EstimatorStatusFlags, '/uav_1/fmu/out/estimator_status_flags',
             self.estimator_flags_callback, qos_profile=sensor_qos)
 
         # PX4's own account of why it would take the aircraft away from us.
@@ -228,7 +228,7 @@ class OffboardTakeoff(Node):
         # difference between "Offboard lost" and knowing WHICH condition
         # tripped, which is otherwise only visible in the ulog or QGC.
         self.failsafe_flags_sub = self.create_subscription(
-            FailsafeFlags, '/fmu/out/failsafe_flags',
+            FailsafeFlags, '/uav_1/fmu/out/failsafe_flags',
             self.failsafe_flags_callback, qos_profile=sensor_qos)
 
         # The land detector topic is unversioned on some builds and _v1 on
@@ -237,8 +237,8 @@ class OffboardTakeoff(Node):
             self.create_subscription(
                 VehicleLandDetected, topic, self.land_detected_callback,
                 qos_profile=sensor_qos)
-            for topic in ('/fmu/out/vehicle_land_detected',
-                          '/fmu/out/vehicle_land_detected_v1')
+            for topic in ('/uav_1/fmu/out/vehicle_land_detected',
+                          '/uav_1/fmu/out/vehicle_land_detected_v1')
         ]
 
         self.nav_state = VehicleStatus.NAVIGATION_STATE_MANUAL
@@ -411,7 +411,7 @@ class OffboardTakeoff(Node):
 
     def failsafe_summary(self):
         if self.failsafe_flags is None:
-            return "/fmu/out/failsafe_flags is not being published"
+            return "/uav_1/fmu/out/failsafe_flags is not being published"
         active = self.active_failsafes()
         return ", ".join(active) if active else "none active"
 
@@ -697,7 +697,7 @@ class OffboardTakeoff(Node):
                     f = self.estimator_flags
                     if f is None:
                         reason = ("rangefinder unusable: dist_bottom_valid is false "
-                                  "and /fmu/out/estimator_status_flags is not being "
+                                  "and /uav_1/fmu/out/estimator_status_flags is not being "
                                   "published, so there is no second opinion")
                     elif f.cs_rng_fault:
                         reason = "EKF2 has declared the rangefinder FAULTY (cs_rng_fault)"

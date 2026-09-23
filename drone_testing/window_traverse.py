@@ -69,7 +69,7 @@ WHICH FRAME THE SETPOINTS ARE IN
 --------------------------------
 This is the question that has to be answered before any of the rest makes
 sense, so: every setpoint this node sends PX4 is an ABSOLUTE POINT IN THE
-PX4 LOCAL NED FRAME -- the same frame /fmu/out/vehicle_local_position
+PX4 LOCAL NED FRAME -- the same frame /uav_1/fmu/out/vehicle_local_position
 reports x, y and z in, with its origin wherever EKF2 datumed itself and z
 POSITIVE DOWN. Not body-relative, not relative to the arming point.
 
@@ -921,7 +921,7 @@ class WindowTraverse(WindowScan):
         # The callback decimates to ATTITUDE_MAX_HZ; see attitude_callback.
         self.attitude_min_interval = 1.0 / self.ATTITUDE_MAX_HZ
         self.attitude_last_kept = 0.0
-        self.create_subscription(VehicleAttitude, '/fmu/out/vehicle_attitude',
+        self.create_subscription(VehicleAttitude, '/uav_1/fmu/out/vehicle_attitude',
                                  self.attitude_callback, qos_profile=sensor_qos,
                                  callback_group=self.sensor_cbg)
 
@@ -1067,7 +1067,7 @@ class WindowTraverse(WindowScan):
             return
         if self.attitude is None:
             self.get_logger().warning(
-                "No /fmu/out/vehicle_attitude yet; cannot place the window.",
+                "No /uav_1/fmu/out/vehicle_attitude yet; cannot place the window.",
                 throttle_duration_sec=5.0)
             return
 

@@ -2,7 +2,7 @@
 Bridge the ZED's visual odometry into PX4 as an external-vision estimate.
 
     /zed/zed_node/odom  (nav_msgs/Odometry, ENU world / FLU body)
-        -> /fmu/in/vehicle_visual_odometry  (px4_msgs/VehicleOdometry, NED / FRD)
+        -> /uav_1/fmu/in/vehicle_visual_odometry  (px4_msgs/VehicleOdometry, NED / FRD)
 
 WHAT THIS CAMERA ACTUALLY GIVES YOU
 -----------------------------------
@@ -86,7 +86,7 @@ compass rose in QGC and to nothing else indoors.
 Do not mix the rows. Check the result before every first flight on a new
 parameter set:
 
-    ros2 topic echo /fmu/out/estimator_status_flags --once | grep cs_yaw_align
+    ros2 topic echo /uav_1/fmu/out/estimator_status_flags --once | grep cs_yaw_align
 
 WHERE THE CAMERA IS BOLTED ON
 -----------------------------
@@ -318,7 +318,7 @@ class ZedLocalization(Node):
             Odometry, self.odom_topic, self.zed_odom_callback,
             qos_profile_sensor_data)
         self.visual_odom_pub = self.create_publisher(
-            VehicleOdometry, '/fmu/in/vehicle_visual_odometry', px4_qos)
+            VehicleOdometry, '/uav_1/fmu/in/vehicle_visual_odometry', px4_qos)
 
         # Health for the flight node. Reliable + transient-local so a node
         # that starts late still gets the current answer immediately instead
@@ -346,7 +346,7 @@ class ZedLocalization(Node):
         self.health_timer = self.create_timer(0.1, self.publish_health)
 
         self.get_logger().warning(
-            f"ZED VO bridge: {self.odom_topic} -> /fmu/in/vehicle_visual_odometry "
+            f"ZED VO bridge: {self.odom_topic} -> /uav_1/fmu/in/vehicle_visual_odometry "
             f"as POSE_FRAME_{'NED' if pose_frame == 'ned' else 'FRD'}, "
             f"velocity {'ON' if self.publish_velocity else 'OFF (NaN)'}, "
             f"mounting offset {'APPLIED' if self.mounted else 'none (camera == body)'}, "

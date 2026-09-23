@@ -116,17 +116,17 @@ class ThermalBench(Node):
         self.led_pub = self.create_publisher(String, 'led/command', 10)
         self.status_pub = self.create_publisher(String, 'thermal/bench', 10)
 
-        # PX4's /fmu/out/... topics are BEST_EFFORT. A RELIABLE subscriber is
+        # PX4's /uav_1/fmu/out/... topics are BEST_EFFORT. A RELIABLE subscriber is
         # silently delivered nothing at all, and the height would read "no
         # rangefinder" for ever.
         px4_qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                              durability=DurabilityPolicy.VOLATILE,
                              history=HistoryPolicy.KEEP_LAST, depth=5)
-        self.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1',
+        self.create_subscription(VehicleLocalPosition, '/uav_1/fmu/out/vehicle_local_position_v1',
                                  self.position_callback, px4_qos)
         # The ONLY topic that says whether EKF2 is really fusing the
         # rangefinder. dist_bottom_valid does not -- see agl().
-        self.create_subscription(EstimatorStatusFlags, '/fmu/out/estimator_status_flags',
+        self.create_subscription(EstimatorStatusFlags, '/uav_1/fmu/out/estimator_status_flags',
                                  self.estimator_flags_callback, px4_qos)
         self.create_subscription(Image, 'thermal/image', self.image_callback, 10)
 
@@ -386,7 +386,7 @@ class ThermalBench(Node):
         them gets its own words.
         """
         if self.local_position is None:
-            return ("NO /fmu/out/vehicle_local_position AT ALL -- the "
+            return ("NO /uav_1/fmu/out/vehicle_local_position AT ALL -- the "
                     "uXRCE-DDS agent is not connected to PX4 (agent:=false, "
                     "or the wrong serial port/baud)")
         f = self.estimator_flags

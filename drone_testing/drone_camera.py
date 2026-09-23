@@ -26,13 +26,13 @@ class MissionPlanner(Node):
         self.TAKEOFF_VELOCITY_Z = -1.0 # m/s (negative is up)
         
         # --- Publishers ---
-        self.offboard_control_mode_pub = self.create_publisher(OffboardControlMode, '/fmu/in/offboard_control_mode', 10)
-        self.vehicle_command_pub = self.create_publisher(VehicleCommand, '/fmu/in/vehicle_command', 10)
-        self.trajectory_setpoint_pub = self.create_publisher(TrajectorySetpoint, '/fmu/in/trajectory_setpoint', 10)
+        self.offboard_control_mode_pub = self.create_publisher(OffboardControlMode, '/uav_1/fmu/in/offboard_control_mode', 10)
+        self.vehicle_command_pub = self.create_publisher(VehicleCommand, '/uav_1/fmu/in/vehicle_command', 10)
+        self.trajectory_setpoint_pub = self.create_publisher(TrajectorySetpoint, '/uav_1/fmu/in/trajectory_setpoint', 10)
 
         # --- Subscribers ---
-        self.vehicle_status_sub = self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status_v1', self.vehicle_status_callback, qos_profile=qos_profile)
-        self.local_position_sub = self.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1', self.local_position_callback, qos_profile=qos_profile)
+        self.vehicle_status_sub = self.create_subscription(VehicleStatus, '/uav_1/fmu/out/vehicle_status_v1', self.vehicle_status_callback, qos_profile=qos_profile)
+        self.local_position_sub = self.create_subscription(VehicleLocalPosition, '/uav_1/fmu/out/vehicle_local_position_v1', self.local_position_callback, qos_profile=qos_profile)
         self.image_view_sub = self.create_subscription(Image, '/depth_camera', self.image_view_callback, 10)
         self.cv_bridge = CvBridge()
 

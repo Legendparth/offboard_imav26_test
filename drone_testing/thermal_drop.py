@@ -71,7 +71,7 @@ THE SERVO, AND WHY A DRY RUN MAY NOT MOVE IT
     So: actuator_test for dry runs on the bench, set_actuator in the air --
     unless the bench proves otherwise.
 
-    PX4's verdict on either is logged from /fmu/out/vehicle_command_ack, and
+    PX4's verdict on either is logged from /uav_1/fmu/out/vehicle_command_ack, and
     `ros2 run drone_testing servo_test` exercises both on their own.
     release_enabled:=false flies the whole mission and logs the release
     instead of commanding it.
@@ -413,7 +413,7 @@ class ThermalDrop(OffboardSequence):
         sensor_qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                                 durability=DurabilityPolicy.VOLATILE,
                                 history=HistoryPolicy.KEEP_LAST, depth=1)
-        for topic in ('/fmu/out/vehicle_attitude', '/fmu/out/vehicle_attitude_v1'):
+        for topic in ('/uav_1/fmu/out/vehicle_attitude', '/uav_1/fmu/out/vehicle_attitude_v1'):
             self.create_subscription(VehicleAttitude, topic, self.attitude_callback,
                                      sensor_qos, callback_group=self.sensor_cbg)
         self.create_subscription(Image, str(self.declare_parameter(
@@ -423,7 +423,7 @@ class ThermalDrop(OffboardSequence):
         # PX4's verdict on the servo command. Without this the log can only
         # say "command sent", which is exactly the ambiguity that made a
         # non-moving servo impossible to diagnose from a flight log.
-        self.create_subscription(VehicleCommandAck, '/fmu/out/vehicle_command_ack',
+        self.create_subscription(VehicleCommandAck, '/uav_1/fmu/out/vehicle_command_ack',
                                  self.command_ack_callback, sensor_qos,
                                  callback_group=self.sensor_cbg)
         self.led_pub = self.create_publisher(String, 'led/command', 10)

@@ -9,7 +9,7 @@ it -- but doing that meant a laptop and QGC, which is no use when the drone
 is powered from a battery and flown over ssh.
 
 PX4 accepts VEHICLE_CMD_PREFLIGHT_REBOOT_SHUTDOWN (246, param1 = 1) on the
-same /fmu/in/vehicle_command topic the setpoints already use, so the reboot
+same /uav_1/fmu/in/vehicle_command topic the setpoints already use, so the reboot
 is one message on the link that is already there.
 
     ros2 run drone_testing fc_reboot                 # reboot if unfused
@@ -101,15 +101,15 @@ class FcReboot(Node):
         )
 
         self.command_pub = self.create_publisher(
-            VehicleCommand, '/fmu/in/vehicle_command', 10)
+            VehicleCommand, '/uav_1/fmu/in/vehicle_command', 10)
 
-        self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status_v1',
+        self.create_subscription(VehicleStatus, '/uav_1/fmu/out/vehicle_status_v1',
                                  self.status_callback, qos_profile=sensor_qos)
         self.create_subscription(EstimatorStatusFlags,
-                                 '/fmu/out/estimator_status_flags',
+                                 '/uav_1/fmu/out/estimator_status_flags',
                                  self.flags_callback, qos_profile=sensor_qos)
         self.create_subscription(VehicleLocalPosition,
-                                 '/fmu/out/vehicle_local_position_v1',
+                                 '/uav_1/fmu/out/vehicle_local_position_v1',
                                  self.position_callback, qos_profile=sensor_qos)
 
         self.arming_state = None
@@ -148,7 +148,7 @@ class FcReboot(Node):
         """Is range data reaching EKF2 at all, fused or not?
 
         PX4 does not publish distance_sensor over uXRCE-DDS -- it is an
-        /fmu/in/ topic only -- so there is no direct way to watch the sensor
+        /uav_1/fmu/in/ topic only -- so there is no direct way to watch the sensor
         from here. These two are the earliest evidence available:
 
           * the terrain estimate being valid AND its sensor bitfield naming a

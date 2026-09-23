@@ -23,7 +23,7 @@ TWO WAYS TO DRIVE IT, AND WHEN EACH ONE APPLIES
                           faster than the timeout or the output snaps back to
                           its Disarmed value.
 
-    mode:=servos          Publishes ActuatorServos on /fmu/in/actuator_servos
+    mode:=servos          Publishes ActuatorServos on /uav_1/fmu/in/actuator_servos
                           at 50 Hz -- no vehicle command at all. This is the
                           fallback for when the command path acks but nothing
                           moves. It feeds functions 201-208, NOT 301, so it
@@ -110,14 +110,14 @@ class ServoControl(Node):
         self.timeout = float(self.declare_parameter('timeout', 1.0).value)
 
         self.cmd_pub = self.create_publisher(
-            VehicleCommand, '/fmu/in/vehicle_command', 10)
+            VehicleCommand, '/uav_1/fmu/in/vehicle_command', 10)
         # Only used by mode:=servos. PX4 wants this at a steady rate, and the
         # FunctionServos provider reads it for functions 201-208, so the output
         # must be reassigned to "Servo 1" for this mode to reach a pin.
         self.servo_pub = self.create_publisher(
-            ActuatorServos, '/fmu/in/actuator_servos', 10)
+            ActuatorServos, '/uav_1/fmu/in/actuator_servos', 10)
         self.create_subscription(
-            VehicleCommandAck, '/fmu/out/vehicle_command_ack', self.on_ack,
+            VehicleCommandAck, '/uav_1/fmu/out/vehicle_command_ack', self.on_ack,
             QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                        durability=DurabilityPolicy.VOLATILE,
                        history=HistoryPolicy.KEEP_LAST, depth=5))
@@ -203,7 +203,7 @@ def main(args=None):
             if node.acks == 0 and node.mode != 'servos':
                 node.get_logger().error(
                     "PX4 acknowledged NOTHING. Check the uXRCE-DDS agent is up: "
-                    "`ros2 topic hz /fmu/out/vehicle_status_v1`.")
+                    "`ros2 topic hz /uav_1/fmu/out/vehicle_status_v1`.")
             node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

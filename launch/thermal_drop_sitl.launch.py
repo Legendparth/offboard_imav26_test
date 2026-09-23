@@ -165,7 +165,7 @@ def generate_launch_description():
     # Every process this file starts -- the ROS nodes AND MicroXRCEAgent --
     # goes on a private DDS domain, for the reason course_mission_sitl's
     # ros_domain_id argument spells out at length: on a lab network any other
-    # PX4 publishing /fmu/out/... into domain 0 is heard by every node here,
+    # PX4 publishing /uav_1/fmu/out/... into domain 0 is heard by every node here,
     # and it presents as an estimator gone mad rather than as a network fault.
     set_domain_id = SetEnvironmentVariable(
         'ROS_DOMAIN_ID', LaunchConfiguration('ros_domain_id'))
@@ -602,10 +602,10 @@ def generate_launch_description():
                         'UXRCE_DDS_DOM_ID. It is NOT cosmetic: ROS 2 and '
                         'uXRCE-DDS both default to domain 0 and discovery is '
                         'multicast over every interface, so any other PX4 on '
-                        'the network publishes /fmu/out/... into the same '
+                        'the network publishes /uav_1/fmu/out/... into the same '
                         'domain and every node here subscribes to BOTH '
                         'vehicles. Check with "ros2 topic info -v '
-                        '/fmu/out/vehicle_local_position_v1": more than one '
+                        '/uav_1/fmu/out/vehicle_local_position_v1": more than one '
                         'publisher means you are hearing someone else. NOTE: '
                         'a separate terminal needs ROS_DOMAIN_ID exported to '
                         'the same value to see this sim\'s topics. It is 78 '

@@ -106,9 +106,9 @@ ros2 launch drone_testing takeoff_test.launch.py
 **Terminal 2 — check:**
 
 ```bash
-ros2 topic list | grep /fmu/
-ros2 topic echo /fmu/out/vehicle_status_v1 --once
-ros2 topic echo /fmu/out/vehicle_local_position_v1 --once
+ros2 topic list | grep /uav_1/fmu/
+ros2 topic echo /uav_1/fmu/out/vehicle_status_v1 --once
+ros2 topic echo /uav_1/fmu/out/vehicle_local_position_v1 --once
 ```
 
 In that last message you want to see, **props off, on the ground**:
@@ -1058,7 +1058,7 @@ VIO healthy: 15 Hz from /zed/zed_node/odom
 ```bash
 source ~/px4_ros_ws/install/setup.bash
 ros2 topic echo /vio_healthy --once             # must be data: true
-ros2 topic hz /fmu/in/vehicle_visual_odometry   # should sit near 15 Hz
+ros2 topic hz /uav_1/fmu/in/vehicle_visual_odometry   # should sit near 15 Hz
 ```
 
 **Pane 2 — the flight node:**
@@ -1176,7 +1176,7 @@ ride along with the approach unnoticed.
 ### Which frame the setpoints are in
 
 Every setpoint is an **absolute point in the PX4 local NED frame** — the same
-frame `/fmu/out/vehicle_local_position` reports `x`, `y`, `z` in, z positive
+frame `/uav_1/fmu/out/vehicle_local_position` reports `x`, `y`, `z` in, z positive
 down. Not body-relative. Section 6b hides that behind direction words
 ("forward 1.0"), but underneath it walks an NED hold point towards an NED
 target and publishes that point; this node computes the NED targets directly
@@ -1449,7 +1449,7 @@ Other launch files:
 | The vehicle moves the **wrong way** towards the marker | An axis sign is inverted. Land, and go back to `mode:=bench` (section 6d) — this is exactly what that mode exists to catch. Fix `image_rotate` or the mounting. |
 | Aligns, then oscillates around the marker | `align_gain` too high for the camera latency, or the marker is near the frame edge where the uncorrected lens distortion is worst. Lower `align_gain`, and calibrate the camera. |
 | `window_traverse` never leaves `LOCK` | No usable window pose. The node logs which test is rejecting the samples — read that tally. Usual causes: `camera_info_topic` wrong (the log says it is guessing the FOV), the depth map has holes where the frame is (`corner depth missing`), or the sample boxes are landing on the wall behind it (`corner depths disagree` / `corners not coplanar`). |
-| `/window_pose` centre wanders as you move the airframe | The estimate is not being placed correctly in NED. Check `cam_roll/cam_pitch/cam_yaw` and the lever arm — they must be the same numbers `zed_localization` has — and that `/fmu/out/vehicle_attitude` is actually in the PX4 DDS topic list. |
+| `/window_pose` centre wanders as you move the airframe | The estimate is not being placed correctly in NED. Check `cam_roll/cam_pitch/cam_yaw` and the lever arm — they must be the same numbers `zed_localization` has — and that `/uav_1/fmu/out/vehicle_attitude` is actually in the PX4 DDS topic list. |
 | `Traverse abandoned: could not settle on the approach point` | VO noise is larger than `align_tolerance`, or the estimate is still moving. Loosen `align_tolerance`, or raise `pose_min_samples` / `buffer_seconds` so the target stops shifting under the aircraft. |
 | Lands 30–40 cm off after a good alignment | Drift during the open-loop descent. Check `precision_descent` is true, and that the flow stays healthy (`flow_ok=True`) down to `FLOW_MIN_AGL`. |
 
@@ -1478,7 +1478,7 @@ that trips it poisons every subsequent run in that power cycle.
   reboot button, or a power cycle). Then confirm before you touch anything:
 
   ```bash
-  ros2 topic echo /fmu/out/estimator_status_flags --once | grep -E "cs_rng_hgt|cs_rng_kin_consistent"
+  ros2 topic echo /uav_1/fmu/out/estimator_status_flags --once | grep -E "cs_rng_hgt|cs_rng_kin_consistent"
   ```
 
   You want `cs_rng_hgt: true` **and** `cs_rng_kin_consistent: true`. If
@@ -1514,7 +1514,7 @@ not in a blind descent — PX4 adds `local_position` to Offboard's requirements.
 You can watch this happen live:
 
 ```bash
-ros2 topic echo /fmu/out/failsafe_flags --once | grep mode_req_local_position
+ros2 topic echo /uav_1/fmu/out/failsafe_flags --once | grep mode_req_local_position
 ```
 
 Bit 14 (value `16384`, `NAVIGATION_STATE_OFFBOARD`) appears in that bitmask
@@ -1526,7 +1526,7 @@ rather than noise alongside `offboard_control_signal_lost`.
 | flag in the new `PX4 failsafe:` log line | meaning | fix |
 |---|---|---|
 | `local_position_invalid` + `local_velocity_invalid`, **flickering on and off every 1–2 s while the vehicle sits still** | EKF2 has no yaw alignment (`cs_yaw_align` false), so the horizontal estimate is never anchored to a heading. Vision position can be fusing happily (`cs_ev_pos` true, `xy_valid` true) and this still bites — but only once **armed**, because the commander only enforces mode requirements then. | See 10.3. |
-| `offboard_control_signal_lost` | No `OffboardControlMode` reached PX4 for `COM_OF_LOSS_T` (default **1.0 s**). Sometimes a stall in the uXRCE-DDS uplink — but it is also set as a *side effect* when PX4 drops Offboard for another reason, so do not stop reading at this flag. | Rule out 10.3 first. Then: run the node with `ros2 run`, not inside a busy launch; cut the number of `/fmu/out` topics being bridged; check the agent with `-v6` for dropped uplink; consider `COM_OF_LOSS_T` 1.5–2.0. |
+| `offboard_control_signal_lost` | No `OffboardControlMode` reached PX4 for `COM_OF_LOSS_T` (default **1.0 s**). Sometimes a stall in the uXRCE-DDS uplink — but it is also set as a *side effect* when PX4 drops Offboard for another reason, so do not stop reading at this flag. | Rule out 10.3 first. Then: run the node with `ros2 run`, not inside a busy launch; cut the number of `/uav_1/fmu/out` topics being bridged; check the agent with `-v6` for dropped uplink; consider `COM_OF_LOSS_T` 1.5–2.0. |
 | `manual_control_signal_lost` | RC link lost while armed. | Keep the TX on. If you deliberately fly without RC, set `COM_RCL_EXCEPT` bit 2 (value `4`) to exempt Offboard. |
 | `gcs_connection_lost` | QGC/datalink dropped, `COM_DL_LOSS_T` expired. | `COM_DLL_EXCEPT`, or keep QGC connected. |
 
@@ -1569,7 +1569,7 @@ and the node reports `ekf_fusing=True`. Nothing complains until you arm.
 **Check it:**
 
 ```bash
-ros2 topic echo /fmu/out/estimator_status_flags --once \
+ros2 topic echo /uav_1/fmu/out/estimator_status_flags --once \
   | grep -E "cs_yaw_align|cs_ev_pos|cs_ev_yaw|cs_mag_hdg|cs_gnss_yaw"
 ```
 
@@ -1628,10 +1628,10 @@ after arming.
 1. Props **off** for the first run of any changed code.
 2. **Reboot the flight controller.** `cs_rng_kin_consistent` is sticky across a
    whole power cycle and is the usual reason the node will not arm (10.1).
-3. `ros2 topic echo /fmu/out/estimator_status_flags --once` → `cs_rng_hgt` and
+3. `ros2 topic echo /uav_1/fmu/out/estimator_status_flags --once` → `cs_rng_hgt` and
    `cs_rng_kin_consistent` both true, `cs_baro_hgt` is *not* carrying the
    height on its own.
-4. `ros2 topic echo /fmu/out/vehicle_local_position_v1 --once` → `z_valid` and
+4. `ros2 topic echo /uav_1/fmu/out/vehicle_local_position_v1 --once` → `z_valid` and
    `dist_bottom_valid` both true.
 5. RC kill switch tested on the bench, this session.
 6. `takeoff_altitude` set low (0.30 m).

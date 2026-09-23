@@ -194,8 +194,8 @@ class LineDetect(Node):
         # matched with NOTHING. It does not error, it does not warn, it simply
         # never receives -- which cost a bench session already, and is why
         # every flight node in this package subscribes to the pair.
-        for topic in ('/fmu/out/vehicle_local_position',
-                      '/fmu/out/vehicle_local_position_v1'):
+        for topic in ('/uav_1/fmu/out/vehicle_local_position',
+                      '/uav_1/fmu/out/vehicle_local_position_v1'):
             self.create_subscription(VehicleLocalPosition, topic,
                                      self._on_position, px4_qos)
         self.create_subscription(EstimatorStatusFlags,

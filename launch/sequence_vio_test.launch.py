@@ -70,7 +70,7 @@ xy_valid both sit there looking perfectly healthy. If you have turned the
 magnetometer off for indoor flight, EKF2_EV_CTRL = 1 is NOT a valid
 configuration; you must enable vision yaw as well (see below). Check with
 
-    ros2 topic echo /fmu/out/estimator_status_flags --once | grep cs_yaw_align
+    ros2 topic echo /uav_1/fmu/out/estimator_status_flags --once | grep cs_yaw_align
 
 before every first flight on a new parameter set. README section 10.3.
 

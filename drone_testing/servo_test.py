@@ -192,15 +192,15 @@ class ServoTestNode(Node):
         self.METHOD = str(p('method', 'actuator_test')).lower()
 
         self.publisher = self.create_publisher(
-            VehicleCommand, '/fmu/in/vehicle_command', 10)
+            VehicleCommand, '/uav_1/fmu/in/vehicle_command', 10)
 
-        # PX4's /fmu/out/... topics are BEST_EFFORT. A RELIABLE subscriber is
+        # PX4's /uav_1/fmu/out/... topics are BEST_EFFORT. A RELIABLE subscriber is
         # matched with nothing and silently never sees an ack, which would
         # make every output here look equally dead.
         px4_qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                              durability=DurabilityPolicy.VOLATILE,
                              history=HistoryPolicy.KEEP_LAST, depth=5)
-        self.create_subscription(VehicleCommandAck, '/fmu/out/vehicle_command_ack',
+        self.create_subscription(VehicleCommandAck, '/uav_1/fmu/out/vehicle_command_ack',
                                  self.ack_callback, px4_qos)
 
         self.position = self.NEUTRAL
@@ -318,7 +318,7 @@ class ServoTestNode(Node):
                 f"Not one ack from PX4 across {len(self.results)} outputs. The "
                 "commands are not arriving at all: check that the uXRCE-DDS "
                 "agent is running and connected (`ros2 topic hz "
-                "/fmu/out/vehicle_status`). Nothing here was refused, because "
+                "/uav_1/fmu/out/vehicle_status`). Nothing here was refused, because "
                 "nothing here was heard.")
             return
 
@@ -407,7 +407,7 @@ class ServoTestNode(Node):
             self.get_logger().error(
                 f"{self.CYCLES} cycles sent and NOT ONE ack from PX4. The "
                 "commands are not arriving: check the uXRCE-DDS agent is "
-                "connected (`ros2 topic hz /fmu/out/vehicle_status`). Nothing "
+                "connected (`ros2 topic hz /uav_1/fmu/out/vehicle_status`). Nothing "
                 "was refused, because nothing was heard.")
         elif self.refusals:
             self.get_logger().error(

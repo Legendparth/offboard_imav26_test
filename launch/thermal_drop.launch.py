@@ -163,6 +163,20 @@ def generate_launch_description():
 
     args = [
         ('agent_only', 'true', 'Start the sensor side but not the flight node.'),
+        ('handoff', 'false',
+         'true = mission_thermal: wait for mission_course to hand over the '
+         'aircraft after its last window. See course_thermal_mission.launch.py.'),
+        ('land_look_wait', '1.0',
+         's looking for the landing marker right after the post-drop step '
+         'right, before climbing and creeping forward.'),
+        ('land_look_climb', '0.30', 'm climbed for that look.'),
+        ('land_look_forward', '0.50',
+         'm crept forward for that look. Capped at 0.5.'),
+        ('handoff_start', 'survey',
+         'After the handoff: survey = climb and survey where the course '
+         'ended; marker = thermal_fsm\'s marker hunt first.'),
+        ('handoff_heading_offset_deg', '0.0',
+         'Thermal corridor direction relative to the last window\'s.'),
         ('mode', 'fly',
          'bench = log only. dryrun = the whole mission on a simulated vehicle '
          '(no arming, no setpoints, motors cannot spin) with a REAL thermal '
@@ -630,6 +644,16 @@ def generate_launch_description():
          'Must match the downward camera. In the sim that is down_cam.xacro\'s '
          '1.5708 rad.'),
         ('aruco_dict', 'DICT_5X5_50', ''),
+        ('aruco_nested', 'false',
+         'true = the landing pad is a small marker inside a big one; run '
+         'nested_aruco instead of aruco_pose. Both markers of the pad are '
+         'always accepted, on top of aruco_marker_ids.'),
+        ('aruco_big_id', '-1', 'Nested pad: the big marker id.'),
+        ('aruco_small_id', '-1', 'Nested pad: the small marker id.'),
+        ('aruco_big_size', '0.80', 'Nested pad: big marker edge, m.'),
+        ('aruco_small_size', '0.20', 'Nested pad: small marker edge, m.'),
+        ('aruco_pad_id', '-1',
+         'Nested pad: the id both markers are published as. -1 = the big one.'),
         ('aruco_stream_port', '8083',
          'Browser view of the downward camera. 8082 is the thermal one.'),
         ('aruco_min_marker_distance_rate', '0.02',
@@ -724,9 +748,20 @@ def generate_launch_description():
     # aruco:=false those stages find nothing, creep their full distance and
     # give up -- which is a legible outcome, not a crash.
     aruco_node = Node(
-        package='drone_testing', executable='aruco_pose', name='aruco_pose',
+        # aruco_nested:=true swaps in nested_aruco: same topics, but the
+        # pad's big and small markers are published as ONE id and the offset
+        # comes from the lidar instead of from a single marker size.
+        package='drone_testing', name='aruco_pose',
+        executable=PythonExpression(
+            ["'nested_aruco' if '", L('aruco_nested'),
+             "'.lower() in ('true', '1') else 'aruco_pose'"]),
         output='screen', emulate_tty=True,
-        parameters=[{'camera_index': L('aruco_camera_index'),
+        parameters=[{'big_marker_id': L('aruco_big_id'),
+                     'small_marker_id': L('aruco_small_id'),
+                     'big_marker_size': L('aruco_big_size'),
+                     'small_marker_size': L('aruco_small_size'),
+                     'pad_id': L('aruco_pad_id'),
+                     'camera_index': L('aruco_camera_index'),
                      'image_topic': L('aruco_image_topic'),
                      'marker_ids': L('aruco_marker_ids'),
                      'marker_size': L('aruco_marker_size'),
@@ -805,6 +840,8 @@ def generate_launch_description():
         'thermal_noise_c', 'aruco', 'aruco_camera_index', 'aruco_image_topic',
         'aruco_marker_ids', 'aruco_marker_size', 'aruco_hfov_deg',
         'aruco_dict', 'aruco_stream_port', 'aruco_min_marker_distance_rate',
+        'aruco_nested', 'aruco_big_id', 'aruco_small_id', 'aruco_big_size',
+        'aruco_small_size', 'aruco_pad_id',
         'servo_node', 'servo_close_on_start',
         'servo_close_on_arm', 'servo_close_on_arm_seconds',
         'line', 'line_stream_port', 'line_blur', 'line_downscale',
@@ -812,6 +849,7 @@ def generate_launch_description():
         'line_close_ksize', 'line_open_ksize', 'line_strip_is_bright',
         'line_min_area_frac', 'line_max_area_frac', 'line_min_elongation',
         'aruco_publish_frames',
+        'handoff',
         'wall', 'wall_depth_topic', 'wall_camera_info_topic',
         'wall_min_pixels', 'wall_floor_margin', 'wall_camera_pitch_deg',
     }
@@ -828,6 +866,8 @@ def generate_launch_description():
         'pad_centre_tolerance',
         'pad_centre_seconds', 'pad_descent_rate', 'pad_handoff_height',
         'pad_gain', 'pad_max_nudge', 'pad_lost_seconds', 'pad_stage_timeout',
+        'handoff_start', 'handoff_heading_offset_deg',
+        'land_look_wait', 'land_look_climb', 'land_look_forward',
         'marker_anchor_gain', 'marker_anchor_max_age', 'ground_effect_height',
         'line_follow', 'line_gain', 'line_max_nudge', 'line_lost_seconds',
         'line_start_after',
@@ -855,7 +895,12 @@ def generate_launch_description():
             output='screen', emulate_tty=True, parameters=[common],
             condition=UnlessCondition(L('fsm')),
         ), Node(
-            package='drone_testing', executable='thermal_fsm', name='thermal_fsm',
+            # handoff:=true runs mission_thermal: thermal_fsm that stays
+            # silent until mission_course hands the aircraft over.
+            package='drone_testing', name='thermal_fsm',
+            executable=PythonExpression(
+                ["'mission_thermal' if '", L('handoff'),
+                 "'.lower() in ('true', '1') else 'thermal_fsm'"]),
             output='screen', emulate_tty=True, parameters=[fsm_params],
             condition=IfCondition(L('fsm')),
         )],

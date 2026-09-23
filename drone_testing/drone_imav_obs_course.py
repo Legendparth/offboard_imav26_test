@@ -22,15 +22,15 @@ class DroneController(Node):
         )
         
         # --- Publishers ---
-        self.offboard_control_mode_pub = self.create_publisher(OffboardControlMode, '/fmu/in/offboard_control_mode', 10)
-        self.vehicle_command_pub = self.create_publisher(VehicleCommand, '/fmu/in/vehicle_command', 10)
-        self.trajectory_setpoint_pub = self.create_publisher(TrajectorySetpoint, '/fmu/in/trajectory_setpoint', 10)
+        self.offboard_control_mode_pub = self.create_publisher(OffboardControlMode, '/uav_1/fmu/in/offboard_control_mode', 10)
+        self.vehicle_command_pub = self.create_publisher(VehicleCommand, '/uav_1/fmu/in/vehicle_command', 10)
+        self.trajectory_setpoint_pub = self.create_publisher(TrajectorySetpoint, '/uav_1/fmu/in/trajectory_setpoint', 10)
 
         # --- Subscribers ---
-        # self.ack_sub = self.create_subscription(VehicleCommandAck, '/fmu/out/vehicle_command_ack', self.ack_callback, qos_profile=qos_profile)
-        self.vehicle_status_sub = self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status_v1', self.vehicle_status_callback, qos_profile=qos_profile)
-        self.local_position_sub = self.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1', self.local_position_callback, qos_profile=qos_profile)
-        self.local_orienation_sub = self.create_subscription(VehicleAttitude, '/fmu/out/vehicle_attitude', self.local_orientation_callback, qos_profile=qos_profile)
+        # self.ack_sub = self.create_subscription(VehicleCommandAck, '/uav_1/fmu/out/vehicle_command_ack', self.ack_callback, qos_profile=qos_profile)
+        self.vehicle_status_sub = self.create_subscription(VehicleStatus, '/uav_1/fmu/out/vehicle_status_v1', self.vehicle_status_callback, qos_profile=qos_profile)
+        self.local_position_sub = self.create_subscription(VehicleLocalPosition, '/uav_1/fmu/out/vehicle_local_position_v1', self.local_position_callback, qos_profile=qos_profile)
+        self.local_orienation_sub = self.create_subscription(VehicleAttitude, '/uav_1/fmu/out/vehicle_attitude', self.local_orientation_callback, qos_profile=qos_profile)
         self.joystick_sub = self.create_subscription(Joy, '/joy',self.joystick_callback, 10)
         self.depth_data_sub = self.create_subscription(Float32MultiArray, '/depth_data', self.depth_data_callback, 10)
 
