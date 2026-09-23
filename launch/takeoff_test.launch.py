@@ -1,12 +1,13 @@
 """
-Takeoff test launch: uXRCE-DDS agent + the offboard_takeoff node.
+Takeoff test launch: the offboard_takeoff node (+ LCD). The uXRCE-DDS agent is
+started by imav_bringup's bringup.launch.py, not here.
 
 No ZED, no localization -- the flight relies only on ARK Flow + lidar +
 IMU fused in PX4, so there is nothing else to go wrong.
 
 NOTE: launching the takeoff node this way means stdin is not a tty, so the
 'q' / 'k' keyboard aborts will be DISABLED. For every test where the props
-are on, launch the agent only (the default) and run the node by hand in a
+are on, leave agent_only:=true (the default) and run the node by hand in a
 second tmux pane so you keep the abort keys:
 
     ros2 launch drone_testing takeoff_test.launch.py
@@ -26,14 +27,6 @@ from launch_ros.actions import Node
 def generate_launch_description():
     agent_only = LaunchConfiguration('agent_only')
 
-    microxrce_node = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='micro_xrce_dds_agent',
-        output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-    )
-
     # Delay so the DDS session is up and PX4 topics exist before the node
     # starts publishing. Without this the first setpoints are dropped.
     takeoff_node = TimerAction(
@@ -51,15 +44,13 @@ def generate_launch_description():
                     'ground_wait_seconds': LaunchConfiguration('ground_wait_seconds'),
                     'climb_speed': LaunchConfiguration('climb_speed'),
                     'land_speed': LaunchConfiguration('land_speed'),
-                    'request_offboard_from_ros': LaunchConfiguration(
-                        'request_offboard_from_ros'),
                 }],
             )
         ],
         condition=UnlessCondition(agent_only),
     )
 
-    # Status readout on the Arduino-driven LCD. Started with the agent, not
+    # Status readout on the Arduino-driven LCD. Started on its own, not
     # with the flight node, so the display is alive from boot and can show
     # "NO TAKEOFF NODE" while you are still getting set up.
     lcd_node = Node(
@@ -75,7 +66,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'agent_only', default_value='true',
-            description='Start only the uXRCE-DDS agent; run the takeoff node manually '
+            description='Start only the LCD node; run the takeoff node manually '
                         'so the q/k keyboard aborts stay available.'),
         DeclareLaunchArgument(
             'takeoff_altitude', default_value='0.80',
@@ -93,15 +84,11 @@ def generate_launch_description():
             'land_speed', default_value='0.15',
             description='m/s the descent setpoint is ramped at.'),
         DeclareLaunchArgument(
-            'request_offboard_from_ros', default_value='true',
-            description='false = you flip the Offboard switch on the TX yourself.'),
-        DeclareLaunchArgument(
             'lcd', default_value='true',
             description='Start the Arduino LCD status node.'),
         DeclareLaunchArgument(
             'lcd_port', default_value='',
             description='Arduino serial port; empty = auto-detect ttyACM*/ttyUSB*.'),
-        microxrce_node,
         lcd_node,
         takeoff_node,
     ])

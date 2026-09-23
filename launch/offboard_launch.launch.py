@@ -25,14 +25,6 @@ def generate_launch_description():
         }.items(),
     )
 
-    microxrce_node = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='micro_xrce_dds_agent',
-        output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600']
-    )
-
     zed_localization_node = Node(
         package='drone_testing',
         executable='zed_localization',
@@ -49,7 +41,6 @@ def generate_launch_description():
 
 
     return LaunchDescription([
-        microxrce_node,
         zed_camera_launch,
         offboard_mission,
         # zed_localization_node

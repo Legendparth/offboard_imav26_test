@@ -182,12 +182,12 @@ if __name__ == "__main__":
     import numpy as np
     from flask import Flask, Response
 
-    # app = Flask(__name__)
+    app = Flask(__name__)
     reader = MLX90640Reader()
     reader.start()
     
-    # def generate_frames():
-    try:
+    def generate_frames():
+    # try:
         while True:
             frame = reader.get_latest_frame()
             if frame is not None:
@@ -223,31 +223,31 @@ if __name__ == "__main__":
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                 # --------------------------------
 
-                cv2.imshow("Thermal Heatmap", heatmap_resized)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-                # ret, buffer = cv2.imencode('.jpg', heatmap_resized)
-                # frame_bytes = buffer.tobytes()
+                # cv2.imshow("Thermal Heatmap", heatmap_resized)
+                # if cv2.waitKey(1) & 0xFF == ord('q'):
+                #     break
+                ret, buffer = cv2.imencode('.jpg', heatmap_resized)
+                frame_bytes = buffer.tobytes()
 
-                # yield (b'--frame\r\n'
-                #     b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                yield (b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
                 
             
         
-    # @app.route('/video_feed')
-    # def video_feed():
-    #     return Response(generate_frames(),
-    #                     mimetype='multipart/x-mixed-replace; boundary=frame')
+    @app.route('/video_feed')
+    def video_feed():
+        return Response(generate_frames(),
+                        mimetype='multipart/x-mixed-replace; boundary=frame')
 
-    # @app.route('/')
-    # def index():
-    #     # Simple HTML page to display the stream
-    #     return '<html><body><h1>Thermal Sensor Fusion</h1><img src="/video_feed"></body></html>'
+    @app.route('/')
+    def index():
+        # Simple HTML page to display the stream
+        return '<html><body><h1>Thermal Sensor Fusion</h1><img src="/video_feed"></body></html>'
 
-    # try:
-    #     print("Starting video stream. Open http://<Jetson_IP>:5000 in your browser.")
-    #     # Run Flask app on all network interfaces
-    #     app.run(host='0.0.0.0', port=5000, threaded=True)
+    try:
+        print("Starting video stream. Open http://<Jetson_IP>:5000 in your browser.")
+        # Run Flask app on all network interfaces
+        app.run(host='0.0.0.0', port=5000, threaded=True)
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:

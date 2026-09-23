@@ -1,7 +1,7 @@
 """
 The obstacle-course TUBES, flown as their own mission. ARK Flow localisation.
 
-    uXRCE-DDS agent + zed_wrapper (CAMERA ONLY)
+    zed_wrapper (CAMERA ONLY)
     + tube_detect (the uprights) + tube_cross (the flight)
 
     arm -> climb -> hold -> find the uprights -> fit the three-tube layout ->
@@ -61,7 +61,7 @@ CROSS_PARAMS = (
     # the climb (OffboardSequence)
     'takeoff_altitude', 'hold_seconds', 'ground_wait_seconds', 'climb_speed',
     'land_speed', 'yaw_rate', 'takeoff_return_to_pad', 'min_altitude',
-    'max_altitude', 'yaw_cone_deg', 'flight_seconds', 'request_offboard_from_ros',
+    'max_altitude', 'yaw_cone_deg', 'flight_seconds',
     # the obstacle
     'tube_spacing', 'tube_radius', 'cross_bar_height', 'diagonal_left_height',
     'diagonal_right_height', 'gap_side',
@@ -99,14 +99,6 @@ def _params(names):
 
 
 def generate_launch_description():
-    microxrce_node = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='micro_xrce_dds_agent',
-        output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-    )
-
     zed_wrapper = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(PathJoinSubstitution([
             FindPackageShare('zed_wrapper'), 'launch', 'zed_camera.launch.py'])),
@@ -253,7 +245,6 @@ def generate_launch_description():
         arg('max_altitude', default_value='2.0'),
         arg('yaw_cone_deg', default_value='30.0'),
         arg('flight_seconds', default_value='150.0'),
-        arg('request_offboard_from_ros', default_value='true'),
 
         # ---- the obstacle (rules drawing) ----
         arg('tube_spacing', default_value='0.50'),
@@ -367,7 +358,7 @@ def generate_launch_description():
         arg('lcd', default_value='false'),
         arg('lcd_port', default_value=''),
 
-        GroupAction([microxrce_node, lcd_node, reboot_node, cross_node],
+        GroupAction([lcd_node, reboot_node, cross_node],
                     condition=IfCondition(LaunchConfiguration('flight'))),
         zed_wrapper,
         detect_node,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """BENCH TEST OF THE DROP: hot box -> LED -> servo. Nothing flies.
 
-    agent + thermal_sensor + thermal_bench + servo_controller + led_status
+    thermal_sensor + thermal_bench + servo_controller + led_status
 
 Four small nodes and no flight node at all.  There is no offboard stream, no
 arm request and no setpoint published anywhere in this launch file, so it is
@@ -86,11 +86,6 @@ def generate_launch_description():
     L = LaunchConfiguration
 
     args = [
-        ('agent', 'true',
-         'Run the serial uXRCE-DDS agent. false if one is already up, or if '
-         'you only want to see the thermal detection and the LEDs and do not '
-         'care about the servo.'),
-
         # ---- detection. THE SAME NUMBERS AS THE FLIGHT NODE, always ----
         ('refresh_hz', '8', 'MLX90640 frame rate.'),
         ('stream_port', '8082', 'The browser view. 0 turns it off.'),
@@ -170,13 +165,6 @@ def generate_launch_description():
     servo_armed = PythonExpression(
         ["'", L('release_enabled'), "'.lower() not in ('false', '0')"])
 
-    microxrce = Node(
-        package='micro_ros_agent', executable='micro_ros_agent',
-        name='micro_xrce_dds_agent', output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-        condition=IfCondition(L('agent')),
-    )
-
     sensor = Node(
         package='drone_testing', executable='thermal_sensor',
         name='thermal_sensor', output='screen', emulate_tty=True,
@@ -234,4 +222,4 @@ def generate_launch_description():
         condition=IfCondition(L('led')),
     )
 
-    return LaunchDescription(declared + [microxrce, sensor, bench, servo, led])
+    return LaunchDescription(declared + [sensor, bench, servo, led])

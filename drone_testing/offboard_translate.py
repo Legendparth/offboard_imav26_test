@@ -1,7 +1,8 @@
 """
 Offboard takeoff -> hold -> translate 1 m -> hold -> land test.
 
-Sequence: stream offboard setpoints -> enter Offboard -> arm -> sit armed
+Sequence: stream offboard setpoints -> pilot flips Offboard and arms from the
+TX (this node never arms or requests the mode) -> sit armed
 on the ground for 5 s -> climb to 1.00 m above the arming point -> hold
 until the optical flow is healthy and x/y is latched -> translate 1.00 m
 in the requested body-frame direction (forward by default; backward, left
@@ -211,9 +212,7 @@ class OffboardTranslate(Node):
     FLOW_SETTLE_SECONDS = 1.0
 
     # ---- timings / limits -------------------------------------------------
-    SETPOINT_WARMUP = 20        # setpoints streamed before requesting Offboard (@20 Hz = 1 s)
-    OFFBOARD_TIMEOUT = 10.0
-    ARMING_TIMEOUT = 10.0
+    SETPOINT_WARMUP = 20        # setpoints streamed before waiting for Offboard (@20 Hz = 1 s)
     TAKEOFF_TIMEOUT = 20.0
     LANDING_TIMEOUT = 30.0
     DISARM_TIMEOUT = 5.0
@@ -234,9 +233,6 @@ class OffboardTranslate(Node):
                                     # /fmu/in/vehicle_command at the full 20 Hz
                                     # floods PX4's command queue and gets
                                     # commands dropped rather than acted on.
-    # If you switch to Offboard from your RC transmitter instead of from
-    # this node, set this to False.
-    REQUEST_OFFBOARD_FROM_ROS = True
     # ----------------------------------------------------------------------
 
     def __init__(self):
@@ -272,8 +268,6 @@ class OffboardTranslate(Node):
             'climb_speed', self.CLIMB_SPEED))
         self.LAND_SPEED = float(self._declare_number(
             'land_speed', self.LAND_SPEED))
-        self.REQUEST_OFFBOARD_FROM_ROS = bool(self.declare_parameter(
-            'request_offboard_from_ros', self.REQUEST_OFFBOARD_FROM_ROS).value)
 
         sensor_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -790,9 +784,13 @@ class OffboardTranslate(Node):
                                    throttle_duration_sec=2.0)
             return
 
+        # Armed before this node was ready: do not take over an aircraft we did
+        # not see disarmed on the ground. Wait for the pilot to disarm it.
         if self.arming_state == VehicleStatus.ARMING_STATE_ARMED:
-            self.get_logger().error("Vehicle already armed at startup. Disarming.")
-            self._enter_stage(self.DISARMING)
+            self.get_logger().error(
+                "Vehicle already armed at startup. Disarm from the TX to continue.",
+                throttle_duration_sec=2.0)
+            self.setpoint_counter = 0
             return
 
         # No height estimate or no rangefinder, no flight. The one hard gate.
@@ -836,54 +834,48 @@ class OffboardTranslate(Node):
             self._enter_stage(self.OFFBOARD_REQUEST)
 
     def _handle_offboard_request(self):
+        # The pilot switches to Offboard from the TX; this node only streams
+        # the heartbeat and never requests the mode itself. Wait indefinitely
+        # so the node can be started at boot and sit there until someone is
+        # actually ready to fly.
         if self.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
             self.get_logger().info("Offboard mode active.")
             self._enter_stage(self.ARMING)
             return
 
-        if self.REQUEST_OFFBOARD_FROM_ROS:
-            self.get_logger().info("Requesting Offboard mode...", throttle_duration_sec=1.0)
-            # param1 = 1 -> custom mode enabled, param2 = 6 -> PX4 OFFBOARD
-            self.publish_vehicle_command(
-                VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0)
-        else:
-            self.get_logger().info("Waiting for you to flip the Offboard switch on the TX...",
-                                   throttle_duration_sec=2.0)
-
-        # The timeout only applies when WE are the ones requesting the mode --
-        # if it has not taken by now it is not going to. When a human flips the
-        # switch we wait indefinitely instead, so the node can be started at
-        # boot and sit there until someone is actually ready to fly.
-        if (self.REQUEST_OFFBOARD_FROM_ROS
-                and self._in_stage_for() > self.OFFBOARD_TIMEOUT):
-            self.get_logger().error("Offboard mode not entered in time. Aborting.")
-            self.kill_requested = True
-            self._enter_stage(self.KILLING)
+        self.get_logger().info("Waiting for you to flip the Offboard switch on the TX...",
+                               throttle_duration_sec=2.0)
 
     def _handle_arming(self):
+        # The pilot arms from the TX; this node never sends an arm command.
         if self.arming_state == VehicleStatus.ARMING_STATE_ARMED:
+            # Armed and already off the ground (armed in another mode and
+            # flown before flipping Offboard): this is not a takeoff point.
+            # Keep streaming the live-altitude hold and do not start the
+            # mission; the pilot takes it back by leaving Offboard.
+            if self.is_airborne():
+                self.get_logger().error(
+                    "Offboard engaged while airborne. This node only starts from "
+                    "the ground -- holding position; switch out of Offboard.",
+                    throttle_duration_sec=2.0)
+                return
             self._capture_home()
             self.get_logger().warning(
                 f"ARMED. Holding on the ground for {self.GROUND_WAIT_SECONDS:.0f} s.")
             self._enter_stage(self.GROUND_WAIT)
             return
 
-        # Lost Offboard before we got the chance to arm.
+        # Switched back out of Offboard before arming: nothing is flying, so
+        # just go back to waiting for the switch.
         if self.nav_state != VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-            self.get_logger().error(
-                f"Dropped out of Offboard into {nav_state_name(self.nav_state)} "
-                f"before arming completed. PX4 failsafe: {self.failsafe_summary()}.")
-            self.kill_requested = True
-            self._enter_stage(self.KILLING)
+            self.get_logger().warning(
+                f"Left Offboard into {nav_state_name(self.nav_state)} before arming. "
+                "Waiting for the Offboard switch again.")
+            self._enter_stage(self.OFFBOARD_REQUEST)
             return
 
-        self.publish_vehicle_command(
-            VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=1.0)
-
-        if self._in_stage_for() > self.ARMING_TIMEOUT:
-            self.get_logger().error("Arming rejected / timed out. Aborting.")
-            self.kill_requested = True
-            self._enter_stage(self.KILLING)
+        self.get_logger().info("Offboard active. Waiting for you to arm from the TX...",
+                               throttle_duration_sec=2.0)
 
     def _capture_home(self):
         # Only z and yaw are actually flown from this. x/y are recorded for
@@ -1413,7 +1405,7 @@ class OffboardTranslate(Node):
             else:
                 detail = f"{self.MOVE_DIRECTION[:3]} wait"
         elif self.current_stage == self.OFFBOARD_REQUEST:
-            detail = 'flip sw'
+            detail = 'pilot'
 
         msg = String()
         msg.data = "|".join([

@@ -2,7 +2,7 @@
 Thermal drop: find the hottest of three boxes with the MLX90640 and hover the
 drop point over it at drop height. ARK Flow + Pixhawk IMU localisation.
 
-    uXRCE-DDS agent + thermal_sensor (MLX90640 over I2C) + thermal_drop (flight)
+    thermal_sensor (MLX90640 over I2C) + thermal_drop (flight)
 
 WHAT TO RUN, IN THIS ORDER
 
@@ -153,11 +153,6 @@ from launch_ros.actions import Node
 def generate_launch_description():
     L = LaunchConfiguration
     bench = PythonExpression(["'", L('mode'), "' == 'bench'"])
-    # The SERIAL uXRCE-DDS agent. It runs when it is asked for AND the mode is
-    # not bench. Both halves matter -- see the 'agent' argument below.
-    serial_agent = PythonExpression(
-        ["'", L('agent'), "'.lower() not in ('false', '0') and '",
-         L('mode'), "' != 'bench'"])
     # The release node runs when it is asked for AND the release is armed.
     # release_enabled:=false means "fly it all but never move the servo", and
     # a release node sitting there ready to move it would be exactly that
@@ -167,33 +162,7 @@ def generate_launch_description():
          L('release_enabled'), "'.lower() not in ('false', '0')"])
 
     args = [
-        ('agent_only', 'true', 'Start agent + sensor but not the flight node.'),
-        # THE SERIAL AGENT, AND WHY IT HAS AN OFF SWITCH.
-        #
-        #   On the aircraft the Jetson talks to the Pixhawk over
-        #   /dev/ttyTHS1, and micro_ros_agent is what carries the uORB
-        #   topics across it. In a SIMULATION there is no serial link and no
-        #   Pixhawk: thermal_drop_sitl.launch.py runs its own
-        #   `MicroXRCEAgent udp4 -p 8888` instead, and micro_ros_agent is
-        #   not even installed on a desktop.
-        #
-        #   Without this switch, including this file from the SITL launch
-        #   threw
-        #       [ERROR] [launch]: Caught exception in launch:
-        #       "package 'micro_ros_agent' not found"
-        #   40 s into the run -- and because that exception happens INSIDE
-        #   an IncludeLaunchDescription, launch tears the whole session down
-        #   with it: Gazebo, PX4, the bridge and the UDP agent all took a
-        #   SIGINT and the simulation "randomly exited" with the arena
-        #   loaded and the aircraft still on the pad.
-        #
-        #   course_mission.launch.py has exactly this argument, for exactly
-        #   this reason, and course_mission_sitl passes agent:=false.
-        ('agent', 'true',
-         'Start micro_ros_agent on the serial link to the Pixhawk. false in '
-         'any simulation -- there is no serial link there, the SITL launch '
-         'runs its own UDP agent, and the package is not installed on a '
-         'desktop, which takes the whole launch down with it.'),
+        ('agent_only', 'true', 'Start the sensor side but not the flight node.'),
         ('mode', 'fly',
          'bench = log only. dryrun = the whole mission on a simulated vehicle '
          '(no arming, no setpoints, motors cannot spin) with a REAL thermal '
@@ -347,8 +316,6 @@ def generate_launch_description():
         ('move_speed', '0.80',
          'm/s the carrot is walked at. Binds only while it is below '
          'MPC_XY_P * move_leash -- see move_leash.'),
-        ('request_offboard_from_ros', 'true',
-         'false = you flip the Offboard switch on the TX.'),
 
         ('led', 'true', 'Run the WS2812B status light node.'),
         ('num_pixels', '5', ''),
@@ -690,13 +657,6 @@ def generate_launch_description():
     declared = [DeclareLaunchArgument(n, default_value=d, description=h)
                 for n, d, h in args]
 
-    microxrce = Node(
-        package='micro_ros_agent', executable='micro_ros_agent',
-        name='micro_xrce_dds_agent', output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-        condition=IfCondition(serial_agent),
-    )
-
     sensor = Node(
         package='drone_testing', executable='thermal_sensor', name='thermal_sensor',
         output='screen', emulate_tty=True,
@@ -838,7 +798,7 @@ def generate_launch_description():
     # not be forwarded to it: a flight node given an undeclared parameter
     # simply ignores it, which hides a typo until the day it matters.
     not_flight = {
-        'agent', 'agent_only', 'refresh_hz', 'publish_preview',
+        'agent_only', 'refresh_hz', 'publish_preview',
         'flight_node_delay',
         'led', 'num_pixels', 'blink_hz', 'stream_port', 'jpeg_quality',
         'fsm', 'thermal_sim', 'thermal_raw_topic', 'thermal_resolution',
@@ -902,6 +862,6 @@ def generate_launch_description():
         condition=UnlessCondition(L('agent_only')),
     )
 
-    return LaunchDescription(declared + [microxrce, sensor, sensor_sim,
+    return LaunchDescription(declared + [sensor, sensor_sim,
                                          aruco_node, line_node, wall_node,
                                          led_node, servo_node, flight])

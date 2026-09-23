@@ -6,7 +6,7 @@ course_mission.launch.py, flown in the imav_indoor_2026 Gazebo world.
 That is the whole thing: Gazebo + the scaled IMAV arena, the x500_drone
 spawned facing the blue window of the exit wall, PX4 SITL, MicroXRCEAgent on
 UDP, the ros_gz camera bridge, and then course_mission.launch.py itself with
-agent:=false zed:=false and every LENGTH multiplied by 2.2.
+zed:=false and every LENGTH multiplied by 2.2.
 
 WHY 2.2
 
@@ -338,8 +338,7 @@ def generate_launch_description():
                 get_package_share_directory('drone_testing'), 'launch',
                 'course_mission.launch.py')),
             launch_arguments={
-                # The sim provides the DDS link and the camera itself.
-                'agent': 'false',
+                # The sim provides the camera itself.
                 'zed': 'false',
                 'reboot_fc': 'false',
                 'lcd': 'false',

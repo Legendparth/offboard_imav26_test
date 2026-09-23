@@ -1,5 +1,5 @@
 """
-Window scan launch: uXRCE-DDS agent + ZED + window detection + the flight.
+Window scan launch: ZED + window detection + the flight.
 
     arm -> climb to takeoff_altitude -> hold -> sweep the nose through a
     90 degree arc until the ZED sees the window -> lock the yaw and the
@@ -15,7 +15,7 @@ and the topic names before anything spins:
     ros2 topic echo /window_detected
     ros2 run rqt_image_view rqt_image_view /window_detection/image
 
-Flight. The default starts the agent, the ZED and the detector but NOT the
+Flight. The default starts the ZED and the detector but NOT the
 flight node, so you can run that one by hand and keep the q/k keyboard
 aborts (a node started by launch has no tty, so those keys are dead):
 
@@ -52,14 +52,6 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     agent_only = LaunchConfiguration('agent_only')
     flight = LaunchConfiguration('flight')
-
-    microxrce_node = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='micro_xrce_dds_agent',
-        output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-    )
 
     # The camera driver. Skipped with zed:=false if you already have one up.
     zed_launch = IncludeLaunchDescription(
@@ -147,15 +139,13 @@ def generate_launch_description():
                     'land_speed': LaunchConfiguration('land_speed'),
                     'min_altitude': LaunchConfiguration('min_altitude'),
                     'max_altitude': LaunchConfiguration('max_altitude'),
-                    'request_offboard_from_ros': LaunchConfiguration(
-                        'request_offboard_from_ros'),
                 }],
             )
         ],
         condition=UnlessCondition(agent_only),
     )
 
-    # Status on the Arduino TFT. Started with the agent so the screen is alive
+    # Status on the Arduino TFT. Started with the support stack so the screen is alive
     # from boot; it also shows the window detection on row 4 by itself.
     lcd_node = Node(
         package='drone_testing',
@@ -170,12 +160,12 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'agent_only', default_value='true',
-            description='Start the agent, the ZED and the detector but not the '
+            description='Start the ZED and the detector but not the '
                         'flight node, so you can run that by hand and keep the '
                         'q/k keyboard aborts. false = fly the whole thing.'),
         DeclareLaunchArgument(
             'flight', default_value='true',
-            description='false = camera and detection only: no DDS agent, no '
+            description='false = camera and detection only: no '
                         'flight node. Use this for the bench test.'),
         DeclareLaunchArgument(
             'detect', default_value='true',
@@ -284,9 +274,6 @@ def generate_launch_description():
             'max_altitude', default_value='3.0',
             description='m above the arming point the flight may not exceed.'),
         DeclareLaunchArgument(
-            'request_offboard_from_ros', default_value='true',
-            description='false = you flip the Offboard switch on the TX.'),
-        DeclareLaunchArgument(
             'reboot_fc', default_value='false',
             description='Run fc_reboot first: reboots the flight controller '
                         'over the DDS link IF EKF2 is not fusing the '
@@ -310,7 +297,7 @@ def generate_launch_description():
         # actions are grouped rather than given a condition directly, because
         # two of them already carry one of their own and an action's condition
         # is fixed when it is built.
-        GroupAction([microxrce_node, lcd_node, reboot_node, scan_node],
+        GroupAction([lcd_node, reboot_node, scan_node],
                     condition=IfCondition(flight)),
         zed_launch,
         detect_node,

@@ -321,15 +321,6 @@ def generate_launch_description():
                 'fsm': LaunchConfiguration('fsm'),
                 'mode': 'fly',
                 'agent_only': LaunchConfiguration('agent_only'),
-                # NO SERIAL AGENT. The simulation has no /dev/ttyTHS1 and no
-                # Pixhawk; the DDS link is the `MicroXRCEAgent udp4 -p 8888`
-                # started above. Leaving this true made launch raise
-                # "package 'micro_ros_agent' not found" 40 s in, and an
-                # exception inside an IncludeLaunchDescription takes the
-                # WHOLE session down -- Gazebo, PX4, the bridge and the UDP
-                # agent all get a SIGINT and the run looks like it exited at
-                # random with the aircraft still on the pad.
-                'agent': 'false',
 
                 # ---- the sensors: Gazebo, not I2C and not /dev/video ----
                 'thermal_sim': 'true',

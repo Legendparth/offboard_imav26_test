@@ -7,14 +7,6 @@ from launch_ros.actions import Node
 def generate_launch_description():
     agent_only = LaunchConfiguration('agent_only')
 
-    microxrce_node = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='micro_xrce_dds_agent',
-        output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-    )
-
     servo_node = TimerAction(
         period=5.0,
         actions=[
@@ -32,7 +24,6 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'agent_only', default_value='false',
-            description='Start only the uXRCE-DDS agent if true.'),
-        microxrce_node,
+            description='Do not start the servo node if true.'),
         servo_node,
     ])

@@ -1,7 +1,7 @@
 """
 The obstacle-course BAR, flown as its own mission. ARK Flow localisation.
 
-    uXRCE-DDS agent + zed_wrapper (CAMERA ONLY)
+    zed_wrapper (CAMERA ONLY)
     + bar_detect (detection AND geometry) + bar_cross (the flight)
 
     arm -> climb -> hold -> find the bar -> measure how high it is -> climb or
@@ -178,14 +178,6 @@ def generate_launch_description():
         'cam_yaw': LaunchConfiguration('cam_yaw'),
     }
 
-    microxrce_node = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='micro_xrce_dds_agent',
-        output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-    )
-
     zed_wrapper = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(PathJoinSubstitution([
             FindPackageShare('zed_wrapper'), 'launch', 'zed_camera.launch.py'])),
@@ -272,8 +264,6 @@ def generate_launch_description():
                     'max_altitude': LaunchConfiguration('max_altitude'),
                     'yaw_cone_deg': LaunchConfiguration('yaw_cone_deg'),
                     'flight_seconds': LaunchConfiguration('flight_seconds'),
-                    'request_offboard_from_ros': LaunchConfiguration(
-                        'request_offboard_from_ros'),
 
                     # ---- the crossing ----
                     'pass_mode': LaunchConfiguration('pass_mode'),
@@ -340,7 +330,7 @@ def generate_launch_description():
                         'window_traverse.launch.py -- these must not differ.'),
         DeclareLaunchArgument(
             'flight', default_value='true',
-            description='false = camera side only: no DDS agent and no flight '
+            description='false = camera side only: no flight '
                         'node. This is the bench test.'),
         DeclareLaunchArgument('detect', default_value='true'),
         DeclareLaunchArgument(
@@ -463,13 +453,6 @@ def generate_launch_description():
             description='Seconds from the START OF THE CLIMB to the descent. '
                         'Never fires during the crossing itself.'),
 
-        DeclareLaunchArgument(
-            'request_offboard_from_ros', default_value='true',
-            description='true: the flight node switches PX4 into Offboard '
-                        'itself. false: it streams setpoints and waits for you '
-                        'to flip Offboard on the RC switch. Same parameter and '
-                        'default as window_traverse.launch.py and '
-                        'sequence_test.launch.py.'),
 
         # ---- the crossing ----
         DeclareLaunchArgument(
@@ -626,7 +609,7 @@ def generate_launch_description():
         DeclareLaunchArgument('lcd', default_value='false'),
         DeclareLaunchArgument('lcd_port', default_value=''),
 
-        GroupAction([microxrce_node, lcd_node, reboot_node, cross_node],
+        GroupAction([lcd_node, reboot_node, cross_node],
                     condition=IfCondition(flight)),
         zed_wrapper,
         detect_node,

@@ -1,7 +1,7 @@
 """
 Window traversal on ARK Flow localisation.
 
-    uXRCE-DDS agent + zed_wrapper (CAMERA ONLY)
+    zed_wrapper (CAMERA ONLY)
     + window_detect (detection AND geometry) + window_traverse (the flight)
 
     arm -> climb -> hold -> sweep for the window -> lock and build a pose
@@ -30,7 +30,7 @@ and offboard_sequence_vio.py still hold the vision path if you go back to it.
 
 WHAT TO RUN
 
-Bench, no props: the whole camera side, no agent and no flight node. This is
+Bench, no props: the whole camera side and no flight node. This is
 where you check that the geometry topic is alive and sane before anything
 spins, and you can do it holding the airframe in your hands:
 
@@ -148,14 +148,6 @@ def generate_launch_description():
         'cam_yaw': LaunchConfiguration('cam_yaw'),
     }
 
-    microxrce_node = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='micro_xrce_dds_agent',
-        output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-    )
-
     zed_wrapper = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(PathJoinSubstitution([
             FindPackageShare('zed_wrapper'), 'launch', 'zed_camera.launch.py'])),
@@ -251,8 +243,6 @@ def generate_launch_description():
                     'detect_seconds': LaunchConfiguration('detect_seconds'),
                     'relock_on_loss': LaunchConfiguration('relock_on_loss'),
                     'flight_seconds': LaunchConfiguration('flight_seconds'),
-                    'request_offboard_from_ros': LaunchConfiguration(
-                        'request_offboard_from_ros'),
                     # ---- the traversal ----
                     'standoff_distance': LaunchConfiguration('standoff_distance'),
                     'min_standoff_distance': LaunchConfiguration('min_standoff_distance'),
@@ -337,7 +327,7 @@ def generate_launch_description():
                         'false = fly the whole thing from this launch file.'),
         DeclareLaunchArgument(
             'flight', default_value='true',
-            description='false = camera side only: no DDS agent and no flight '
+            description='false = camera side only: no flight '
                         'node. This is the bench test.'),
         DeclareLaunchArgument(
             'detect', default_value='true',
@@ -537,7 +527,6 @@ def generate_launch_description():
             description='Hard limit from the START OF THE CLIMB to the descent. '
                         'Fires from every stage EXCEPT the traverse itself -- '
                         'the aircraft is never landed from inside a window.'),
-        DeclareLaunchArgument('request_offboard_from_ros', default_value='true'),
 
         # ---- the traversal ----
         DeclareLaunchArgument(
@@ -761,7 +750,7 @@ def generate_launch_description():
         # flight:=false leaves the camera side running on its own, which is the
         # bench test. Grouped rather than conditioned individually because two
         # of these already carry a condition of their own.
-        GroupAction([microxrce_node, lcd_node, reboot_node, traverse_node],
+        GroupAction([lcd_node, reboot_node, traverse_node],
                     condition=IfCondition(flight)),
         zed_wrapper,
         detect_node,

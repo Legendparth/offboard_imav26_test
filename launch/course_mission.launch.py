@@ -2,7 +2,7 @@
 The obstacle course in ONE flight: window -> over the red bar -> under the
 blue bar -> land. ARK Flow localisation, ZED as a camera only.
 
-    uXRCE-DDS agent + zed_wrapper (CAMERA ONLY)
+    zed_wrapper (CAMERA ONLY)
     + window_detect + course_fsm (the whole flight)
 
 This is window_traverse.launch.py with the flight node swapped for
@@ -70,15 +70,6 @@ def generate_launch_description():
         'cam_pitch': LaunchConfiguration('cam_pitch'),
         'cam_yaw': LaunchConfiguration('cam_yaw'),
     }
-
-    microxrce_node = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='micro_xrce_dds_agent',
-        output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-        condition=IfCondition(LaunchConfiguration('agent')),
-    )
 
     zed_wrapper = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(PathJoinSubstitution([
@@ -306,8 +297,6 @@ def generate_launch_description():
                     'detect_seconds': LaunchConfiguration('detect_seconds'),
                     'relock_on_loss': LaunchConfiguration('relock_on_loss'),
                     'flight_seconds': LaunchConfiguration('flight_seconds'),
-                    'request_offboard_from_ros': LaunchConfiguration(
-                        'request_offboard_from_ros'),
                     # ---- the traversal ----
                     'standoff_distance': LaunchConfiguration('standoff_distance'),
                     'min_standoff_distance': LaunchConfiguration('min_standoff_distance'),
@@ -502,15 +491,8 @@ def generate_launch_description():
                         'can run that by hand and keep the q/k keyboard aborts. '
                         'false = fly the whole thing from this launch file.'),
         DeclareLaunchArgument(
-            'agent', default_value='true',
-            description='Start the uXRCE-DDS agent on the Jetson serial link to '
-                        'the flight controller. false when something else is '
-                        'already bridging to PX4 -- which is what SITL does, '
-                        'where the agent is MicroXRCEAgent on UDP. See '
-                        'course_mission_sitl.launch.py.'),
-        DeclareLaunchArgument(
             'flight', default_value='true',
-            description='false = camera side only: no DDS agent and no flight '
+            description='false = camera side only: no flight '
                         'node. This is the bench test.'),
         DeclareLaunchArgument(
             'detect', default_value='true',
@@ -710,7 +692,6 @@ def generate_launch_description():
             description='Hard limit from the START OF THE CLIMB to the descent. '
                         'Fires from every stage EXCEPT the traverse itself -- '
                         'the aircraft is never landed from inside a window.'),
-        DeclareLaunchArgument('request_offboard_from_ros', default_value='true'),
 
         # ---- the traversal ----
         DeclareLaunchArgument(
@@ -1316,7 +1297,7 @@ def generate_launch_description():
         # flight:=false leaves the camera side running on its own, which is the
         # bench test. Grouped rather than conditioned individually because two
         # of these already carry a condition of their own.
-        GroupAction([microxrce_node, lcd_node, reboot_node, traverse_node],
+        GroupAction([lcd_node, reboot_node, traverse_node],
                     condition=IfCondition(flight)),
         zed_wrapper,
         detect_node,

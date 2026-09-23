@@ -1,16 +1,1 @@
-ark-jetson-orin@localhost:~/imav26_ws$ ros2 run drone_testing servo_test --ros-args -p command:=sweep
-[WARN] [1790057008.736938252] [servo_test_node]: SWEEP: MAV_CMD_ACTUATOR_TEST at +1.00 across functions 201-208 (Servo 1-8), 1.0 s each. WATCH THE SERVO and note which function moves it.
-[INFO] [1790057009.697171086] [servo_test_node]:   function 201  (Servo 1)  ->  +1.00
-[INFO] [1790057010.697321955] [servo_test_node]:   function 202  (Servo 2)  ->  +1.00
-[INFO] [1790057011.697461438] [servo_test_node]:   function 203  (Servo 3)  ->  +1.00
-[ERROR] [1790057011.710063095] [servo_test_node]:     PX4 REFUSED function 203, result 2.
-[INFO] [1790057012.697461661] [servo_test_node]:   function 204  (Servo 4)  ->  +1.00
-[ERROR] [1790057012.711195057] [servo_test_node]:     PX4 REFUSED function 204, result 2.
-[INFO] [1790057013.697789485] [servo_test_node]:   function 205  (Servo 5)  ->  +1.00
-[ERROR] [1790057013.711295449] [servo_test_node]:     PX4 REFUSED function 205, result 2.
-[INFO] [1790057014.697733372] [servo_test_node]:   function 206  (Servo 6)  ->  +1.00
-[ERROR] [1790057014.712757612] [servo_test_node]:     PX4 REFUSED function 206, result 2.
-[INFO] [1790057015.697520018] [servo_test_node]:   function 207  (Servo 7)  ->  +1.00
-[ERROR] [1790057015.718470064] [servo_test_node]:     PX4 REFUSED function 207, result 2.
-[INFO] [1790057016.697761789] [servo_test_node]:   function 208  (Servo 8)  ->  +1.00
-[WARN] [1790057017.696951163] [servo_test_node]: Sweep finished. 6 ack(s) from PX4. If NOTHING moved: the servo may not be on Servo 1-8, or the FMU is not powering the rail, or the uXRCE-DDS agent is not connected (no acks at all means nothing arrived). If something moved, use that function number for servo_function.
+servo_function:=1301 rearm_seconds:=5.0

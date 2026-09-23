@@ -1,7 +1,7 @@
 """
 Sequence test flown on ZED visual odometry.
 
-    uXRCE-DDS agent + zed_wrapper + zed_localization bridge + offboard_sequence_vio
+    zed_wrapper + zed_localization bridge + offboard_sequence_vio
 
 Same mission and the same arguments as sequence_test.launch.py -- read that
 file for what the `sequence` string means and for the flight parameters. The
@@ -174,14 +174,6 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     agent_only = LaunchConfiguration('agent_only')
 
-    microxrce_node = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='micro_xrce_dds_agent',
-        output='screen',
-        arguments=['serial', '--dev', '/dev/ttyTHS1', '-b', '921600'],
-    )
-
     # The ZED wrapper's own launch file: it does the camera-model config
     # loading and the camera_link TF tree, which are not worth reproducing.
     zed_wrapper = IncludeLaunchDescription(
@@ -258,8 +250,6 @@ def generate_launch_description():
                     'yaw_rate': LaunchConfiguration('yaw_rate'),
                     'min_altitude': LaunchConfiguration('min_altitude'),
                     'max_altitude': LaunchConfiguration('max_altitude'),
-                    'request_offboard_from_ros': LaunchConfiguration(
-                        'request_offboard_from_ros'),
                     'hold_xy_from_ground': LaunchConfiguration('hold_xy_from_ground'),
                     'vio_settle_seconds': LaunchConfiguration('vio_settle_seconds'),
                 }],
@@ -281,7 +271,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'agent_only', default_value='true',
-            description='Start only the support stack (agent, camera, bridge, LCD); '
+            description='Start only the support stack (camera, bridge, LCD); '
                         'run the flight node manually so q/k stay available.'),
 
         # ---- the mission, identical to sequence_test.launch.py ----
@@ -334,9 +324,6 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'max_altitude', default_value='3.0',
             description='m above the arming point that an up step may not exceed.'),
-        DeclareLaunchArgument(
-            'request_offboard_from_ros', default_value='true',
-            description='false = you flip the Offboard switch on the TX yourself.'),
 
         # ---- vision ----
         DeclareLaunchArgument(
@@ -413,7 +400,6 @@ def generate_launch_description():
             'lcd_port', default_value='',
             description='Arduino serial port; empty = auto-detect ttyACM*/ttyUSB*.'),
 
-        microxrce_node,
         zed_wrapper,
         lcd_node,
         bridge_node,
